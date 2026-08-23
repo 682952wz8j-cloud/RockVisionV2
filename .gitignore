@@ -1,0 +1,43 @@
+.DS_Store
+__MACOSX/
+._*
+.idea/
+
+# Xcode / macOS user state
+xcuserdata/
+DerivedData/
+*.xcuserstate
+
+# Incoming captures and Terra/DJI/iPhone derivatives. Keep docs only.
+incoming/**
+!incoming/README.md
+!incoming/**/
+!incoming/**/README.md
+!incoming/**/.gitkeep
+!incoming/**/metadata/NOTES.txt
+
+# Generated offline products. Rebuild from incoming + tools.
+offline/work/**
+!offline/work/README.md
+
+# Generated Wall Package binaries (schema JSON may be committed later)
+walls/**/localization/*.bin
+walls/**/visual/
+
+# OpenCV rebuild trees and the XCFramework binary (rebuild from pin files)
+ios/Vendor/OpenCV/build/
+ios/Vendor/OpenCV/opencv/
+ios/Vendor/OpenCV/opencv_contrib/
+ios/Vendor/OpenCV/opencv2.xcframework/
+
+# Field Test exports if copied from an iPhone into this repo
+**/FieldTests/
+gate3b_*.json
+gate3b_*.jsonl
+
+# Python
+.venv/
+offline/.venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/

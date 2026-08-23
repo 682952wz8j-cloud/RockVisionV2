@@ -1,0 +1,2 @@
+# Gate 1A ingestion only. OpenCV / COLMAP are not used here.
+Pillow>=10.0

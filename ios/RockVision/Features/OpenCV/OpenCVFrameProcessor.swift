@@ -1,0 +1,484 @@
+import ARKit
+import Foundation
+import os
+import UIKit
+
+/// Consumes ARFrames on a single serial queue. Gate 3B adds SIFT; not a localizer.
+///
+/// ARKit stays full-rate. SIFT is requested at 2 Hz and skips if busy. No backlog.
+final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
+    @Published private(set) var snapshot = OpenCVRuntimeSnapshot()
+    @Published private(set) var siftSnapshot = SIFTRuntimeSnapshot()
+
+    private let queue = DispatchQueue(label: "com.rockvision.v2.opencv", qos: .userInitiated)
+    private let lock = NSLock()
+    private let requestedInterval: TimeInterval = 0.50
+    private var isProcessing = false
+    private var lastAcceptedAt = Date.distantPast
+    private var didLogCalibration = false
+    private var didLogVersion = false
+    private var didLogSIFTParams = false
+    private let log = Logger(subsystem: "com.rockvision.v2", category: "OpenCV")
+
+    private var skippedFrames = 0
+    private var processedFrames = 0
+    private var nextFrameID: UInt64 = 1
+    private var startedAt = Date()
+    private var currentPreset: SIFTProcessingPreset = .native
+    private var showKeypoints = true
+    private var viewSize: CGSize = .zero
+    private var interfaceOrientation: UIInterfaceOrientation = .portrait
+    private var cycleStartedAt = Date()
+    private let cycleSeconds: TimeInterval = 20
+    private var autoCycle = true
+    private var currentScene = SIFTSceneLabel.unlabeled.rawValue
+    private var didDumpSixty = false
+    private var fieldTestLocked = false
+    weak var fieldSink: FieldTestSampleSink?
+
+    private var buckets: [SIFTProcessingPreset: ResolutionAccumulator] = [
+        .native: ResolutionAccumulator(),
+        .medium: ResolutionAccumulator(),
+        .low: ResolutionAccumulator(),
+    ]
+    private var sceneBuckets: [String: [SIFTProcessingPreset: ResolutionAccumulator]] = [:]
+
+    override init() {
+        super.init()
+        var initial = OpenCVRuntimeSnapshot()
+        initial.version = OpenCVBridge.openCVVersion()
+        initial.status = "inactive"
+        snapshot = initial
+        var sift = SIFTRuntimeSnapshot()
+        sift.presetLabel = currentPreset.label
+        sift.requestedRateHz = "2.0"
+        sift.scene = currentScene
+        siftSnapshot = sift
+        startedAt = Date()
+        cycleStartedAt = Date()
+    }
+
+    func updateViewContext(size: CGSize, orientation: UIInterfaceOrientation) {
+        lock.lock()
+        viewSize = size
+        interfaceOrientation = orientation
+        lock.unlock()
+    }
+
+    func cyclePreset() {
+        setPreset(SIFTProcessingPreset(rawValue: (currentPreset.rawValue + 1) % SIFTProcessingPreset.allCases.count) ?? .native)
+    }
+
+    func setFieldTestLocked(_ locked: Bool) {
+        lock.lock()
+        fieldTestLocked = locked
+        if locked {
+            autoCycle = false
+        }
+        lock.unlock()
+    }
+
+    func applyFieldTestPreset(_ preset: SIFTProcessingPreset) {
+        lock.lock()
+        currentPreset = preset
+        autoCycle = false
+        let label = currentPreset.label
+        lock.unlock()
+        DispatchQueue.main.async {
+            var next = self.siftSnapshot
+            next.presetLabel = label
+            self.siftSnapshot = next
+        }
+    }
+
+    func applyFieldTestScene(_ scene: String) {
+        guard SIFTSceneLabel(rawValue: scene) != nil else { return }
+        lock.lock()
+        currentScene = scene
+        lock.unlock()
+        DispatchQueue.main.async {
+            var next = self.siftSnapshot
+            next.scene = scene
+            self.siftSnapshot = next
+        }
+    }
+
+    func setPreset(_ preset: SIFTProcessingPreset) {
+        lock.lock()
+        if fieldTestLocked {
+            lock.unlock()
+            return
+        }
+        currentPreset = preset
+        autoCycle = false
+        let label = currentPreset.label
+        lock.unlock()
+        print("SIFT: manual preset \(label)")
+        DispatchQueue.main.async {
+            var next = self.siftSnapshot
+            next.presetLabel = label
+            self.siftSnapshot = next
+        }
+    }
+
+    func cycleScene() {
+        let labels = SIFTSceneLabel.allCases
+        let idx = labels.firstIndex(where: { $0.rawValue == currentScene }) ?? 0
+        setScene(labels[(idx + 1) % labels.count].rawValue)
+    }
+
+    func setScene(_ scene: String) {
+        guard SIFTSceneLabel(rawValue: scene) != nil else { return }
+        lock.lock()
+        if fieldTestLocked {
+            lock.unlock()
+            return
+        }
+        currentScene = scene
+        let preset = currentPreset
+        dumpBucketLocked(preset, scene: scene)
+        lock.unlock()
+        print("SIFT: scene \(scene)")
+        DispatchQueue.main.async {
+            var next = self.siftSnapshot
+            next.scene = scene
+            self.siftSnapshot = next
+        }
+    }
+
+    func toggleKeypointOverlay() {
+        lock.lock()
+        showKeypoints.toggle()
+        let visible = showKeypoints
+        lock.unlock()
+        DispatchQueue.main.async {
+            var next = self.siftSnapshot
+            next.showKeypoints = visible
+            if !visible {
+                next.overlayViewPoints = []
+            }
+            self.siftSnapshot = next
+        }
+    }
+
+    func consumeARFrame(_ frame: ARFrame) {
+        lock.lock()
+        if autoCycle, Date().timeIntervalSince(cycleStartedAt) >= cycleSeconds {
+            let previous = currentPreset
+            currentPreset = SIFTProcessingPreset(rawValue: (currentPreset.rawValue + 1) % SIFTProcessingPreset.allCases.count) ?? .native
+            cycleStartedAt = Date()
+            dumpBucketLocked(previous)
+        }
+        let now = Date()
+        if isProcessing || now.timeIntervalSince(lastAcceptedAt) < requestedInterval {
+            skippedFrames += 1
+            lock.unlock()
+            return
+        }
+        isProcessing = true
+        lastAcceptedAt = now
+        let preset = currentPreset
+        let size = viewSize
+        let orientation = interfaceOrientation
+        let showDots = showKeypoints
+        let scene = currentScene
+        lock.unlock()
+
+        let buffer = frame.capturedImage
+        let cameraMatrix = frame.camera.intrinsics
+        let imageResolution = frame.camera.imageResolution
+        let capturedWidth = CVPixelBufferGetWidth(buffer)
+        let capturedHeight = CVPixelBufferGetHeight(buffer)
+        let displayTransform = size.width > 1 && size.height > 1
+            ? frame.displayTransform(for: orientation, viewportSize: size)
+            : nil
+        let timestamp = frame.timestamp
+        let tracking = Self.trackingLabel(frame.camera.trackingState)
+
+        queue.async { [weak self] in
+            guard let self else { return }
+            let diagnostics = OpenCVBridge.processPixelBuffer(buffer)
+            let siftObj = OpenCVBridge.extractSIFT(
+                from: buffer,
+                targetWidth: Int32(preset.targetWidth),
+                targetHeight: Int32(preset.targetHeight),
+                overlayCap: showDots ? 200 : 0
+            )
+
+            let intrinsics = CameraIntrinsicsValidator.make(
+                cameraMatrix: cameraMatrix,
+                imageResolution: imageResolution,
+                capturedWidth: capturedWidth,
+                capturedHeight: capturedHeight
+            )
+
+            let result = self.makeResult(siftObj, timestamp: timestamp)
+            let overlay = showDots ? self.viewPoints(from: result.overlayNative, nativeWidth: result.nativeImageWidth, nativeHeight: result.nativeImageHeight, transform: displayTransform, viewSize: size) : []
+
+            self.lock.lock()
+            self.isProcessing = false
+            self.processedFrames += 1
+            let processed = self.processedFrames
+            let skipped = self.skippedFrames
+            let elapsed = Date().timeIntervalSince(self.startedAt)
+            let rate = elapsed > 0 ? Double(processed) / elapsed : 0
+            if result.ok {
+                self.buckets[preset, default: ResolutionAccumulator()].add(result)
+                if scene != "unlabeled" {
+                    var byPreset = self.sceneBuckets[scene, default: [:]]
+                    var acc = byPreset[preset, default: ResolutionAccumulator()]
+                    acc.add(result)
+                    byPreset[preset] = acc
+                    self.sceneBuckets[scene] = byPreset
+                }
+            }
+            if !self.didDumpSixty, elapsed >= 60 {
+                self.didDumpSixty = true
+                self.dumpAllBucketsLocked()
+                print("SIFTStability: 60s processed=\(processed) skipped=\(skipped) rate=\(String(format: "%.2f", rate))")
+            }
+            let shouldLogCalibration = !self.didLogCalibration && intrinsics.isValid
+            if shouldLogCalibration { self.didLogCalibration = true }
+            let shouldLogVersion = !self.didLogVersion
+            if shouldLogVersion { self.didLogVersion = true }
+            let shouldLogParams = !self.didLogSIFTParams
+            if shouldLogParams { self.didLogSIFTParams = true }
+            self.lock.unlock()
+
+            if shouldLogVersion {
+                print("OpenCVBridge: version=\(OpenCVBridge.openCVVersion())")
+            }
+            if shouldLogCalibration {
+                print("OpenCVBridge: calibration \(intrinsics.summary)")
+            }
+            if shouldLogParams {
+                print("SIFT params: \(SIFTParameterRecord.summary)")
+            }
+            if processed == 1 || processed % 5 == 0 {
+                print(
+                    "SIFTBench: scene=\(scene) res=\(result.processingLabel) kp=\(result.keypointCount) desc=\(result.descriptorLabel) grid=\(result.gridLabel) finite=\(result.descriptorsFinite) match=\(result.rowsMatchKeypoints) pre=\(String(format: "%.2f", result.preprocessLatencyMs)) sift=\(String(format: "%.2f", result.siftLatencyMs)) total=\(String(format: "%.2f", result.totalLatencyMs)) rate=\(String(format: "%.2f", rate)) skipped=\(skipped)"
+                )
+            }
+
+            // Persistence / field-test bookkeeping is after SIFT timing and must not
+            // mutate preprocess/sift/total latency on the result.
+            self.fieldSink?.ingest(
+                result: result,
+                tracking: tracking,
+                skipped: skipped,
+                rateHz: rate,
+                activePreset: preset
+            )
+
+            DispatchQueue.main.async {
+                var next = self.snapshot
+                next.status = diagnostics?.status ?? "inactive"
+                next.version = OpenCVBridge.openCVVersion()
+                next.input = diagnostics?.inputDescription ?? "—"
+                if let diagnostics, diagnostics.ok {
+                    next.matSize = "\(diagnostics.cols) × \(diagnostics.rows)"
+                    next.mean = String(format: "%.1f", diagnostics.meanIntensity)
+                    next.latencyMs = String(format: "%.2f", diagnostics.latencyMilliseconds)
+                }
+                next.pixelFormat = diagnostics?.pixelFormat ?? "—"
+                next.nativeImageSize = "\(capturedWidth) × \(capturedHeight)"
+                next.intrinsicsValid = intrinsics.isValid
+                next.sampleCount = processed
+                self.snapshot = next
+
+                var sift = self.siftSnapshot
+                sift.status = result.ok ? "active" : (result.error ?? "inactive")
+                sift.processing = result.processingLabel
+                sift.keypoints = result.ok ? "\(result.keypointCount)" : "—"
+                sift.descriptors = result.ok ? result.descriptorLabel : "—"
+                sift.grid = result.ok ? result.gridLabel : "—"
+                sift.preprocessMs = result.ok ? String(format: "%.2f", result.preprocessLatencyMs) : "—"
+                sift.siftMs = result.ok ? String(format: "%.2f", result.siftLatencyMs) : "—"
+                sift.totalMs = result.ok ? String(format: "%.2f", result.totalLatencyMs) : "—"
+                sift.rateHz = String(format: "%.2f", rate)
+                sift.skipped = skipped
+                sift.presetLabel = preset.label
+                sift.requestedRateHz = "2.0"
+                sift.scene = scene
+                sift.showKeypoints = showDots
+                sift.overlayViewPoints = overlay
+                self.siftSnapshot = sift
+            }
+        }
+    }
+
+    func dumpAllBuckets() {
+        lock.lock()
+        dumpAllBucketsLocked()
+        lock.unlock()
+    }
+
+    private func dumpAllBucketsLocked() {
+        for preset in SIFTProcessingPreset.allCases {
+            dumpBucketLocked(preset)
+        }
+        for scene in ["A", "B", "C"] {
+            guard let byPreset = sceneBuckets[scene] else { continue }
+            for preset in SIFTProcessingPreset.allCases {
+                guard let bucket = byPreset[preset], !bucket.keypoints.isEmpty else { continue }
+                print(bucket.summary(label: preset.label, scene: scene))
+            }
+        }
+    }
+
+    private func dumpBucketLocked(_ preset: SIFTProcessingPreset, scene: String? = nil) {
+        guard let bucket = buckets[preset] else { return }
+        print(bucket.summary(label: preset.label, scene: scene))
+    }
+
+    private func makeResult(_ obj: OpenCVSIFTResult?, timestamp: TimeInterval) -> SIFTFrameResult {
+        let frameID: UInt64
+        lock.lock()
+        frameID = nextFrameID
+        nextFrameID += 1
+        lock.unlock()
+        guard let obj else {
+            return .empty(frameID: frameID, timestamp: timestamp, error: "nil SIFT result")
+        }
+        let xs = obj.nativeX.map(\.doubleValue)
+        let ys = obj.nativeY.map(\.doubleValue)
+        let points = zip(xs, ys).map { CGPoint(x: $0, y: $1) }
+        let overlay = zip(obj.overlayNativeX.map(\.doubleValue), obj.overlayNativeY.map(\.doubleValue)).map { CGPoint(x: $0, y: $1) }
+        let grid = SIFTGrid.occupancy(
+            nativePoints: points,
+            nativeWidth: Int(obj.nativeWidth),
+            nativeHeight: Int(obj.nativeHeight)
+        )
+        return SIFTFrameResult(
+            frameID: frameID,
+            timestamp: timestamp,
+            ok: obj.ok,
+            status: obj.status,
+            nativeImageWidth: Int(obj.nativeWidth),
+            nativeImageHeight: Int(obj.nativeHeight),
+            processingWidth: Int(obj.processingWidth),
+            processingHeight: Int(obj.processingHeight),
+            scaleX: obj.scaleX,
+            scaleY: obj.scaleY,
+            keypointCount: Int(obj.keypointCount),
+            descriptorCount: Int(obj.descriptorRows),
+            descriptorDimension: Int(obj.descriptorCols),
+            descriptorType: obj.descriptorTypeName,
+            descriptorRows: Int(obj.descriptorRows),
+            descriptorCols: Int(obj.descriptorCols),
+            descriptorsFinite: obj.descriptorsFinite,
+            rowsMatchKeypoints: obj.rowsMatchKeypoints,
+            preprocessLatencyMs: obj.preprocessMilliseconds,
+            siftLatencyMs: obj.siftMilliseconds,
+            totalLatencyMs: obj.totalMilliseconds,
+            gridCounts: grid.counts,
+            occupiedCells: grid.occupied,
+            occupancyRatio: grid.ratio,
+            keypointsNative: [],
+            overlayNative: overlay,
+            error: obj.error
+        )
+    }
+
+    private func viewPoints(
+        from native: [CGPoint],
+        nativeWidth: Int,
+        nativeHeight: Int,
+        transform: CGAffineTransform?,
+        viewSize: CGSize
+    ) -> [CGPoint] {
+        guard nativeWidth > 0, nativeHeight > 0, viewSize.width > 1, viewSize.height > 1 else { return [] }
+        return native.map { point in
+            var normalized = CGPoint(x: point.x / CGFloat(nativeWidth), y: point.y / CGFloat(nativeHeight))
+            if let transform {
+                normalized = normalized.applying(transform)
+            }
+            return CGPoint(x: normalized.x * viewSize.width, y: normalized.y * viewSize.height)
+        }
+    }
+
+    private static func trackingLabel(_ state: ARCamera.TrackingState) -> String {
+        switch state {
+        case .notAvailable:
+            return "notAvailable"
+        case .normal:
+            return "normal"
+        case .limited(let reason):
+            switch reason {
+            case .initializing: return "limited(initializing)"
+            case .excessiveMotion: return "limited(excessiveMotion)"
+            case .insufficientFeatures: return "limited(insufficientFeatures)"
+            case .relocalizing: return "limited(relocalizing)"
+            @unknown default: return "limited(unknown)"
+            }
+        }
+    }
+}
+
+struct ResolutionAccumulator {
+    var keypoints: [Int] = []
+    var occupancy: [Double] = []
+    var preprocess: [Double] = []
+    var sift: [Double] = []
+    var total: [Double] = []
+
+    mutating func add(_ result: SIFTFrameResult) {
+        keypoints.append(result.keypointCount)
+        occupancy.append(result.occupancyRatio)
+        preprocess.append(result.preprocessLatencyMs)
+        sift.append(result.siftLatencyMs)
+        total.append(result.totalLatencyMs)
+        if keypoints.count > 200 {
+            keypoints.removeFirst(keypoints.count - 200)
+            occupancy.removeFirst(occupancy.count - 200)
+            preprocess.removeFirst(preprocess.count - 200)
+            sift.removeFirst(sift.count - 200)
+            total.removeFirst(total.count - 200)
+        }
+    }
+
+    func summary(label: String) -> String {
+        func fmt(_ values: [Double]) -> String {
+            let minV = values.min().map { String(format: "%.2f", $0) } ?? "—"
+            let med = SIFTStatistics.percentile(values, 50).map { String(format: "%.2f", $0) } ?? "—"
+            let p90 = SIFTStatistics.percentile(values, 90).map { String(format: "%.2f", $0) } ?? "—"
+            let maxV = values.max().map { String(format: "%.2f", $0) } ?? "—"
+            return "min=\(minV) med=\(med) p90=\(p90) max=\(maxV)"
+        }
+        func fmtI(_ values: [Int]) -> String {
+            let minV = values.min().map(String.init) ?? "—"
+            let med = SIFTStatistics.percentile(values, 50).map(String.init) ?? "—"
+            let p90 = SIFTStatistics.percentile(values, 90).map(String.init) ?? "—"
+            let maxV = values.max().map(String.init) ?? "—"
+            return "min=\(minV) med=\(med) p90=\(p90) max=\(maxV) n=\(values.count)"
+        }
+        let occMed = SIFTStatistics.percentile(occupancy, 50).map { String(format: "%.2f", $0) } ?? "—"
+        return "SIFTSummary \(label) kp[\(fmtI(keypoints))] occ_med=\(occMed) pre[\(fmt(preprocess))] sift[\(fmt(sift))] total[\(fmt(total))]"
+    }
+
+    func summary(label: String, scene: String?) -> String {
+        if let scene, scene != "unlabeled" {
+            return "SIFTSceneSummary scene=\(scene) " + summary(label: label)
+        }
+        return summary(label: label)
+    }
+}
+
+/// Gate 3A grayscale diagnostics. Localization is not derived from this.
+struct OpenCVRuntimeSnapshot: Equatable, Sendable {
+    var status: String = "inactive"
+    var version: String = "—"
+    var input: String = "—"
+    var matSize: String = "—"
+    var mean: String = "—"
+    var latencyMs: String = "—"
+    var pixelFormat: String = "—"
+    var zeroCopy: Bool = false
+    var uiOrientation: String = "—"
+    var nativeImageSize: String = "—"
+    var intrinsicsValid: Bool = false
+    var droppedBusy: Bool = false
+    var sampleCount: Int = 0
+    var minIntensity: Double = 0
+    var maxIntensity: Double = 0
+}

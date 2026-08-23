@@ -1,0 +1,14 @@
+Gate 3A compile/link proof (no SIFT extract, no fake PnP solve at app runtime)
+
+OpenCV: 4.14.0  commit 0654a42e19215ef25b1d367d822f3c630447e7c7
+
+cv::SIFT::create()
+  iOS unit test testSIFTCreateAvailableWithoutExtraction: PASS
+  Creates the detector object and releases it. Does not call detect/compute.
+
+cv::solvePnPRansac
+  iOS unit test testSolvePnPRansacLinked: PASS
+  Symbol is linked via a dead `if (false)` reference. Not invoked with points
+  on the device app path.
+
+Device (iPhone 17 Pro, 2026-08-23): OpenCV 4.14.0 reported at runtime.

@@ -1,0 +1,8 @@
+Optional human notes for this wall.
+
+Wall ID: wall_jiulongfeng_01
+Site: 九龙峰森林站大楼 (Jiulongfeng)
+
+You may add capture notes or catalog GPS here.
+You do not need a special file format.
+Leave this file as notes only; the pipeline must not require it.

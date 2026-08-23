@@ -1,0 +1,77 @@
+import SwiftUI
+import UIKit
+
+/// Camera + isolated AR session + OpenCV / SIFT diagnostic overlay + Field Test.
+/// Localization remains idle. No matching or PnP.
+struct ContentView: View {
+    @StateObject private var sessionHost = ARSessionHost()
+    @StateObject private var openCV = OpenCVFrameProcessor()
+    @StateObject private var fieldTest = FieldTestController()
+    @Environment(\.scenePhase) private var scenePhase
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .topLeading) {
+                ARCameraPreview(session: sessionHost.session)
+                    .ignoresSafeArea()
+                KeypointOverlayView(points: openCV.siftSnapshot.overlayViewPoints)
+                    .ignoresSafeArea()
+                VStack(alignment: .leading, spacing: 0) {
+                    DebugOverlayView(
+                        snapshot: sessionHost.snapshot,
+                        openCV: openCV.snapshot,
+                        sift: openCV.siftSnapshot,
+                        onSelectPreset: { preset in
+                            if !fieldTest.locksEngineerControls {
+                                openCV.setPreset(preset)
+                            }
+                        },
+                        onToggleKeypoints: { openCV.toggleKeypointOverlay() },
+                        onSelectScene: { scene in
+                            if !fieldTest.locksEngineerControls {
+                                openCV.setScene(scene)
+                            }
+                        }
+                    )
+                    Spacer()
+                    FieldTestPanel(controller: fieldTest)
+                }
+            }
+            .onAppear {
+                sessionHost.frameConsumer = openCV
+                openCV.fieldSink = fieldTest
+                fieldTest.onApplyScene = { openCV.applyFieldTestScene($0) }
+                fieldTest.onApplyPreset = { openCV.applyFieldTestPreset($0) }
+                fieldTest.onSetLocked = { openCV.setFieldTestLocked($0) }
+                openCV.updateViewContext(size: geo.size, orientation: currentOrientation())
+                sessionHost.start()
+            }
+            .onChange(of: geo.size) { _, size in
+                openCV.updateViewContext(size: size, orientation: currentOrientation())
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase != .active {
+                    fieldTest.flush()
+                    openCV.dumpAllBuckets()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+                openCV.updateViewContext(size: geo.size, orientation: currentOrientation())
+            }
+            .onDisappear {
+                fieldTest.flush()
+                openCV.dumpAllBuckets()
+                sessionHost.frameConsumer = nil
+                sessionHost.pause()
+            }
+        }
+        .ignoresSafeArea()
+    }
+
+    private func currentOrientation() -> UIInterfaceOrientation {
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first
+        return scene?.interfaceOrientation ?? .portrait
+    }
+}

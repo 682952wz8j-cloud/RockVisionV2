@@ -1,0 +1,5 @@
+# Offline exporter only. Never shipped to iPhone.
+# Install when Gate 2 begins. Versions will be pinned at that gate.
+opencv-python>=4.10
+pycolmap>=3.11
+numpy>=1.26

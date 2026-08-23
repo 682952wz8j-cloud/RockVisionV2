@@ -1,0 +1,22 @@
+name: opencv2.xcframework
+version: 4.14.0
+tag: 4.14.0
+commit: 0654a42e19215ef25b1d367d822f3c630447e7c7
+source: https://github.com/opencv/opencv
+tool: platforms/apple/build_xcframework.py
+architectures: ios-arm64 ; ios-arm64-simulator
+requiredModules: core, imgproc, features2d, calib3d
+alsoLinked: flann (features2d dependency)
+disabledModules: objc, video, videoio, highgui, dnn, ml, objdetect, photo, stitching, gapi, python3, java, js, ts, world, imgcodecs
+contrib: off
+nonfree: off
+iphoneosDeploymentTarget: 13.0
+cmake: 4.4.2
+xcode: 26.6 (17F113)
+iosSdk: 26.5
+builderOS: macOS darwin 25.6.0
+buildCommand: python3 ios/Vendor/OpenCV/opencv/platforms/apple/build_xcframework.py --out ios/Vendor/OpenCV/build --iphoneos_archs arm64 --iphonesimulator_archs arm64 --build_only_specified_archs --framework_name opencv2 --without objc --without video --without videoio --without highgui --without dnn --without ml --without objdetect --without photo --without stitching --without gapi --without python3 --without java --without js --without ts --without world --without imgcodecs --disable-swift --iphoneos_deployment_target 13.0
+outputPath: ios/Vendor/OpenCV/opencv2.xcframework
+artifactZip: opencv2.xcframework.zip
+artifactSha256: ec10b74646b0cd51e3897c3ddbcfeb3c0ab3ba931ca374aaa9a6b19efd3c780a
+notes: Official script failed after XCFramework creation while copying missing Swift/objc docs. Artifact is valid. Do not float this pin.
