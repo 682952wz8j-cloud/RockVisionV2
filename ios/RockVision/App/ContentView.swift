@@ -43,6 +43,7 @@ struct ContentView: View {
                 fieldTest.onApplyScene = { openCV.applyFieldTestScene($0) }
                 fieldTest.onApplyPreset = { openCV.applyFieldTestPreset($0) }
                 fieldTest.onSetLocked = { openCV.setFieldTestLocked($0) }
+                fieldTest.enterFieldTest()
                 openCV.updateViewContext(size: geo.size, orientation: currentOrientation())
                 sessionHost.start()
             }

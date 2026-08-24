@@ -33,6 +33,7 @@
 		A10000000000000100000018 /* FieldTestController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000001D /* FieldTestController.swift */; };
 		A10000000000000100000019 /* FieldTestPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000001E /* FieldTestPanel.swift */; };
 		A1000000000000010000001A /* FieldTestStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000001F /* FieldTestStoreTests.swift */; };
+		A10000000000000100000020 /* FieldTestExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000020 /* FieldTestExport.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -66,6 +67,7 @@
 		A2000000000000010000001D /* FieldTestController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldTestController.swift; sourceTree = "<group>"; };
 		A2000000000000010000001E /* FieldTestPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldTestPanel.swift; sourceTree = "<group>"; };
 		A2000000000000010000001F /* FieldTestStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldTestStoreTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000020 /* FieldTestExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldTestExport.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -189,6 +191,7 @@
 				A2000000000000010000001C /* FieldTestStore.swift */,
 				A2000000000000010000001D /* FieldTestController.swift */,
 				A2000000000000010000001E /* FieldTestPanel.swift */,
+				A20000000000000100000020 /* FieldTestExport.swift */,
 			);
 			path = FieldTest;
 			sourceTree = "<group>";
@@ -332,6 +335,7 @@
 				A10000000000000100000017 /* FieldTestStore.swift in Sources */,
 				A10000000000000100000018 /* FieldTestController.swift in Sources */,
 				A10000000000000100000019 /* FieldTestPanel.swift in Sources */,
+				A10000000000000100000020 /* FieldTestExport.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

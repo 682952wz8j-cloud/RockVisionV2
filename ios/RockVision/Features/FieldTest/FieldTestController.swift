@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import UIKit
 
 /// Field-test state machine. Does not extract SIFT or classify physical scenes.
 final class FieldTestController: ObservableObject {
@@ -8,14 +9,25 @@ final class FieldTestController: ObservableObject {
     @Published private(set) var progressLabel: String = "—"
     @Published private(set) var elapsedLabel: String = "—"
     @Published private(set) var sessionPath: String = "—"
-    @Published private(set) var canShare = false
-    @Published private(set) var shareURL: URL?
     @Published private(set) var summary: FieldTestSummary?
     @Published private(set) var hasResumableSession = false
     @Published private(set) var isSampling = false
+    @Published private(set) var storageReady = false
+    @Published private(set) var storageLabel = "Storage: Probing"
+    @Published private(set) var lastSaveLabel = "Last save: —"
+    @Published private(set) var persistedSamplesLabel = "Persisted samples: —"
+    @Published private(set) var exportLabel = "Export: Unavailable"
+    @Published private(set) var persistErrorLabel: String?
+    @Published private(set) var copyFeedback: String?
+    @Published var shareZIPURL: URL?
+    @Published var isSharePresented = false
+    @Published private(set) var persistedSampleCount = 0
+    @Published private(set) var plan: FieldTestRunPlan = .full
 
     private let store: FieldTestStore
     private let openCVVersion: String
+    private let identity: FieldTestAppIdentity
+    private let zipStagingRoot: URL
     private var handle: FieldTestSessionHandle?
     private var record: FieldTestSessionRecord?
     private var samples: [FieldTestSample] = []
@@ -25,38 +37,74 @@ final class FieldTestController: ObservableObject {
     private let persistQueue = DispatchQueue(label: "com.rockvision.v2.fieldtest.persist")
 
     var locksEngineerControls: Bool { isSampling }
+    var canStartTest: Bool { storageReady }
+    var canChangeMode: Bool { storageReady && !isSampling && handle == nil && !hasResumableSession }
+    var canExport: Bool { storageReady && handle != nil }
+    var canCopySummary: Bool { handle != nil && record != nil }
     var onApplyScene: ((String) -> Void)?
     var onApplyPreset: ((SIFTProcessingPreset) -> Void)?
     var onSetLocked: ((Bool) -> Void)?
 
-    init(store: FieldTestStore, openCVVersion: String) {
+    init(
+        store: FieldTestStore,
+        openCVVersion: String,
+        identity: FieldTestAppIdentity = .current,
+        zipStagingRoot: URL = FileManager.default.temporaryDirectory.appendingPathComponent("FieldTestExport", isDirectory: true)
+    ) {
         self.store = store
         self.openCVVersion = openCVVersion
-        if let existing = store.latestSession(),
-           let session = try? existing.loadSession(),
-           session.status == "running" {
-            hasResumableSession = true
-            handle = existing
-            record = session
-            samples = (try? existing.loadSamples()) ?? []
-            rebuildStatusesFromSamples()
-            sessionPath = existing.directory.path
-            instruction = "发现未完成测试。点 Resume 继续，或 New Session 重新开始。"
-            phase = .idle
-            refreshSummary(phaseName: "interrupted")
-        }
+        self.identity = identity
+        self.zipStagingRoot = zipStagingRoot
+        enterFieldTest()
     }
 
     convenience init() {
-        let store = (try? FieldTestStore.documentsStore()) ?? FieldTestStore(rootURL: FileManager.default.temporaryDirectory.appendingPathComponent("FieldTests", isDirectory: true))
+        let store: FieldTestStore
+        if let docs = try? FieldTestStore.documentsDirectory() {
+            store = FieldTestStore(rootURL: docs.appendingPathComponent("FieldTests", isDirectory: true))
+        } else {
+            store = FieldTestStore(rootURL: URL(fileURLWithPath: "/var/empty/RockVisionNoDocuments/FieldTests", isDirectory: true))
+        }
         self.init(store: store, openCVVersion: OpenCVBridge.openCVVersion())
+    }
+
+    func enterFieldTest() {
+        do {
+            try store.probeStorage()
+            storageReady = true
+            storageLabel = "Storage: Ready"
+            persistErrorLabel = nil
+            if handle == nil {
+                try restoreInterruptedSessionIfNeeded()
+            }
+            refreshExportAvailability()
+        } catch {
+            storageReady = false
+            storageLabel = "Storage: Failed"
+            persistErrorLabel = error.localizedDescription
+            instruction = "Storage 不可用，不能开始测试。\(error.localizedDescription)"
+            phase = .idle
+            refreshExportAvailability()
+        }
+    }
+
+    func selectPlan(_ plan: FieldTestRunPlan) {
+        guard canChangeMode else { return }
+        self.plan = plan
+        applyReadyInstruction()
     }
 
     func startScene(_ scene: SIFTSceneLabel) {
         guard FieldTestPolicy.officialScenes.contains(scene) else { return }
+        guard plan.includes(scene) else { return }
+        guard storageReady else {
+            instruction = "Storage 未就绪，不能开始测试。"
+            return
+        }
         if handle == nil || record?.status == "complete" {
             beginNewSession()
         }
+        guard handle != nil, record != nil else { return }
         beginCell(scene: scene, preset: .native)
     }
 
@@ -70,33 +118,41 @@ final class FieldTestController: ObservableObject {
     }
 
     func resume() {
+        guard storageReady else {
+            instruction = "Storage 未就绪，不能开始测试。"
+            return
+        }
         guard let record else { return }
         hasResumableSession = false
         if let sceneName = record.currentScene,
            let scene = SIFTSceneLabel(rawValue: sceneName),
-           FieldTestPolicy.isOfficialScene(sceneName),
+           plan.includes(scene),
            let presetName = record.currentPreset,
            let preset = SIFTProcessingPreset.allCases.first(where: { $0.label == presetName }) {
             beginCell(scene: scene, preset: preset, restartClock: record.cellStartedAt == nil)
         } else {
-            phase = .readyToStart(.A)
-            instruction = "走到目标建筑，拿稳，点 START A"
+            applyReadyInstruction()
         }
+        refreshExportAvailability()
     }
 
     func startNewSession() {
+        guard storageReady else {
+            instruction = "Storage 未就绪，不能开始测试。"
+            return
+        }
         samples = []
         cellStatuses = [:]
         handle = nil
         record = nil
         hasResumableSession = false
-        canShare = false
-        shareURL = nil
-        beginNewSession()
-        phase = .readyToStart(.A)
-        instruction = "走到目标建筑，拿稳，点 START A"
+        shareZIPURL = nil
+        persistedSampleCount = 0
+        plan = .full
+        applyReadyInstruction()
         progressLabel = "—"
-        refreshSummary(phaseName: "ready")
+        summary = nil
+        refreshExportAvailability()
     }
 
     func abort() {
@@ -108,6 +164,7 @@ final class FieldTestController: ObservableObject {
         onSetLocked?(false)
         phase = .idle
         instruction = "已中止。点 New Session 开始新的现场测试。"
+        refreshExportAvailability()
     }
 
     func ingest(result: SIFTFrameResult, tracking: String, skipped: Int, rateHz: Double, activePreset: SIFTProcessingPreset) {
@@ -172,16 +229,81 @@ final class FieldTestController: ObservableObject {
 
         persistQueue.async { [weak self] in
             guard let self else { return }
-            try? self.handle?.append(sample)
-            DispatchQueue.main.async {
-                self.samples.append(sample)
-                self.evaluateCurrentCell()
+            do {
+                guard let handle = self.handle else {
+                    throw FieldTestStorageError.noSession
+                }
+                try handle.append(sample)
+                DispatchQueue.main.async {
+                    self.samples.append(sample)
+                    self.markPersistSuccess(persistedCount: self.samples.count)
+                    self.evaluateCurrentCell()
+                    self.refreshExportAvailability()
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.samples.append(sample)
+                    self.markPersistFailure(error)
+                    self.evaluateCurrentCell()
+                }
             }
         }
     }
 
     func flush() {
         persistMeta(phaseName: phaseName)
+    }
+
+    func drainPersist() {
+        persistQueue.sync {}
+    }
+
+    /// Flush official files then build a ZIP in tmp staging. Share that ZIP.
+    func shareCurrentResults() {
+        guard storageReady else {
+            persistErrorLabel = FieldTestStorageError.notReady.localizedDescription
+            return
+        }
+        guard let handle, var session = record else {
+            persistErrorLabel = FieldTestStorageError.noSession.localizedDescription
+            return
+        }
+        drainPersist()
+        session.updatedAt = Date()
+        let sum = makeSummary(phaseName: phaseName)
+        summary = sum
+        record = session
+        do {
+            let zip = try persistQueue.sync {
+                try self.store.exportZIP(
+                    handle: handle,
+                    session: session,
+                    summary: sum,
+                    samples: self.samples,
+                    identity: self.identity,
+                    stagingRoot: self.zipStagingRoot
+                )
+            }
+            markPersistSuccess(persistedCount: samples.count)
+            shareZIPURL = zip
+            isSharePresented = true
+            refreshExportAvailability()
+        } catch {
+            markPersistFailure(error)
+        }
+    }
+
+    func copySummary() -> String {
+        guard let session = record else { return "" }
+        let text = FieldTestExport.pasteSummary(
+            session: session,
+            summary: summary ?? makeSummary(phaseName: phaseName),
+            samples: samples,
+            identity: identity
+        )
+        UIPasteboard.general.string = text
+        copyFeedback = "Summary copied"
+        return text
     }
 
     var currentSceneForProcessor: String? {
@@ -202,14 +324,38 @@ final class FieldTestController: ObservableObject {
         }
     }
 
+    private func restoreInterruptedSessionIfNeeded() throws {
+        guard let existing = try store.latestSession() else { return }
+        let session = try existing.loadSession()
+        guard session.status == "running" else { return }
+        hasResumableSession = true
+        handle = existing
+        record = session
+        samples = try existing.loadSamples()
+        persistedSampleCount = samples.count
+        plan = FieldTestRunPlan.from(testMode: session.testMode, requestedScene: session.requestedScene)
+        rebuildStatusesFromSamples()
+        sessionPath = existing.directory.path
+        instruction = "发现未完成测试。点 Resume 继续，或 New Session 重新开始。"
+        phase = .idle
+        refreshSummary(phaseName: "interrupted")
+        lastSaveLabel = "Last save: session restored"
+        persistedSamplesLabel = "Persisted samples: \(samples.count)"
+    }
+
     private func beginNewSession() {
         do {
-            let created = try store.createSession(openCVVersion: openCVVersion)
+            let created = try store.createSession(openCVVersion: openCVVersion, plan: plan)
             handle = created
             record = try created.loadSession()
             samples = []
+            persistedSampleCount = 0
             sessionPath = created.directory.path
+            markPersistSuccess(persistedCount: 0)
         } catch {
+            handle = nil
+            record = nil
+            markPersistFailure(error)
             instruction = "无法创建测试目录：\(error.localizedDescription)"
         }
     }
@@ -234,6 +380,7 @@ final class FieldTestController: ObservableObject {
         progressLabel = "0/\(FieldTestPolicy.targetValidSamples)"
         persistMeta(phaseName: "waitingTracking")
         startTimer()
+        refreshExportAvailability()
         let alreadyValid = samples.filter { $0.scene == scene.rawValue && $0.presetLabel == preset.label && $0.valid }.count
         if FieldTestPolicy.cellStatus(validCount: alreadyValid, elapsed: 0) == .complete {
             finishCell(scene: scene, preset: preset, status: .complete)
@@ -281,12 +428,11 @@ final class FieldTestController: ObservableObject {
             record?.currentPreset = nil
             record?.cellStartedAt = nil
             phase = .complete
-            instruction = "现场测试完成。结果已保存，可以离开现场。"
-            canShare = true
-            shareURL = handle?.reportURL
+            instruction = "现场测试完成。结果已保存。点 Share Current Results 传回 ZIP。"
             onSetLocked?(false)
             persistMeta(phaseName: "complete")
         }
+        refreshExportAvailability()
     }
 
     private func nextPreset(after preset: SIFTProcessingPreset) -> SIFTProcessingPreset? {
@@ -296,9 +442,14 @@ final class FieldTestController: ObservableObject {
     }
 
     private func nextScene(after scene: SIFTSceneLabel) -> SIFTSceneLabel? {
-        guard let idx = FieldTestPolicy.officialScenes.firstIndex(of: scene) else { return nil }
+        guard let idx = plan.scenes.firstIndex(of: scene) else { return nil }
         let next = idx + 1
-        return next < FieldTestPolicy.officialScenes.count ? FieldTestPolicy.officialScenes[next] : nil
+        return next < plan.scenes.count ? plan.scenes[next] : nil
+    }
+
+    private func applyReadyInstruction() {
+        phase = .readyToStart(plan.firstScene)
+        instruction = plan.startInstruction()
     }
 
     private func instructionAfter(finished: SIFTSceneLabel, next: SIFTSceneLabel) -> String {
@@ -348,15 +499,21 @@ final class FieldTestController: ObservableObject {
         }
     }
 
-    private func refreshSummary(phaseName: String) {
-        guard let id = handle?.sessionID else { return }
+    private func makeSummary(phaseName: String) -> FieldTestSummary {
+        let id = handle?.sessionID ?? "none"
         var cells: [FieldTestCellSummary] = []
         for scene in FieldTestPolicy.officialScenes {
             for preset in FieldTestPolicy.resolutionOrder {
+                if !plan.includes(scene) {
+                    cells.append(FieldTestStatistics.notRequestedCell(scene: scene.rawValue, preset: preset))
+                    continue
+                }
                 let cellSamples = samples.filter { $0.scene == scene.rawValue && $0.presetLabel == preset.label }
                 let key = Self.cellKey(scene: scene, preset: preset)
                 let status: FieldTestCellStatus
                 if case let .sampling(activeScene, activePreset) = phase, activeScene == scene, activePreset == preset {
+                    status = .running
+                } else if case let .waitingTracking(activeScene, activePreset) = phase, activeScene == scene, activePreset == preset {
                     status = .running
                 } else if let stored = cellStatuses[key] {
                     status = stored
@@ -372,13 +529,21 @@ final class FieldTestController: ObservableObject {
                 cells.append(FieldTestStatistics.summarizeCell(scene: scene.rawValue, preset: preset, samples: cellSamples, status: status, elapsed: elapsed))
             }
         }
-        let sum = FieldTestSummary(sessionID: id, updatedAt: Date(), phase: phaseName, cells: cells)
+        return FieldTestSummary(
+            sessionID: id,
+            updatedAt: Date(),
+            phase: phaseName,
+            cells: cells,
+            testMode: plan.testMode,
+            requestedScene: plan.requestedScene
+        )
+    }
+
+    private func refreshSummary(phaseName: String) {
+        guard handle?.sessionID != nil else { return }
+        let sum = makeSummary(phaseName: phaseName)
         summary = sum
-        persistQueue.async { [weak self] in
-            guard let self, let handle = self.handle, let record = self.record else { return }
-            try? handle.writeSummary(sum)
-            try? handle.writeReport(session: record, summary: sum, samples: self.samples)
-        }
+        persistOfficial(summary: sum)
     }
 
     private static func cellKey(scene: SIFTSceneLabel, preset: SIFTProcessingPreset) -> String {
@@ -387,7 +552,7 @@ final class FieldTestController: ObservableObject {
 
     private func rebuildStatusesFromSamples() {
         cellStatuses = [:]
-        for scene in FieldTestPolicy.officialScenes {
+        for scene in plan.scenes {
             for preset in FieldTestPolicy.resolutionOrder {
                 let cellSamples = samples.filter { $0.scene == scene.rawValue && $0.presetLabel == preset.label }
                 let valid = cellSamples.filter(\.valid).count
@@ -403,12 +568,57 @@ final class FieldTestController: ObservableObject {
     private func persistMeta(phaseName: String) {
         record?.updatedAt = Date()
         refreshSummary(phaseName: phaseName)
+    }
+
+    private func persistOfficial(summary: FieldTestSummary) {
+        guard let handle, var record = record else { return }
+        record.updatedAt = Date()
+        let samples = samples
         persistQueue.async { [weak self] in
-            guard let self, let handle = self.handle, var record = self.record else { return }
-            record.updatedAt = Date()
-            try? handle.writeSession(record)
+            guard let self else { return }
+            do {
+                try handle.writeSummary(summary)
+                try handle.writeSession(record)
+                try handle.writeReport(session: record, summary: summary, samples: samples)
+                DispatchQueue.main.async {
+                    self.markPersistSuccess(persistedCount: samples.count)
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.markPersistFailure(error)
+                }
+            }
         }
     }
+
+    private func markPersistSuccess(persistedCount: Int) {
+        persistedSampleCount = persistedCount
+        lastSaveLabel = "Last save: \(Self.clock.string(from: Date()))"
+        persistedSamplesLabel = "Persisted samples: \(persistedCount)"
+        persistErrorLabel = nil
+    }
+
+    private func markPersistFailure(_ error: Error) {
+        persistErrorLabel = error.localizedDescription
+        lastSaveLabel = "Last save: FAILED"
+    }
+
+    private func refreshExportAvailability() {
+        if !storageReady {
+            exportLabel = "Export: Unavailable"
+        } else if handle == nil {
+            exportLabel = "Export: Unavailable"
+        } else {
+            let status = record?.status ?? "unknown"
+            exportLabel = "Export: Available (\(status))"
+        }
+    }
+
+    private static let clock: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }()
 }
 
 protocol FieldTestSampleSink: AnyObject {

@@ -59,7 +59,7 @@ final class FieldTestStoreTests: XCTestCase {
         try handle.append(makeSample(scene: "A", preset: .native, valid: false, keypoints: 1, pre: 0, sift: 80, total: 80, tracking: "limited(initializing)"))
 
         let reloaded = FieldTestStore(rootURL: tempRoot)
-        let latest = try XCTUnwrap(reloaded.latestSession())
+        let latest = try XCTUnwrap(try reloaded.latestSession())
         let samples = try latest.loadSamples()
         XCTAssertEqual(samples.count, 2)
         XCTAssertEqual(samples[0].scene, "A")
@@ -146,6 +146,313 @@ final class FieldTestStoreTests: XCTestCase {
         let second = FieldTestController(store: store, openCVVersion: "4.14.0")
         XCTAssertTrue(second.hasResumableSession)
         XCTAssertFalse(second.sessionPath == "—")
+    }
+
+    func testStorageProbeWriteReadDelete() throws {
+        let store = FieldTestStore(rootURL: tempRoot)
+        try store.probeStorage()
+        let leftover = try FileManager.default.contentsOfDirectory(at: tempRoot, includingPropertiesForKeys: nil)
+            .filter { $0.lastPathComponent.hasPrefix("storage_probe_") }
+        XCTAssertTrue(leftover.isEmpty)
+        XCTAssertFalse(leftover.contains { $0.pathExtension == "keep" })
+    }
+
+    func testStorageProbeFailureBlocksStart() throws {
+        let fileRoot = tempRoot.appendingPathComponent("not-a-dir")
+        try Data("x".utf8).write(to: fileRoot)
+        let store = FieldTestStore(rootURL: fileRoot)
+        let controller = FieldTestController(store: store, openCVVersion: "4.14.0")
+        XCTAssertFalse(controller.storageReady)
+        XCTAssertFalse(controller.canStartTest)
+        XCTAssertTrue(controller.storageLabel.contains("Failed"))
+        controller.startScene(.A)
+        XCTAssertEqual(controller.phase, .idle)
+        XCTAssertFalse(controller.canExport)
+    }
+
+    func testPartialRunningSessionExportZIP() throws {
+        let staging = tempRoot.appendingPathComponent("zip-staging", isDirectory: true)
+        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+        let store = FieldTestStore(rootURL: tempRoot.appendingPathComponent("official", isDirectory: true))
+        let controller = FieldTestController(
+            store: store,
+            openCVVersion: "4.14.0",
+            identity: FieldTestAppIdentity(version: "2.0.0", build: "1"),
+            zipStagingRoot: staging
+        )
+        XCTAssertTrue(controller.storageReady)
+        controller.startScene(.A)
+        let result = dummyResult(width: 1920, height: 1440, keypoints: 321)
+        for i in 0..<3 {
+            var frame = result
+            frame.frameID = UInt64(i + 1)
+            controller.ingest(result: frame, tracking: "normal", skipped: 0, rateHz: 2, activePreset: .native)
+        }
+        let ingested = expectation(description: "samples persisted")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { ingested.fulfill() }
+        wait(for: [ingested], timeout: 1.0)
+        controller.drainPersist()
+        XCTAssertEqual(controller.persistedSampleCount, 3)
+        XCTAssertTrue(controller.canExport)
+        XCTAssertTrue(controller.exportLabel.contains("Available"))
+
+        controller.shareCurrentResults()
+        let zip = try XCTUnwrap(controller.shareZIPURL)
+        XCTAssertTrue(zip.path.contains("zip-staging") || zip.path.contains("FieldTestExport") || zip.path.hasPrefix(staging.path))
+        XCTAssertFalse(zip.path.hasPrefix(store.rootURL.path))
+
+        let unpacked = try FieldTestZip.unpack(zip)
+        for name in FieldTestExport.requiredNames {
+            XCTAssertNotNil(unpacked[name], "missing \(name)")
+        }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let manifest = try decoder.decode(FieldTestExportManifest.self, from: try XCTUnwrap(unpacked["manifest.json"]))
+        XCTAssertEqual(manifest.schemaVersion, FieldTestExportSchema.version)
+        XCTAssertEqual(manifest.sampleCount, 3)
+        XCTAssertEqual(manifest.sessionStatus, "running")
+        XCTAssertEqual(manifest.openCVVersion, "4.14.0")
+        XCTAssertEqual(manifest.appVersion, "2.0.0")
+        XCTAssertEqual(manifest.appBuild, "1")
+        XCTAssertEqual(manifest.files.count, 4)
+        XCTAssertTrue(manifest.files.contains { $0.name == "samples.jsonl" && $0.byteSize > 0 && !$0.sha256.isEmpty })
+
+        let samplesText = String(data: try XCTUnwrap(unpacked["samples.jsonl"]), encoding: .utf8) ?? ""
+        XCTAssertTrue(samplesText.contains("\"scene\":\"A\""))
+        XCTAssertTrue(samplesText.contains("321") || samplesText.contains("\"keypointCount\":321"))
+
+        let session = try decoder.decode(FieldTestSessionRecord.self, from: try XCTUnwrap(unpacked["session.json"]))
+        XCTAssertEqual(session.status, "running")
+        XCTAssertEqual(session.openCVVersion, "4.14.0")
+
+        let summary = try decoder.decode(FieldTestSummary.self, from: try XCTUnwrap(unpacked["summary.json"]))
+        XCTAssertEqual(summary.sessionID, session.sessionID)
+        XCTAssertTrue(summary.cells.contains { $0.scene == "A" && $0.validCount == 3 })
+        XCTAssertFalse(summary.cells.contains { $0.status == .complete })
+
+        let officialFiles = try FileManager.default.contentsOfDirectory(at: URL(fileURLWithPath: controller.sessionPath), includingPropertiesForKeys: nil)
+        XCTAssertTrue(officialFiles.contains { $0.lastPathComponent == "samples.jsonl" })
+        XCTAssertTrue(officialFiles.contains { $0.lastPathComponent == "report.json" })
+        XCTAssertFalse(officialFiles.contains { $0.pathExtension == "zip" })
+    }
+
+    func testPasteSummaryIsHumanReadableNotRawJSON() {
+        let store = FieldTestStore(rootURL: tempRoot)
+        let controller = FieldTestController(
+            store: store,
+            openCVVersion: "4.14.0",
+            identity: FieldTestAppIdentity(version: "2.0.0", build: "1")
+        )
+        controller.startScene(.A)
+        let text = controller.copySummary()
+        XCTAssertTrue(text.contains("RockVision Gate 3B Field Test"))
+        XCTAssertTrue(text.contains("status:"))
+        XCTAssertTrue(text.contains("OpenCV: 4.14.0"))
+        XCTAssertFalse(text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("{"))
+        XCTAssertFalse(text.contains("\"sessionID\""))
+    }
+
+    func testDeviceDocumentsOfficialExportSmoke() throws {
+        #if targetEnvironment(simulator)
+        throw XCTSkip("requires a physical iPhone Documents directory")
+        #else
+        let store = try FieldTestStore.documentsStore()
+        try store.probeStorage()
+        let leftover = try FileManager.default.contentsOfDirectory(at: store.rootURL, includingPropertiesForKeys: nil)
+            .filter { $0.lastPathComponent.hasPrefix("storage_probe_") }
+        XCTAssertTrue(leftover.isEmpty)
+
+        let staging = FileManager.default.temporaryDirectory.appendingPathComponent("device-export-\(UUID().uuidString)", isDirectory: true)
+        let controller = FieldTestController(
+            store: store,
+            openCVVersion: "4.14.0",
+            identity: FieldTestAppIdentity(version: "2.0.0", build: "1"),
+            zipStagingRoot: staging
+        )
+        XCTAssertTrue(controller.storageReady)
+        controller.startScene(.A)
+        var frame = dummyResult(width: 1920, height: 1440, keypoints: 111)
+        frame.frameID = 42
+        controller.ingest(result: frame, tracking: "normal", skipped: 0, rateHz: 2, activePreset: .native)
+        let ingested = expectation(description: "device sample")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { ingested.fulfill() }
+        wait(for: [ingested], timeout: 1.0)
+        controller.drainPersist()
+        controller.shareCurrentResults()
+        let zip = try XCTUnwrap(controller.shareZIPURL)
+        XCTAssertFalse(zip.path.hasPrefix(store.rootURL.path))
+        let unpacked = try FieldTestZip.unpack(zip)
+        for name in FieldTestExport.requiredNames {
+            XCTAssertNotNil(unpacked[name], "missing \(name)")
+        }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let manifest = try decoder.decode(FieldTestExportManifest.self, from: try XCTUnwrap(unpacked["manifest.json"]))
+        XCTAssertEqual(manifest.sampleCount, 1)
+        XCTAssertEqual(manifest.sessionStatus, "running")
+        #endif
+    }
+
+    func testAbortedSessionCanExport() throws {
+        let staging = tempRoot.appendingPathComponent("abort-zip", isDirectory: true)
+        let store = FieldTestStore(rootURL: tempRoot.appendingPathComponent("abort-official", isDirectory: true))
+        let controller = FieldTestController(
+            store: store,
+            openCVVersion: "4.14.0",
+            identity: FieldTestAppIdentity(version: "2.0.0", build: "1"),
+            zipStagingRoot: staging
+        )
+        controller.startScene(.A)
+        controller.abort()
+        XCTAssertTrue(controller.canExport)
+        controller.shareCurrentResults()
+        let zip = try XCTUnwrap(controller.shareZIPURL)
+        let unpacked = try FieldTestZip.unpack(zip)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let manifest = try decoder.decode(FieldTestExportManifest.self, from: try XCTUnwrap(unpacked["manifest.json"]))
+        XCTAssertEqual(manifest.sessionStatus, "aborted")
+        XCTAssertNotNil(unpacked["samples.jsonl"])
+        XCTAssertNotNil(unpacked["report.json"])
+    }
+
+    func testConvenienceInitDoesNotUseTemporaryDirectoryForOfficialStore() throws {
+        let docs = try FieldTestStore.documentsDirectory()
+        XCTAssertFalse(docs.path.contains("/tmp/") && docs.lastPathComponent == "FieldTests")
+        let store = try FieldTestStore.documentsStore()
+        XCTAssertTrue(store.rootURL.path.hasPrefix(docs.path))
+        XCTAssertEqual(store.rootURL.lastPathComponent, "FieldTests")
+    }
+
+    func testSceneBOnlyStartsBWithoutA() {
+        let store = FieldTestStore(rootURL: tempRoot)
+        let controller = FieldTestController(store: store, openCVVersion: "4.14.0")
+        XCTAssertEqual(controller.phase, .readyToStart(.A))
+        controller.selectPlan(.single(.B))
+        XCTAssertEqual(controller.plan.testMode, "singleScene")
+        XCTAssertEqual(controller.plan.requestedScene, "B")
+        XCTAssertEqual(controller.phase, .readyToStart(.B))
+        controller.startOfficialNext()
+        XCTAssertEqual(controller.phase, .waitingTracking(scene: .B, preset: .native))
+        controller.startScene(.A)
+        if case let .waitingTracking(scene, _) = controller.phase {
+            XCTAssertEqual(scene, .B)
+        } else {
+            XCTFail("A must not replace B-only sampling")
+        }
+    }
+
+    func testSceneBOnlyCompletesWithoutACSamplesAndExportsSingleScene() throws {
+        let staging = tempRoot.appendingPathComponent("b-only-zip", isDirectory: true)
+        let official = tempRoot.appendingPathComponent("b-only-official", isDirectory: true)
+        let store = FieldTestStore(rootURL: official)
+        let previous = try store.createSession(openCVVersion: "4.14.0", plan: .full)
+        var prior = try previous.loadSession()
+        prior.status = "complete"
+        try previous.writeSession(prior)
+        try previous.append(makeSample(scene: "A", preset: .native, valid: true, keypoints: 99, pre: 0, sift: 10, total: 10))
+        let priorID = previous.sessionID
+
+        let controller = FieldTestController(
+            store: store,
+            openCVVersion: "4.14.0",
+            identity: FieldTestAppIdentity(version: "2.0.0", build: "1"),
+            zipStagingRoot: staging
+        )
+        controller.selectPlan(.single(.B))
+        controller.startScene(.B)
+        XCTAssertNotEqual(controller.sessionPath, previous.directory.path)
+
+        ingestValid(controller, preset: .native, width: 1920, height: 1440, count: 20, startID: 1)
+        waitBrief()
+        ingestValid(controller, preset: .medium, width: 1280, height: 960, count: 20, startID: 21)
+        waitBrief()
+        ingestValid(controller, preset: .low, width: 960, height: 720, count: 20, startID: 41)
+        waitBrief()
+        controller.drainPersist()
+
+        XCTAssertEqual(controller.phase, .complete)
+        XCTAssertEqual(controller.persistedSampleCount, 60)
+        let written = try String(contentsOf: URL(fileURLWithPath: controller.sessionPath).appendingPathComponent("samples.jsonl"), encoding: .utf8)
+        XCTAssertFalse(written.contains("\"scene\":\"A\""))
+        XCTAssertFalse(written.contains("\"scene\":\"C\""))
+        XCTAssertTrue(written.contains("\"scene\":\"B\""))
+        let cells = try XCTUnwrap(controller.summary?.cells)
+        XCTAssertTrue(cells.contains { $0.scene == "A" && $0.status == .notRequested && $0.progressLabel == "notRequested" })
+        XCTAssertTrue(cells.contains { $0.scene == "C" && $0.status == .notRequested })
+        XCTAssertFalse(cells.contains { $0.scene == "A" && $0.status == .pending })
+        XCTAssertFalse(cells.contains { $0.scene == "B" && $0.status == .incomplete })
+        XCTAssertEqual(cells.filter { $0.scene == "B" && $0.status == .complete }.count, 3)
+
+        controller.shareCurrentResults()
+        let zip = try XCTUnwrap(controller.shareZIPURL)
+        let unpacked = try FieldTestZip.unpack(zip)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let manifest = try decoder.decode(FieldTestExportManifest.self, from: try XCTUnwrap(unpacked["manifest.json"]))
+        XCTAssertEqual(manifest.testMode, "singleScene")
+        XCTAssertEqual(manifest.requestedScene, "B")
+        XCTAssertEqual(manifest.sessionStatus, "complete")
+        XCTAssertEqual(manifest.sampleCount, 60)
+        let session = try decoder.decode(FieldTestSessionRecord.self, from: try XCTUnwrap(unpacked["session.json"]))
+        XCTAssertEqual(session.testMode, "singleScene")
+        XCTAssertEqual(session.requestedScene, "B")
+        let summary = try decoder.decode(FieldTestSummary.self, from: try XCTUnwrap(unpacked["summary.json"]))
+        XCTAssertEqual(summary.testMode, "singleScene")
+        XCTAssertEqual(summary.requestedScene, "B")
+        let samplesText = String(data: try XCTUnwrap(unpacked["samples.jsonl"]), encoding: .utf8) ?? ""
+        XCTAssertFalse(samplesText.contains("\"scene\":\"A\""))
+        XCTAssertFalse(samplesText.contains("\"scene\":\"C\""))
+        XCTAssertTrue(samplesText.contains("\"scene\":\"B\""))
+
+        let priorSamples = try previous.loadSamples()
+        XCTAssertEqual(priorSamples.count, 1)
+        XCTAssertEqual(priorSamples[0].scene, "A")
+        XCTAssertEqual(try previous.loadSession().sessionID, priorID)
+        XCTAssertEqual(try previous.loadSession().status, "complete")
+    }
+
+    func testFullABCWorkflowStillStartsAtAAndAdvancesToB() {
+        let store = FieldTestStore(rootURL: tempRoot)
+        let controller = FieldTestController(store: store, openCVVersion: "4.14.0")
+        XCTAssertEqual(controller.plan.testMode, "full")
+        XCTAssertNil(controller.plan.requestedScene)
+        controller.startScene(.A)
+        ingestValid(controller, preset: .native, width: 1920, height: 1440, count: 20, startID: 1)
+        waitBrief()
+        ingestValid(controller, preset: .medium, width: 1280, height: 960, count: 20, startID: 21)
+        waitBrief()
+        ingestValid(controller, preset: .low, width: 960, height: 720, count: 20, startID: 41)
+        waitBrief()
+        if case let .readyToStartNext(finished, next) = controller.phase {
+            XCTAssertEqual(finished, .A)
+            XCTAssertEqual(next, .B)
+        } else {
+            XCTFail("full workflow should wait for START B, got \(controller.phase)")
+        }
+        XCTAssertNotEqual(controller.phase, .complete)
+    }
+
+    private func ingestValid(
+        _ controller: FieldTestController,
+        preset: SIFTProcessingPreset,
+        width: Int,
+        height: Int,
+        count: Int,
+        startID: UInt64
+    ) {
+        let result = dummyResult(width: width, height: height, keypoints: 80)
+        for i in 0..<count {
+            var frame = result
+            frame.frameID = startID + UInt64(i)
+            controller.ingest(result: frame, tracking: "normal", skipped: 0, rateHz: 2, activePreset: preset)
+        }
+    }
+
+    private func waitBrief() {
+        let exp = expectation(description: "persist")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { exp.fulfill() }
+        wait(for: [exp], timeout: 1.0)
     }
 
     private func makeSample(
