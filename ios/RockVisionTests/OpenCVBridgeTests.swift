@@ -76,6 +76,9 @@ final class OpenCVBridgeTests: XCTestCase {
         XCTAssertTrue(valid.isValid)
         XCTAssertEqual(valid.fx, 1200, accuracy: 0.001)
         XCTAssertEqual(valid.cx, 640, accuracy: 0.001)
+        XCTAssertFalse(valid.imageResolutionMatchesCaptured)
+        XCTAssertFalse(valid.pnpIntrinsicsReady)
+        XCTAssertEqual(valid.cameraMatrix[0][0], 1200, accuracy: 0.001)
 
         var bad = matrix
         bad.columns.0.x = -1

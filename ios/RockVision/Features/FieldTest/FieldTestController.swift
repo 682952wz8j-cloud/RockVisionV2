@@ -35,6 +35,7 @@ final class FieldTestController: ObservableObject {
     private var cellStartedAt: Date?
     private var timeoutTimer: Timer?
     private let persistQueue = DispatchQueue(label: "com.rockvision.v2.fieldtest.persist")
+    private let presets: [SIFTProcessingPreset]
 
     var locksEngineerControls: Bool { isSampling }
     var canStartTest: Bool { storageReady }
@@ -44,17 +45,20 @@ final class FieldTestController: ObservableObject {
     var onApplyScene: ((String) -> Void)?
     var onApplyPreset: ((SIFTProcessingPreset) -> Void)?
     var onSetLocked: ((Bool) -> Void)?
+    var onResetConfirmation: ((@escaping () -> Void) -> Void)?
 
     init(
         store: FieldTestStore,
         openCVVersion: String,
         identity: FieldTestAppIdentity = .current,
-        zipStagingRoot: URL = FileManager.default.temporaryDirectory.appendingPathComponent("FieldTestExport", isDirectory: true)
+        zipStagingRoot: URL = FileManager.default.temporaryDirectory.appendingPathComponent("FieldTestExport", isDirectory: true),
+        presets: [SIFTProcessingPreset] = FieldTestPolicy.resolutionOrder
     ) {
         self.store = store
         self.openCVVersion = openCVVersion
         self.identity = identity
         self.zipStagingRoot = zipStagingRoot
+        self.presets = presets.isEmpty ? [.low] : presets
         enterFieldTest()
     }
 
@@ -65,7 +69,7 @@ final class FieldTestController: ObservableObject {
         } else {
             store = FieldTestStore(rootURL: URL(fileURLWithPath: "/var/empty/RockVisionNoDocuments/FieldTests", isDirectory: true))
         }
-        self.init(store: store, openCVVersion: OpenCVBridge.openCVVersion())
+        self.init(store: store, openCVVersion: OpenCVBridge.openCVVersion(), presets: [.low])
     }
 
     func enterFieldTest() {
@@ -105,7 +109,7 @@ final class FieldTestController: ObservableObject {
             beginNewSession()
         }
         guard handle != nil, record != nil else { return }
-        beginCell(scene: scene, preset: .native)
+        beginCellAfterConfirmationReset(scene: scene, preset: presets[0])
     }
 
     func startOfficialNext() {
@@ -129,7 +133,7 @@ final class FieldTestController: ObservableObject {
            plan.includes(scene),
            let presetName = record.currentPreset,
            let preset = SIFTProcessingPreset.allCases.first(where: { $0.label == presetName }) {
-            beginCell(scene: scene, preset: preset, restartClock: record.cellStartedAt == nil)
+            beginCellAfterConfirmationReset(scene: scene, preset: preset, restartClock: record.cellStartedAt == nil)
         } else {
             applyReadyInstruction()
         }
@@ -152,6 +156,8 @@ final class FieldTestController: ObservableObject {
         applyReadyInstruction()
         progressLabel = "—"
         summary = nil
+        isSampling = false
+        onResetConfirmation?({ })
         refreshExportAvailability()
     }
 
@@ -167,8 +173,24 @@ final class FieldTestController: ObservableObject {
         refreshExportAvailability()
     }
 
-    func ingest(result: SIFTFrameResult, tracking: String, skipped: Int, rateHz: Double, activePreset: SIFTProcessingPreset) {
-        guard isSampling else { return }
+    @discardableResult
+    func ingest(
+        result: SIFTFrameResult,
+        tracking: String,
+        skipped: Int,
+        rateHz: Double,
+        activePreset: SIFTProcessingPreset,
+        matching: MatchingFrameResult? = nil,
+        camera: CameraIntrinsicsSnapshot? = nil,
+        pnp: PnPFrameResult? = nil,
+        confirmation: ConfirmationTick? = nil,
+        confirmationStats: ConfirmationStats? = nil,
+        arkitSidecar: ARKitCameraTransformSidecar? = nil,
+        alignment: AlignmentFrameResult? = nil,
+        alignmentStats: AlignmentStats? = nil,
+        wallDebugGeometry: WallAlignmentDebugGeometry? = nil
+    ) -> Bool {
+        guard isSampling else { return false }
         if case let .waitingTracking(scene, preset) = phase {
             if tracking == "normal" {
                 if Thread.isMainThread {
@@ -179,13 +201,13 @@ final class FieldTestController: ObservableObject {
                     }
                 }
             } else {
-                return
+                return false
             }
         }
-        guard case let .sampling(scene, preset) = phase else { return }
+        guard case let .sampling(scene, preset) = phase else { return false }
         guard result.processingWidth == preset.targetWidth
                 || (preset == .native && result.processingWidth == result.nativeImageWidth) else {
-            return
+            return false
         }
 
         let valid = FieldTestPolicy.isValidSample(
@@ -202,6 +224,10 @@ final class FieldTestController: ObservableObject {
             else if !result.rowsMatchKeypoints { reason = "descriptor rows mismatch" }
         }
 
+        let persistMatching = matching?.status == "active"
+        let cameraSidecar = camera.map {
+            PnPSidecarBuilder.cameraSidecar(result: result, camera: $0, openCVVersion: openCVVersion)
+        }
         let sample = FieldTestSample(
             recordedAt: Date(),
             frameID: result.frameID,
@@ -224,7 +250,32 @@ final class FieldTestController: ObservableObject {
             descriptorsFinite: result.descriptorsFinite,
             rowsMatchKeypoints: result.rowsMatchKeypoints,
             skippedFrames: skipped,
-            achievedRateHz: rateHz
+            achievedRateHz: rateHz,
+            queryKeypoints: persistMatching ? matching?.queryKeypoints : nil,
+            referenceDescriptorCount: persistMatching ? matching?.referenceDescriptorCount : nil,
+            rawDescriptorCandidates: persistMatching ? matching?.rawDescriptorCandidates : nil,
+            uniquePoint3DCandidates: persistMatching ? matching?.uniquePoint3DCandidates : nil,
+            insufficientDistinctPoint3D: persistMatching ? matching?.insufficientDistinctPoint3D : nil,
+            ratioRejected: persistMatching ? matching?.ratioRejected : nil,
+            acceptedAfterRatio: persistMatching ? matching?.acceptedAfterRatio : nil,
+            acceptedUniquePoint3D: persistMatching ? matching?.acceptedUniquePoint3D : nil,
+            duplicatePoint3DRejected: persistMatching ? matching?.duplicatePoint3DRejected : nil,
+            bestDistanceMedian: persistMatching ? matching?.bestDistanceMedian : nil,
+            bestRatioMedian: persistMatching ? matching?.bestRatioMedian : nil,
+            matchingLatencyMs: persistMatching ? matching?.matchingLatencyMs : nil,
+            stage3TotalMs: persistMatching ? matching?.stage3TotalMs : nil,
+            diagnosticMatches: persistMatching ? matching?.diagnosticMatches : nil,
+            pnpCorrespondences: persistMatching ? matching?.pnpCorrespondences : nil,
+            xyzMissingRejected: persistMatching ? matching?.xyzMissingRejected : nil,
+            inputCorrespondenceCount: persistMatching ? matching?.inputCorrespondenceCount : nil,
+            cameraSidecar: cameraSidecar,
+            pnpDiagnostic: persistMatching ? pnp : nil,
+            confirmation: persistMatching ? confirmation : nil,
+            confirmationStats: persistMatching ? confirmationStats : nil,
+            arkitSidecar: persistMatching ? arkitSidecar : nil,
+            alignment: persistMatching ? alignment : nil,
+            alignmentStats: persistMatching ? alignmentStats : nil,
+            wallDebugGeometry: persistMatching ? wallDebugGeometry : nil
         )
 
         persistQueue.async { [weak self] in
@@ -248,6 +299,7 @@ final class FieldTestController: ObservableObject {
                 }
             }
         }
+        return true
     }
 
     func flush() {
@@ -360,6 +412,29 @@ final class FieldTestController: ObservableObject {
         }
     }
 
+    private func beginCellAfterConfirmationReset(
+        scene: SIFTSceneLabel,
+        preset: SIFTProcessingPreset,
+        restartClock: Bool = true
+    ) {
+        isSampling = false
+        guard let prepare = onResetConfirmation else {
+            beginCell(scene: scene, preset: preset, restartClock: restartClock)
+            return
+        }
+        prepare { [weak self] in
+            guard let self else { return }
+            let work = {
+                self.beginCell(scene: scene, preset: preset, restartClock: restartClock)
+            }
+            if Thread.isMainThread {
+                work()
+            } else {
+                DispatchQueue.main.async(execute: work)
+            }
+        }
+    }
+
     private func beginCell(scene: SIFTSceneLabel, preset: SIFTProcessingPreset, restartClock: Bool = true) {
         isSampling = true
         if restartClock {
@@ -414,7 +489,8 @@ final class FieldTestController: ObservableObject {
         refreshSummary(phaseName: status.rawValue)
         persistMeta(phaseName: status.rawValue)
         if let nextPreset = nextPreset(after: preset) {
-            beginCell(scene: scene, preset: nextPreset)
+            isSampling = false
+            beginCellAfterConfirmationReset(scene: scene, preset: nextPreset)
             return
         }
         isSampling = false
@@ -436,9 +512,9 @@ final class FieldTestController: ObservableObject {
     }
 
     private func nextPreset(after preset: SIFTProcessingPreset) -> SIFTProcessingPreset? {
-        guard let idx = FieldTestPolicy.resolutionOrder.firstIndex(of: preset) else { return nil }
+        guard let idx = presets.firstIndex(of: preset) else { return nil }
         let next = idx + 1
-        return next < FieldTestPolicy.resolutionOrder.count ? FieldTestPolicy.resolutionOrder[next] : nil
+        return next < presets.count ? presets[next] : nil
     }
 
     private func nextScene(after scene: SIFTSceneLabel) -> SIFTSceneLabel? {
@@ -504,7 +580,7 @@ final class FieldTestController: ObservableObject {
         var cells: [FieldTestCellSummary] = []
         for scene in FieldTestPolicy.officialScenes {
             for preset in FieldTestPolicy.resolutionOrder {
-                if !plan.includes(scene) {
+                if !plan.includes(scene) || !presets.contains(preset) {
                     cells.append(FieldTestStatistics.notRequestedCell(scene: scene.rawValue, preset: preset))
                     continue
                 }
@@ -553,7 +629,7 @@ final class FieldTestController: ObservableObject {
     private func rebuildStatusesFromSamples() {
         cellStatuses = [:]
         for scene in plan.scenes {
-            for preset in FieldTestPolicy.resolutionOrder {
+            for preset in presets {
                 let cellSamples = samples.filter { $0.scene == scene.rawValue && $0.presetLabel == preset.label }
                 let valid = cellSamples.filter(\.valid).count
                 if valid >= FieldTestPolicy.targetValidSamples {
@@ -622,7 +698,22 @@ final class FieldTestController: ObservableObject {
 }
 
 protocol FieldTestSampleSink: AnyObject {
-    func ingest(result: SIFTFrameResult, tracking: String, skipped: Int, rateHz: Double, activePreset: SIFTProcessingPreset)
+    func ingest(
+        result: SIFTFrameResult,
+        tracking: String,
+        skipped: Int,
+        rateHz: Double,
+        activePreset: SIFTProcessingPreset,
+        matching: MatchingFrameResult?,
+        camera: CameraIntrinsicsSnapshot?,
+        pnp: PnPFrameResult?,
+        confirmation: ConfirmationTick?,
+        confirmationStats: ConfirmationStats?,
+        arkitSidecar: ARKitCameraTransformSidecar?,
+        alignment: AlignmentFrameResult?,
+        alignmentStats: AlignmentStats?,
+        wallDebugGeometry: WallAlignmentDebugGeometry?
+    ) -> Bool
 }
 
 extension FieldTestController: FieldTestSampleSink {}

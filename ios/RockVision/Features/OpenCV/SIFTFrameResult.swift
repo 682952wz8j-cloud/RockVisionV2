@@ -94,7 +94,7 @@ struct SIFTRuntimeSnapshot: Equatable, Sendable {
     var totalMs: String = "—"
     var rateHz: String = "—"
     var skipped: Int = 0
-    var presetLabel: String = SIFTProcessingPreset.native.label
+    var presetLabel: String = SIFTProcessingPreset.low.label
     var requestedRateHz: String = "2.0"
     var scene: String = "unlabeled"
     var showKeypoints: Bool = true

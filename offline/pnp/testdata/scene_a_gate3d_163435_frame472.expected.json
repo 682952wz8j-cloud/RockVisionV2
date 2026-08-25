@@ -1,0 +1,56 @@
+{
+  "sourceSession": "gate3b_20260824_163435",
+  "schema": "gate3d.parity.sceneA.expected.1",
+  "note": "Mac OpenCV 4.14.0 rv_pnp on frozen full correspondences. Not bit-identical across platforms.",
+  "frameID": 472,
+  "inputCorrespondenceCount": 725,
+  "cvVersion": "4.14.0",
+  "flagsName": null,
+  "ransacSuccess": true,
+  "refineOk": true,
+  "inlierCount": 535,
+  "inlierRatio": 0.737931,
+  "reprojectionRansacMedian": 5.18208,
+  "reprojectionRefinedMedian": 2.55897,
+  "positiveDepthRatio": 1,
+  "medianInlierDepthCam": 2.40893,
+  "medianInlierDepthMeters": 7.702900971036092,
+  "C_colmap": [
+    1.35157,
+    1.39504,
+    2.5853
+  ],
+  "C_wall": [
+    -18.573180018547156,
+    32.89222208387466,
+    -45.76484149597353
+  ],
+  "rvecRefined": [
+    -0.235195,
+    1.41673,
+    -1.07749
+  ],
+  "tvecRefined": [
+    -2.60455,
+    1.37699,
+    1.333
+  ],
+  "rotationMatrix": [
+    [
+      -0.201728,
+      0.458675,
+      0.865403
+    ],
+    [
+      -0.711461,
+      0.538635,
+      -0.451327
+    ],
+    [
+      -0.673149,
+      -0.706746,
+      0.217671
+    ]
+  ],
+  "sim3Scale": 3.19764417024824
+}

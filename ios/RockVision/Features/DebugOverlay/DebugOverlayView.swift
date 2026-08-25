@@ -1,10 +1,11 @@
 import SwiftUI
 
-/// Developer overlay. Localization stays idle. No matches / inliers / pose.
+/// Developer overlay. Localization stays idle. Matching counts only; no pose / PnP / 2D–3D lines.
 struct DebugOverlayView: View {
     let snapshot: ARSessionSnapshot
     let openCV: OpenCVRuntimeSnapshot
     let sift: SIFTRuntimeSnapshot
+    var matching: MatchingRuntimeSnapshot = MatchingRuntimeSnapshot()
     var onSelectPreset: (SIFTProcessingPreset) -> Void = { _ in }
     var onToggleKeypoints: () -> Void = {}
     var onSelectScene: (String) -> Void = { _ in }
@@ -30,6 +31,15 @@ struct DebugOverlayView: View {
             row("Skipped", "\(sift.skipped)")
             row("Scene", sift.scene)
             row("Dots", sift.showKeypoints ? "on" : "off")
+            row("Matching", matching.status)
+            row("Query kp", matching.queryKeypoints)
+            row("Accepted", matching.acceptedAfterRatio)
+            row("Unique 3D", matching.acceptedUniquePoint3D)
+            row("Ratio reject", matching.ratioRejected)
+            row("Insufficient 3D", matching.insufficientDistinctPoint3D)
+            row("Match", ms(matching.matchingMs))
+            row("Stage3", ms(matching.stage3Ms))
+            row("Ref rows", matching.referenceRows)
 
             Text("Res")
                 .font(.system(size: 12, weight: .semibold, design: .monospaced))

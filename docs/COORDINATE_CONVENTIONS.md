@@ -73,9 +73,11 @@ COLMAP units are meters.
 | `realitykit_entity` | RealityKit entity local | Right | same parent-relative convention as RealityKit | | | m |
 
 `opencv_camera_ydown_zfwd` is a **basis**, not a unit system. A pose
-`T_opencvCam_colmap` is in reconstruction units. A pose
-`T_opencvCam_wall` exists only after `S_wall_colmap` is defined, and is
-in meters.
+`T_opencvCam_colmap` is in reconstruction units. The production camera
+pose `T_opencvCamMeters_wall` exists only after `S_wall_colmap` is
+defined; it is SE(3) in **meters**. Do not form it as
+`T_opencvCam_colmap * inverse(S_wall_colmap)` — that product keeps
+reconstruction units on the camera translation.
 
 Image pixels (query and reference):
 
@@ -145,9 +147,11 @@ Until an explicit offline Sim(3) is solved and recorded:
 S_wall_colmap.status = unknown
 ```
 
-Gate 8 production AR alignment is **blocked**. Gates 2–6 may still
-estimate `T_opencvCam_colmap` in reconstruction units. That result must
-not be interpreted as a metric AR transform.
+That was the 2026-08-23 finding. It is **historical**. The current wall
+now has `S_wall_colmap.status = VALIDATED` (see README). Gate 4A
+production alignment is **PASS / CLOSED** using the metric SE(3) product
+in §6. Gates 2–6 still estimate `T_opencvCam_colmap` in reconstruction
+units; that result is not itself `T_ARWorld_Wall`.
 
 ### 3.2 Production Wall Frame
 
@@ -184,17 +188,41 @@ T_opencvCam_colmap = | R  t |
 
 `t` is in reconstruction units, not meters.
 
-Only after `S_wall_colmap` is defined:
+`inverse(S_wall_colmap)` is the Sim(3) **point-map** inverse:
 
 ```text
-X_colmap = inverse(S_wall_colmap) * X_wall
-T_opencvCam_wall = T_opencvCam_colmap * inverse(S_wall_colmap)
+X_colmap = R_sᵀ (X_wall - t_s) / s
 ```
 
-so `X_cam = T_opencvCam_wall * X_wall` with `X_wall` in meters.
+It includes scale `1/s` (meters → recon-unit). That inverse is valid for
+points. It is **not** a camera SE(3).
+
+OpenCV camera coordinates must be converted to meters **before** they
+are composed with ARKit:
 
 ```text
-T_wall_opencvCam = inverse(T_opencvCam_wall)
+X_cam_recon = R_p X_colmap + t_p
+X_cam_m     = s * X_cam_recon
+
+R_cam_wall = R_p R_sᵀ
+t_cam_wall = s * t_p - R_p R_sᵀ t_s
+
+T_opencvCamMeters_wall = | R_cam_wall  t_cam_wall |
+                         | 0           1          |
+```
+
+`s` is meters / recon-unit. `s * t_p` is meters. Do **not** use
+
+```text
+T_opencvCam_colmap * inverse(S_wall_colmap)
+```
+
+as the camera rigid transform. That leftover product maps Wall meters
+into camera reconstruction units (linear scale `1/s`) and must not
+re-enter `productionAlignment`.
+
+```text
+T_wall_opencvCam = inverse(T_opencvCamMeters_wall)
 ```
 
 The production name `T_wall_camera` means `T_wall_opencvCam` (or the
@@ -205,8 +233,8 @@ ARKit-basis equivalent in §6). It **does not exist** while
 
 1. Take a known wall point `P`.
 2. Project with `K`, `R`, `t` and match OpenCV `projectPoints`.
-3. Transform `P` with `T_opencvCam_wall` and obtain the same camera-space
-   point.
+3. Transform `P` with `T_opencvCamMeters_wall` and obtain
+   `s * (R_p X_colmap + t_p)` for the corresponding COLMAP point.
 4. Invert and recover `P`.
 
 A failed direction test is a Gate 6 blocker. Do not compensate in
@@ -256,7 +284,7 @@ Frame chain:
 X_colmap
   → S_wall_colmap
   → X_wall_meters
-  → T_opencvCam_wall
+  → T_opencvCamMeters_wall
   → T_arkitCam_opencvCam
   → T_ARWorld_arkitCam
   → X_ARWorld_meters
@@ -272,13 +300,20 @@ Inputs at lock time:
 | `T_ARWorld_arkitCam` | ARKit camera-to-world | `ARCamera.transform` at the **same** frame |
 
 ```text
-T_opencvCam_wall = T_opencvCam_colmap * inverse(S_wall_colmap)
+R_cam_wall = R_p R_sᵀ
+t_cam_wall = s * t_p - R_p R_sᵀ t_s
+
+T_opencvCamMeters_wall = | R_cam_wall  t_cam_wall |
+                         | 0           1          |
 
 T_ARWorld_Wall =
     T_ARWorld_arkitCam
   * T_arkitCam_opencvCam
-  * T_opencvCam_wall
+  * T_opencvCamMeters_wall
 ```
+
+Do not freeze `T_opencvCam_colmap * inverse(S_wall_colmap)` as the
+camera SE(3). That product is the Gate 4A metric defect (scale `1/s`).
 
 ARKit’s `ARCamera.transform` is camera-to-world, in meters:
 
@@ -398,7 +433,7 @@ Implement tests when the types exist; do not skip them later.
 | OpenCV↔ARKit | `det(S) = +1`, `S * S = I` |
 | OpenCV camera +Z | a point on +Z projects to `(cx, cy)` |
 | PnP round-trip | synthetic `R,t` recovered within tolerance |
-| Direction | `p_cam = T_opencvCam_colmap * p_colmap` matches `R p + t`; metric variant uses `T_opencvCam_wall` only with a defined Sim(3) |
+| Direction | `p_cam = T_opencvCam_colmap * p_colmap` matches `R p + t`; metric SE(3) is `T_opencvCamMeters_wall`, not `T * inverse(S)` |
 | Production chain | known `P_wall` maps to expected `P_ARWorld` for a constructed camera **and** defined `S_wall_colmap` |
 | Unknown `S_wall_colmap` | `productionAlignment` refuses; no identity fallback |
 | Defined Sim(3) | `X_wall = S_wall_colmap * X_colmap` recovers the fixture |

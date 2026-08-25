@@ -1,52 +1,100 @@
 import SwiftUI
 import UIKit
 
+/// UI-only launch latch for the device Full Test. Not part of sample validity.
+enum FieldTestLaunchGate {
+    static func blockReason(
+        storageReady: Bool,
+        tracking: String,
+        matchingStatus: String,
+        presetLabel: String,
+        processingLabel: String
+    ) -> String? {
+        if !storageReady {
+            return "Storage 未就绪"
+        }
+        if matchingStatus != "active" {
+            return "Matching 未就绪：\(matchingStatus)"
+        }
+        if !is960(presetLabel: presetLabel, processingLabel: processingLabel) {
+            return "需要处理分辨率 960×720"
+        }
+        if tracking != "normal" {
+            return "等待 ARKit tracking = normal"
+        }
+        return nil
+    }
+
+    static func is960(presetLabel: String, processingLabel: String) -> Bool {
+        let compactPreset = presetLabel.replacingOccurrences(of: " ", with: "")
+        let compactProcessing = processingLabel.replacingOccurrences(of: " ", with: "")
+        return compactPreset == "960×720" || compactProcessing == "960×720"
+    }
+}
+
 struct FieldTestPanel: View {
     @ObservedObject var controller: FieldTestController
+    var tracking: String = "—"
+    var localization: String = "idle"
+    var confirmationWindow: String = "0/3"
+    var alignment: String = "none"
+    var wallAxes: String = "hidden"
+    var sift: SIFTRuntimeSnapshot = SIFTRuntimeSnapshot()
+    var matching: MatchingRuntimeSnapshot = MatchingRuntimeSnapshot()
+    var pnp: PnPRuntimeSnapshot = PnPRuntimeSnapshot()
     @State private var copied = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Field Test")
                 .font(.system(size: 15, weight: .semibold, design: .monospaced))
-            Text(controller.storageLabel)
-                .font(.system(size: 11, weight: .regular, design: .monospaced))
-            Text(controller.lastSaveLabel)
-                .font(.system(size: 11, weight: .regular, design: .monospaced))
-            Text(controller.persistedSamplesLabel)
-                .font(.system(size: 11, weight: .regular, design: .monospaced))
-            Text(controller.exportLabel)
-                .font(.system(size: 11, weight: .regular, design: .monospaced))
+            statusRow("Scene", currentSceneLabel)
+            statusRow("Processing", "960×720")
+            statusRow("Valid", "\(currentValidLabel) / \(FieldTestPolicy.targetValidSamples)")
+            statusRow("Tracking", tracking)
+            statusRow("Matching", matching.status)
+            statusRow("Query kp", matching.queryKeypoints)
+            statusRow("Accepted", matching.acceptedAfterRatio)
+            statusRow("Unique 3D", matching.acceptedUniquePoint3D)
+            statusRow("SIFT", ms(sift.siftMs))
+            statusRow("Match", ms(matching.matchingMs))
+            statusRow("Stage3", ms(matching.stage3Ms))
+            statusRow("PnP", pnp.status)
+            statusRow("PnP in", pnp.inputCorr)
+            statusRow("RANSAC inliers", pnp.inliers)
+            statusRow("Inlier ratio", pnp.inlierRatio)
+            statusRow("Reproj", pnp.reproj)
+            statusRow("C_wall", pnp.cWall)
+            statusRow("obs-depth sanity", pnp.obsDepth)
+            statusRow("Localization", localization)
+            statusRow("Confirm window", confirmationWindow)
+            statusRow("T_ARWorld_Wall", alignment)
+            statusRow("Wall axes", wallAxes)
+
+            Text(controller.instruction)
+                .font(.system(size: 13, weight: .regular, design: .monospaced))
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 10) {
+                sceneChip("A")
+                sceneChip("B")
+                sceneChip("C")
+            }
+
             if let error = controller.persistErrorLabel {
                 Text("Persist error: \(error)")
                     .font(.system(size: 11, weight: .regular, design: .monospaced))
                     .foregroundStyle(.red)
             }
-            Text(controller.instruction)
-                .font(.system(size: 13, weight: .regular, design: .monospaced))
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Progress: \(controller.progressLabel)   Time: \(controller.elapsedLabel)")
-                .font(.system(size: 12, weight: .regular, design: .monospaced))
-            Text("Mode: \(controller.plan.modeLabel)")
-                .font(.system(size: 12, weight: .regular, design: .monospaced))
+            if let gate = launchBlockReason, showsLaunchButton {
+                Text(gate)
+                    .font(.system(size: 12, weight: .regular, design: .monospaced))
+                    .foregroundStyle(.yellow)
+            }
 
-            if controller.canChangeMode {
-                HStack(spacing: 8) {
-                    fieldButton("Full A/B/C", emphasized: controller.plan == .full, enabled: true) {
-                        controller.selectPlan(.full)
-                    }
-                    fieldButton("A only", emphasized: controller.plan == .single(.A), enabled: true) {
-                        controller.selectPlan(.single(.A))
-                    }
-                }
-                HStack(spacing: 8) {
-                    fieldButton("B only", emphasized: controller.plan == .single(.B), enabled: true) {
-                        controller.selectPlan(.single(.B))
-                    }
-                    fieldButton("C only", emphasized: controller.plan == .single(.C), enabled: true) {
-                        controller.selectPlan(.single(.C))
-                    }
-                }
+            if controller.phase == .complete {
+                Text("Test Complete")
+                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
             }
 
             HStack(spacing: 8) {
@@ -55,8 +103,10 @@ struct FieldTestPanel: View {
                     fieldButton("New Session", emphasized: false, enabled: controller.canStartTest, action: controller.startNewSession)
                 } else {
                     switch controller.phase {
-                    case .readyToStart(let scene), .readyToStartNext(_, let scene):
-                        fieldButton("START \(scene.rawValue)", emphasized: true, enabled: controller.canStartTest, action: controller.startOfficialNext)
+                    case .readyToStart(let scene):
+                        fieldButton("Start \(scene.rawValue)", emphasized: true, enabled: canPressLaunch, action: controller.startOfficialNext)
+                    case .readyToStartNext(_, let scene):
+                        fieldButton("Continue \(scene.rawValue)", emphasized: true, enabled: canPressLaunch, action: controller.startOfficialNext)
                     case .complete:
                         fieldButton("New Session", emphasized: false, enabled: controller.canStartTest, action: controller.startNewSession)
                     case .idle:
@@ -68,7 +118,12 @@ struct FieldTestPanel: View {
             }
 
             HStack(spacing: 8) {
-                fieldButton("Share Current Results", emphasized: true, enabled: controller.canExport, action: controller.shareCurrentResults)
+                fieldButton(
+                    "Share Current Results",
+                    emphasized: controller.phase == .complete || controller.canExport,
+                    enabled: controller.canExport,
+                    action: controller.shareCurrentResults
+                )
                 fieldButton("Copy Summary", emphasized: false, enabled: controller.canCopySummary) {
                     _ = controller.copySummary()
                     copied = true
@@ -78,27 +133,6 @@ struct FieldTestPanel: View {
                 Text(controller.copyFeedback ?? "Summary copied")
                     .font(.system(size: 11, weight: .regular, design: .monospaced))
             }
-
-            if let summary = controller.summary {
-                let rows = summary.cells.filter { $0.status != .pending }
-                if !rows.isEmpty {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 2) {
-                            ForEach(rows, id: \.progressKey) { cell in
-                                Text("\(cell.scene) \(cell.presetLabel) \(cell.status.rawValue) \(cell.progressLabel)")
-                                    .font(.system(size: 11, weight: .regular, design: .monospaced))
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .frame(maxHeight: 88)
-                }
-            }
-
-            Text(controller.sessionPath)
-                .font(.system(size: 9, weight: .regular, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.7))
-                .lineLimit(2)
         }
         .foregroundStyle(.white)
         .padding(10)
@@ -112,6 +146,73 @@ struct FieldTestPanel: View {
                 FieldTestActivityView(url: url)
             }
         }
+    }
+
+    private var launchBlockReason: String? {
+        FieldTestLaunchGate.blockReason(
+            storageReady: controller.storageReady,
+            tracking: tracking,
+            matchingStatus: matching.status,
+            presetLabel: sift.presetLabel,
+            processingLabel: sift.processing
+        )
+    }
+
+    private var showsLaunchButton: Bool {
+        switch controller.phase {
+        case .readyToStart, .readyToStartNext:
+            return !controller.hasResumableSession
+        default:
+            return false
+        }
+    }
+
+    private var canPressLaunch: Bool {
+        controller.canStartTest && launchBlockReason == nil
+    }
+
+    private var currentSceneLabel: String {
+        switch controller.phase {
+        case .readyToStart(let scene), .waitingTracking(let scene, _), .sampling(let scene, _), .readyToStartNext(_, let scene):
+            return scene.rawValue
+        case .complete:
+            return "done"
+        case .idle:
+            return "—"
+        }
+    }
+
+    private var currentValidLabel: String {
+        let parts = controller.progressLabel.split(separator: "/")
+        return parts.first.map(String.init) ?? "—"
+    }
+
+    private func sceneChip(_ scene: String) -> some View {
+        let status = controller.summary?.cells.first {
+            $0.scene == scene && $0.presetLabel == SIFTProcessingPreset.low.label
+        }?.status ?? .pending
+        let label: String
+        switch status {
+        case .complete: label = "complete"
+        case .incomplete: label = "incomplete"
+        case .running: label = "running"
+        case .notRequested: label = "—"
+        case .pending: label = "pending"
+        }
+        return Text("\(scene) \(label)")
+            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(Color.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 5))
+    }
+
+    private func statusRow(_ title: String, _ value: String) -> some View {
+        Text("\(title): \(value)")
+            .font(.system(size: 13, weight: .regular, design: .monospaced))
+    }
+
+    private func ms(_ value: String) -> String {
+        value == "—" ? "—" : "\(value) ms"
     }
 
     private func fieldButton(_ title: String, emphasized: Bool, enabled: Bool, action: @escaping () -> Void) -> some View {
@@ -129,6 +230,7 @@ struct FieldTestPanel: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+        .accessibilityLabel(title)
     }
 }
 
@@ -140,8 +242,4 @@ private struct FieldTestActivityView: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
-
-private extension FieldTestCellSummary {
-    var progressKey: String { "\(scene)|\(presetLabel)|\(status.rawValue)|\(validCount)" }
 }

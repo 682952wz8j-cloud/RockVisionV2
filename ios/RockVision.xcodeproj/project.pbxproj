@@ -34,6 +34,38 @@
 		A10000000000000100000019 /* FieldTestPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000001E /* FieldTestPanel.swift */; };
 		A1000000000000010000001A /* FieldTestStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000001F /* FieldTestStoreTests.swift */; };
 		A10000000000000100000020 /* FieldTestExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000020 /* FieldTestExport.swift */; };
+		A10000000000000100000021 /* MatchingConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000021 /* MatchingConstants.swift */; };
+		A10000000000000100000022 /* Point3DMatchCollapser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000022 /* Point3DMatchCollapser.swift */; };
+		A10000000000000100000023 /* RVS1Artifact.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000023 /* RVS1Artifact.swift */; };
+		A10000000000000100000024 /* ReferenceDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000024 /* ReferenceDatabase.swift */; };
+		A10000000000000100000025 /* Point3DMatchCollapserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000025 /* Point3DMatchCollapserTests.swift */; };
+		A10000000000000100000026 /* DevelopmentFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000026 /* DevelopmentFixture.swift */; };
+		A10000000000000100000027 /* DevelopmentFixture in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000027 /* DevelopmentFixture */; };
+		A10000000000000100000028 /* DevelopmentFixtureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000028 /* DevelopmentFixtureTests.swift */; };
+		A10000000000000100000029 /* MatchingRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000029 /* MatchingRuntime.swift */; };
+		A1000000000000010000002A /* PnPConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000002A /* PnPConstants.swift */; };
+		A1000000000000010000002B /* PnPGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000002B /* PnPGeometry.swift */; };
+		A1000000000000010000002C /* PnPSidecar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000002C /* PnPSidecar.swift */; };
+		A1000000000000010000002D /* PnPConventionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000002D /* PnPConventionTests.swift */; };
+		A1000000000000010000002E /* PnPSidecarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000002E /* PnPSidecarTests.swift */; };
+		A1000000000000010000002F /* PnPRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000002F /* PnPRuntime.swift */; };
+		A10000000000000100000030 /* PnPSim3.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000030 /* PnPSim3.swift */; };
+		A10000000000000100000031 /* PnPRuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000031 /* PnPRuntimeTests.swift */; };
+		A10000000000000100000032 /* PnPParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000032 /* PnPParityTests.swift */; };
+		A10000000000000100000033 /* S_wall_colmap.json in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000033 /* S_wall_colmap.json */; };
+		A10000000000000100000034 /* PnPSceneAParity.json in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000034 /* PnPSceneAParity.json */; };
+		A10000000000000100000035 /* PnPSceneAParityExpected.json in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000035 /* PnPSceneAParityExpected.json */; };
+		A10000000000000100000036 /* LocalizationConfirmation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000036 /* LocalizationConfirmation.swift */; };
+		A10000000000000100000037 /* LocalizationConfirmationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000037 /* LocalizationConfirmationTests.swift */; };
+		A10000000000000100000038 /* FieldConfirmationSessionBarrier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000038 /* FieldConfirmationSessionBarrier.swift */; };
+		A10000000000000100000039 /* FieldConfirmationSessionBarrierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000039 /* FieldConfirmationSessionBarrierTests.swift */; };
+		A1000000000000010000003A /* CoordinateTransforms.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000003A /* CoordinateTransforms.swift */; };
+		A1000000000000010000003B /* ProductionAlignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000003B /* ProductionAlignment.swift */; };
+		A1000000000000010000003C /* CoordinateTransformsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000003C /* CoordinateTransformsTests.swift */; };
+		A1000000000000010000003D /* ProductionAlignmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000003D /* ProductionAlignmentTests.swift */; };
+		A1000000000000010000003E /* WallAlignmentDebugGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000003E /* WallAlignmentDebugGeometry.swift */; };
+		A1000000000000010000003F /* WallAlignmentDebugOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000003F /* WallAlignmentDebugOverlay.swift */; };
+		A10000000000000100000040 /* WallAlignmentDebugGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000040 /* WallAlignmentDebugGeometryTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -68,6 +100,38 @@
 		A2000000000000010000001E /* FieldTestPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldTestPanel.swift; sourceTree = "<group>"; };
 		A2000000000000010000001F /* FieldTestStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldTestStoreTests.swift; sourceTree = "<group>"; };
 		A20000000000000100000020 /* FieldTestExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldTestExport.swift; sourceTree = "<group>"; };
+		A20000000000000100000021 /* MatchingConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchingConstants.swift; sourceTree = "<group>"; };
+		A20000000000000100000022 /* Point3DMatchCollapser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Point3DMatchCollapser.swift; sourceTree = "<group>"; };
+		A20000000000000100000023 /* RVS1Artifact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RVS1Artifact.swift; sourceTree = "<group>"; };
+		A20000000000000100000024 /* ReferenceDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceDatabase.swift; sourceTree = "<group>"; };
+		A20000000000000100000025 /* Point3DMatchCollapserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Point3DMatchCollapserTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000026 /* DevelopmentFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentFixture.swift; sourceTree = "<group>"; };
+		A20000000000000100000027 /* DevelopmentFixture */ = {isa = PBXFileReference; lastKnownFileType = folder; path = DevelopmentFixture; sourceTree = "<group>"; };
+		A20000000000000100000028 /* DevelopmentFixtureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentFixtureTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000029 /* MatchingRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchingRuntime.swift; sourceTree = "<group>"; };
+		A2000000000000010000002A /* PnPConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PnPConstants.swift; sourceTree = "<group>"; };
+		A2000000000000010000002B /* PnPGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PnPGeometry.swift; sourceTree = "<group>"; };
+		A2000000000000010000002C /* PnPSidecar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PnPSidecar.swift; sourceTree = "<group>"; };
+		A2000000000000010000002D /* PnPConventionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PnPConventionTests.swift; sourceTree = "<group>"; };
+		A2000000000000010000002E /* PnPSidecarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PnPSidecarTests.swift; sourceTree = "<group>"; };
+		A2000000000000010000002F /* PnPRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PnPRuntime.swift; sourceTree = "<group>"; };
+		A20000000000000100000030 /* PnPSim3.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PnPSim3.swift; sourceTree = "<group>"; };
+		A20000000000000100000031 /* PnPRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PnPRuntimeTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000032 /* PnPParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PnPParityTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000033 /* S_wall_colmap.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = S_wall_colmap.json; sourceTree = "<group>"; };
+		A20000000000000100000034 /* PnPSceneAParity.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = PnPSceneAParity.json; sourceTree = "<group>"; };
+		A20000000000000100000035 /* PnPSceneAParityExpected.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = PnPSceneAParityExpected.json; sourceTree = "<group>"; };
+		A20000000000000100000036 /* LocalizationConfirmation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationConfirmation.swift; sourceTree = "<group>"; };
+		A20000000000000100000037 /* LocalizationConfirmationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationConfirmationTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000038 /* FieldConfirmationSessionBarrier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldConfirmationSessionBarrier.swift; sourceTree = "<group>"; };
+		A20000000000000100000039 /* FieldConfirmationSessionBarrierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldConfirmationSessionBarrierTests.swift; sourceTree = "<group>"; };
+		A2000000000000010000003A /* CoordinateTransforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinateTransforms.swift; sourceTree = "<group>"; };
+		A2000000000000010000003B /* ProductionAlignment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductionAlignment.swift; sourceTree = "<group>"; };
+		A2000000000000010000003C /* CoordinateTransformsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinateTransformsTests.swift; sourceTree = "<group>"; };
+		A2000000000000010000003D /* ProductionAlignmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductionAlignmentTests.swift; sourceTree = "<group>"; };
+		A2000000000000010000003E /* WallAlignmentDebugGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallAlignmentDebugGeometry.swift; sourceTree = "<group>"; };
+		A2000000000000010000003F /* WallAlignmentDebugOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallAlignmentDebugOverlay.swift; sourceTree = "<group>"; };
+		A20000000000000100000040 /* WallAlignmentDebugGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallAlignmentDebugGeometryTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -112,6 +176,7 @@
 				A40000000000000100000009 /* Bridge */,
 				A40000000000000100000004 /* Features */,
 				A20000000000000100000006 /* Assets.xcassets */,
+				A4000000000000010000000F /* Resources */,
 				A20000000000000100000009 /* Info.plist */,
 				A2000000000000010000000F /* RockVision-Bridging-Header.h */,
 			);
@@ -134,6 +199,8 @@
 				A40000000000000100000006 /* DebugOverlay */,
 				A4000000000000010000000B /* OpenCV */,
 				A4000000000000010000000D /* FieldTest */,
+				A4000000000000010000000E /* Matching */,
+				A40000000000000100000010 /* PnP */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -152,6 +219,7 @@
 			children = (
 				A20000000000000100000005 /* DebugOverlayView.swift */,
 				A20000000000000100000017 /* KeypointOverlayView.swift */,
+				A2000000000000010000003F /* WallAlignmentDebugOverlay.swift */,
 			);
 			path = DebugOverlay;
 			sourceTree = "<group>";
@@ -192,8 +260,49 @@
 				A2000000000000010000001D /* FieldTestController.swift */,
 				A2000000000000010000001E /* FieldTestPanel.swift */,
 				A20000000000000100000020 /* FieldTestExport.swift */,
+				A20000000000000100000038 /* FieldConfirmationSessionBarrier.swift */,
 			);
 			path = FieldTest;
+			sourceTree = "<group>";
+		};
+		A4000000000000010000000E /* Matching */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000100000021 /* MatchingConstants.swift */,
+				A20000000000000100000022 /* Point3DMatchCollapser.swift */,
+				A20000000000000100000023 /* RVS1Artifact.swift */,
+				A20000000000000100000024 /* ReferenceDatabase.swift */,
+				A20000000000000100000026 /* DevelopmentFixture.swift */,
+				A20000000000000100000029 /* MatchingRuntime.swift */,
+			);
+			path = Matching;
+			sourceTree = "<group>";
+		};
+		A40000000000000100000010 /* PnP */ = {
+			isa = PBXGroup;
+			children = (
+				A2000000000000010000002A /* PnPConstants.swift */,
+				A2000000000000010000002B /* PnPGeometry.swift */,
+				A2000000000000010000002C /* PnPSidecar.swift */,
+				A2000000000000010000002F /* PnPRuntime.swift */,
+				A20000000000000100000030 /* PnPSim3.swift */,
+				A20000000000000100000036 /* LocalizationConfirmation.swift */,
+				A2000000000000010000003A /* CoordinateTransforms.swift */,
+				A2000000000000010000003B /* ProductionAlignment.swift */,
+				A2000000000000010000003E /* WallAlignmentDebugGeometry.swift */,
+			);
+			path = PnP;
+			sourceTree = "<group>";
+		};
+		A4000000000000010000000F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000100000027 /* DevelopmentFixture */,
+				A20000000000000100000033 /* S_wall_colmap.json */,
+				A20000000000000100000034 /* PnPSceneAParity.json */,
+				A20000000000000100000035 /* PnPSceneAParityExpected.json */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		A4000000000000010000000C /* RockVisionTests */ = {
@@ -202,6 +311,17 @@
 				A20000000000000100000015 /* OpenCVBridgeTests.swift */,
 				A2000000000000010000001A /* SIFTExtractionTests.swift */,
 				A2000000000000010000001F /* FieldTestStoreTests.swift */,
+				A20000000000000100000025 /* Point3DMatchCollapserTests.swift */,
+				A20000000000000100000028 /* DevelopmentFixtureTests.swift */,
+				A2000000000000010000002D /* PnPConventionTests.swift */,
+				A2000000000000010000002E /* PnPSidecarTests.swift */,
+				A20000000000000100000031 /* PnPRuntimeTests.swift */,
+				A20000000000000100000032 /* PnPParityTests.swift */,
+				A20000000000000100000037 /* LocalizationConfirmationTests.swift */,
+				A20000000000000100000039 /* FieldConfirmationSessionBarrierTests.swift */,
+				A2000000000000010000003C /* CoordinateTransformsTests.swift */,
+				A2000000000000010000003D /* ProductionAlignmentTests.swift */,
+				A20000000000000100000040 /* WallAlignmentDebugGeometryTests.swift */,
 			);
 			path = RockVisionTests;
 			sourceTree = "<group>";
@@ -310,6 +430,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000100000006 /* Assets.xcassets in Resources */,
+				A10000000000000100000027 /* DevelopmentFixture in Resources */,
+				A10000000000000100000033 /* S_wall_colmap.json in Resources */,
+				A10000000000000100000034 /* PnPSceneAParity.json in Resources */,
+				A10000000000000100000035 /* PnPSceneAParityExpected.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -329,6 +453,7 @@
 				A1000000000000010000000A /* OpenCVFrameProcessor.swift in Sources */,
 				A1000000000000010000000B /* CameraIntrinsics.swift in Sources */,
 				A10000000000000100000012 /* KeypointOverlayView.swift in Sources */,
+				A1000000000000010000003F /* WallAlignmentDebugOverlay.swift in Sources */,
 				A10000000000000100000013 /* SIFTCoordinateMapping.swift in Sources */,
 				A10000000000000100000014 /* SIFTFrameResult.swift in Sources */,
 				A10000000000000100000016 /* FieldTestModels.swift in Sources */,
@@ -336,6 +461,22 @@
 				A10000000000000100000018 /* FieldTestController.swift in Sources */,
 				A10000000000000100000019 /* FieldTestPanel.swift in Sources */,
 				A10000000000000100000020 /* FieldTestExport.swift in Sources */,
+				A10000000000000100000038 /* FieldConfirmationSessionBarrier.swift in Sources */,
+				A10000000000000100000021 /* MatchingConstants.swift in Sources */,
+				A10000000000000100000022 /* Point3DMatchCollapser.swift in Sources */,
+				A10000000000000100000023 /* RVS1Artifact.swift in Sources */,
+				A10000000000000100000024 /* ReferenceDatabase.swift in Sources */,
+				A10000000000000100000026 /* DevelopmentFixture.swift in Sources */,
+				A10000000000000100000029 /* MatchingRuntime.swift in Sources */,
+				A1000000000000010000002A /* PnPConstants.swift in Sources */,
+				A1000000000000010000002B /* PnPGeometry.swift in Sources */,
+				A1000000000000010000002C /* PnPSidecar.swift in Sources */,
+				A1000000000000010000002F /* PnPRuntime.swift in Sources */,
+				A10000000000000100000030 /* PnPSim3.swift in Sources */,
+				A10000000000000100000036 /* LocalizationConfirmation.swift in Sources */,
+				A1000000000000010000003A /* CoordinateTransforms.swift in Sources */,
+				A1000000000000010000003B /* ProductionAlignment.swift in Sources */,
+				A1000000000000010000003E /* WallAlignmentDebugGeometry.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -346,6 +487,17 @@
 				A10000000000000100000010 /* OpenCVBridgeTests.swift in Sources */,
 				A10000000000000100000015 /* SIFTExtractionTests.swift in Sources */,
 				A1000000000000010000001A /* FieldTestStoreTests.swift in Sources */,
+				A10000000000000100000025 /* Point3DMatchCollapserTests.swift in Sources */,
+				A10000000000000100000028 /* DevelopmentFixtureTests.swift in Sources */,
+				A1000000000000010000002D /* PnPConventionTests.swift in Sources */,
+				A1000000000000010000002E /* PnPSidecarTests.swift in Sources */,
+				A10000000000000100000031 /* PnPRuntimeTests.swift in Sources */,
+				A10000000000000100000032 /* PnPParityTests.swift in Sources */,
+				A10000000000000100000037 /* LocalizationConfirmationTests.swift in Sources */,
+				A10000000000000100000039 /* FieldConfirmationSessionBarrierTests.swift in Sources */,
+				A1000000000000010000003C /* CoordinateTransformsTests.swift in Sources */,
+				A1000000000000010000003D /* ProductionAlignmentTests.swift in Sources */,
+				A10000000000000100000040 /* WallAlignmentDebugGeometryTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

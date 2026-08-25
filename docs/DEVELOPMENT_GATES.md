@@ -25,19 +25,56 @@ V1 is not a starting branch.
 
 ## Current position
 
-**Gate 0 passed on a physical iPhone. Gate 1A passed. Gate 1B
-implemented. Later gates not started.**
+**Live status source of truth: [`README.md`](../README.md).**
 
-| Gate | Status |
-|------|--------|
-| Pre-work + review corrections + incoming/ | Done |
-| Gate 0 — Clean Xcode project | Passed — physical iPhone |
-| Gate 1A — Raw Data Ingestion | Passed |
-| Gate 1B — Source Data Qualification | Implemented — see Gate 1B report |
-| Gates 1–11 | **Not started** |
+```text
+Stage 1 — iPhone Runtime Foundation          PASS
+Stage 2 — Metric Wall Reference Map          PASS
+         S_wall_colmap                       VALIDATED
+Stage 3 — Visual Localization                PASS (current Gate requirements)
+  Gate 3A — OpenCV iOS                       PASS / CLOSED
+  Gate 3B — SIFT extraction                  PASS / CLOSED
+  Gate 3C — Reference Matching               PASS / CLOSED
+  Gate 3D — Single-frame PnP                 PASS / CLOSED
+  Gate 3E — Multi-frame confirmation         PASS / CLOSED
+           formal field: gate3e_20260825_084148
+           failed (do not reuse): gate3e_20260825_065523
+Stage 4 — AR Alignment                       IN PROGRESS
+  Gate 4A — SAME-FRAME / LIFETIME            PASS / CLOSED
+           formal field: gate4a_20260825_104607
+  Gate 4A — METRIC ALIGNMENT                 PASS / CLOSED
+  Gate 4B                                  diagnostic geometry present;
+                                           measurement preparation NOT STARTED;
+                                           physical measurement NOT STARTED;
+                                           not PASS
+Stage 5 — Route AR                           BLOCKED
+```
 
-`S_wall_colmap.status = unknown` (Jiulongfeng not proven metric).
-Gate 8 production AR is **blocked** until that Sim(3) is solved.
+`S_wall_colmap` is **VALIDATED**. Gate 4A production `T_ARWorld_Wall` is
+the metric SE(3) product in [`COORDINATE_CONVENTIONS.md`](COORDINATE_CONVENTIONS.md)
+§6. That is **not** persistent Wall↔ARWorld lock and **not** permission
+to render routes.
+
+Gate 4B Layer 1 diagnostic geometry (origin + 1 m XYZ axes) is present.
+Physical measurement has **not** started. Gate 4B is **not** PASS.
+
+---
+
+## Live numbering
+
+- **Live status source of truth = `README.md`**
+- Current numbering: Stages **1–5**; Stage 3 contains Gate **3A–3E**;
+  Stage 4 contains Gate **4A / 4B**
+- The Gate 0–11 chapters below are the **early plan numbering**
+- Live Gate **3C** is reference matching (this document’s historical
+  “Gate 4”)
+- Live Gate **3D** is PnP (this document’s historical “Gate 6”)
+- Live Gate **3E** is multi-frame confirmation (this document’s
+  historical “Gate 7”)
+- Live Gate **4A** is production `T_ARWorld_Wall` (this document’s
+  historical “Gate 8” alignment product)
+- Live Gate **4B** is metric Wall-frame validation in ARWorld
+- Do **not** treat historical Gate 8 as still blocked on missing pose
 
 ---
 
@@ -330,23 +367,32 @@ Thresholds are named and marked uncalibrated.
 
 ## Gate 8 — Coordinate alignment test
 
-**Blocked** until `S_wall_colmap.status = defined`.
+**Live equivalent: Gate 4A PASS / CLOSED; Gate 4B diagnostic present,
+measurement not started.**
 
-Solving that Sim(3) is an offline prerequisite of this gate, not a
-runtime GPS or T/R/S patch. Do not use bbox size as proof of meters.
+Stage 3 has produced confirmed `T_opencvCam_colmap`. Gate 4A generates
+`T_ARWorld_Wall` from that pose, validated `S_wall_colmap`, and the
+same-ARFrame ARKit camera transform. The production product is metric
+SE(3) (Wall meters → ARWorld meters). See coordinate conventions §6.
 
-Only then:
+Gate 4A is **not** persistent Wall↔ARWorld lock.
+
+Gate 4B Layer 1 diagnostic geometry (Wall origin + 1 m XYZ axes) is
+present and consumes production `T_ARWorld_Wall` only. Physical
+landmark measurement has **not** started. Do **not** treat diagnostic
+axes as Gate 4B PASS. Do **not** render climbing routes.
 
 - Do **not** render climbing routes.
-- Render known **metric Wall** test landmarks and/or axes.
-- Derive `T_ARWorld_Wall` from `T_opencvCam_colmap`, `S_wall_colmap`,
-  and the ARKit camera (§ conventions 6).
-- Verify landmarks stay attached to the real wall while the iPhone moves.
+- Do **not** use runtime GPS or T/R/S as a substitute.
+- Do **not** use bbox size as proof of meters.
+- Do **not** restore `T_opencvCam_colmap * inverse(S_wall_colmap)` as
+  the camera SE(3).
 
-If they drift or sit in the wrong place: debug correspondences, PnP,
-`K`, `T` direction, `S_wall_colmap` — not a T/R/S slider.
+If debug axes drift or sit in the wrong place: debug correspondences,
+PnP, `K`, `T` direction, `S_wall_colmap` — not a T/R/S slider, and not
+an empirical scale in the overlay.
 
-**STOP.**
+**STOP.** Gate 4B measurement starts only when explicitly opened.
 
 ---
 

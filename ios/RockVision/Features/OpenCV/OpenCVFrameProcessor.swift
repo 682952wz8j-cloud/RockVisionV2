@@ -1,14 +1,23 @@
 import ARKit
 import Foundation
 import os
+import simd
 import UIKit
 
-/// Consumes ARFrames on a single serial queue. Gate 3B adds SIFT; not a localizer.
+/// Consumes ARFrames on a single serial queue. SIFT + matching + same-frame PnP,
+/// then confirmation, then productionAlignment only if localized.
+/// No second PnP / alignment timer, queue, or backlog.
 ///
-/// ARKit stays full-rate. SIFT is requested at 2 Hz and skips if busy. No backlog.
+/// ARKit stays full-rate. Processing is requested at 2 Hz and skip if busy.
 final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
     @Published private(set) var snapshot = OpenCVRuntimeSnapshot()
     @Published private(set) var siftSnapshot = SIFTRuntimeSnapshot()
+    @Published private(set) var matchingSnapshot = MatchingRuntimeSnapshot()
+    @Published private(set) var pnpSnapshot = PnPRuntimeSnapshot()
+    @Published private(set) var confirmationSnapshot = ConfirmationRuntimeSnapshot()
+    @Published private(set) var alignmentSnapshot = AlignmentRuntimeSnapshot()
+    @Published private(set) var wallDebugSnapshot = WallDebugRuntimeSnapshot()
+    @Published private(set) var wallDebugGeometry = WallAlignmentDebugGeometry.hidden
 
     private let queue = DispatchQueue(label: "com.rockvision.v2.opencv", qos: .userInitiated)
     private let lock = NSLock()
@@ -24,13 +33,13 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
     private var processedFrames = 0
     private var nextFrameID: UInt64 = 1
     private var startedAt = Date()
-    private var currentPreset: SIFTProcessingPreset = .native
+    private var currentPreset: SIFTProcessingPreset = .low
     private var showKeypoints = true
     private var viewSize: CGSize = .zero
     private var interfaceOrientation: UIInterfaceOrientation = .portrait
     private var cycleStartedAt = Date()
     private let cycleSeconds: TimeInterval = 20
-    private var autoCycle = true
+    private var autoCycle = false
     private var currentScene = SIFTSceneLabel.unlabeled.rawValue
     private var didDumpSixty = false
     private var fieldTestLocked = false
@@ -42,6 +51,13 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
         .low: ResolutionAccumulator(),
     ]
     private var sceneBuckets: [String: [SIFTProcessingPreset: ResolutionAccumulator]] = [:]
+    private var referenceDatabase: ReferenceDatabase?
+    private var fixtureLoadAttempted = false
+    private var matchingStatus = "inactive"
+    private var sim3: ValidatedSim3?
+    private var confirmationEngine = LocalizationConfirmation()
+    private var alignmentRuntime = ProductionAlignmentRuntime()
+    private var fieldConfirmationBarrier = FieldConfirmationSessionBarrier()
 
     override init() {
         super.init()
@@ -146,6 +162,28 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
         }
     }
 
+    /// Reset confirmation on the existing OpenCV serial queue, then invoke `completion`.
+    /// In-flight process blocks queued before this call run first (old engine) and must
+    /// not be recorded: Field Test sampling starts only in `completion`.
+    func resetConfirmation(completion: (() -> Void)? = nil) {
+        queue.async { [weak self] in
+            guard let self else {
+                DispatchQueue.main.async { completion?() }
+                return
+            }
+            self.confirmationEngine.reset()
+            self.alignmentRuntime.reset()
+            self.fieldConfirmationBarrier.noteResetCompletedOnProcessingQueue()
+            DispatchQueue.main.async {
+                self.confirmationSnapshot = ConfirmationRuntimeSnapshot()
+                self.alignmentSnapshot = AlignmentRuntimeSnapshot()
+                self.wallDebugSnapshot = WallDebugRuntimeSnapshot()
+                self.wallDebugGeometry = .hidden
+                completion?()
+            }
+        }
+    }
+
     func toggleKeypointOverlay() {
         lock.lock()
         showKeypoints.toggle()
@@ -194,9 +232,11 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
             : nil
         let timestamp = frame.timestamp
         let tracking = Self.trackingLabel(frame.camera.trackingState)
+        let arkitSidecar = Self.sameARFrameSidecar(frame.camera.transform, timestamp: timestamp)
 
         queue.async { [weak self] in
             guard let self else { return }
+            self.ensureFixtureLoaded()
             let diagnostics = OpenCVBridge.processPixelBuffer(buffer)
             let siftObj = OpenCVBridge.extractSIFT(
                 from: buffer,
@@ -204,6 +244,8 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                 targetHeight: Int32(preset.targetHeight),
                 overlayCap: showDots ? 200 : 0
             )
+
+            let matching = self.matchIfNeeded(siftObj: siftObj, preset: preset)
 
             let intrinsics = CameraIntrinsicsValidator.make(
                 cameraMatrix: cameraMatrix,
@@ -213,6 +255,41 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
             )
 
             let result = self.makeResult(siftObj, timestamp: timestamp)
+            let stampedSidecar = arkitSidecar.stamped(frameID: result.frameID, timestamp: result.timestamp)
+            let pnp: PnPFrameResult
+            let confirmationTick: ConfirmationTick?
+            let confirmationStats: ConfirmationStats?
+            let alignmentResult: AlignmentFrameResult
+            let alignmentStats: AlignmentStats?
+            if matching.status == "active" {
+                pnp = RuntimePnP.evaluate(
+                    matching: matching,
+                    camera: intrinsics,
+                    sim3: self.sim3,
+                    frameID: result.frameID,
+                    timestamp: result.timestamp
+                )
+                self.fieldConfirmationBarrier.prepareCandidateIngest(&self.confirmationEngine)
+                if self.fieldConfirmationBarrier.needsFreshEngine {
+                    self.alignmentRuntime.reset()
+                }
+                let tick = self.confirmationEngine.ingest(pnp)
+                confirmationTick = tick
+                confirmationStats = self.confirmationEngine.stats
+                alignmentResult = self.alignmentRuntime.update(
+                    confirmation: tick,
+                    pnp: pnp,
+                    arkit: stampedSidecar,
+                    sim3: self.sim3
+                )
+                alignmentStats = self.alignmentRuntime.stats
+            } else {
+                pnp = .inactive(reason: matching.status)
+                confirmationTick = nil
+                confirmationStats = nil
+                alignmentResult = self.alignmentRuntime.noteNoCandidate()
+                alignmentStats = nil
+            }
             let overlay = showDots ? self.viewPoints(from: result.overlayNative, nativeWidth: result.nativeImageWidth, nativeHeight: result.nativeImageHeight, transform: displayTransform, viewSize: size) : []
 
             self.lock.lock()
@@ -256,19 +333,45 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
             }
             if processed == 1 || processed % 5 == 0 {
                 print(
-                    "SIFTBench: scene=\(scene) res=\(result.processingLabel) kp=\(result.keypointCount) desc=\(result.descriptorLabel) grid=\(result.gridLabel) finite=\(result.descriptorsFinite) match=\(result.rowsMatchKeypoints) pre=\(String(format: "%.2f", result.preprocessLatencyMs)) sift=\(String(format: "%.2f", result.siftLatencyMs)) total=\(String(format: "%.2f", result.totalLatencyMs)) rate=\(String(format: "%.2f", rate)) skipped=\(skipped)"
+                    "SIFTBench: scene=\(scene) res=\(result.processingLabel) kp=\(result.keypointCount) desc=\(result.descriptorLabel) grid=\(result.gridLabel) finite=\(result.descriptorsFinite) match=\(result.rowsMatchKeypoints) pre=\(String(format: "%.2f", result.preprocessLatencyMs)) sift=\(String(format: "%.2f", result.siftLatencyMs)) total=\(String(format: "%.2f", result.totalLatencyMs)) accepted=\(matching.acceptedAfterRatio) unique3D=\(matching.acceptedUniquePoint3D) matchMs=\(String(format: "%.2f", matching.matchingLatencyMs)) stage3=\(String(format: "%.2f", matching.stage3TotalMs)) pnp=\(pnp.status) pnpIn=\(pnp.inputCorrespondenceCount) inliers=\(pnp.inlierCount) cand=\(pnp.candidateQualified) rate=\(String(format: "%.2f", rate)) skipped=\(skipped)"
                 )
             }
 
             // Persistence / field-test bookkeeping is after SIFT timing and must not
             // mutate preprocess/sift/total latency on the result.
-            self.fieldSink?.ingest(
+            let recorded = self.fieldSink?.ingest(
                 result: result,
                 tracking: tracking,
                 skipped: skipped,
                 rateHz: rate,
-                activePreset: preset
-            )
+                activePreset: preset,
+                matching: matching,
+                camera: intrinsics,
+                pnp: matching.status == "active" ? pnp : nil,
+                confirmation: confirmationTick,
+                confirmationStats: confirmationStats,
+                arkitSidecar: matching.status == "active" ? stampedSidecar : nil,
+                alignment: matching.status == "active" ? alignmentResult : nil,
+                alignmentStats: matching.status == "active" ? alignmentStats : nil,
+                wallDebugGeometry: matching.status == "active"
+                    ? WallAlignmentDebugGeometry.evaluate(alignment: alignmentResult)
+                    : nil
+            ) ?? false
+            if matching.status == "active" {
+                self.fieldConfirmationBarrier.noteFieldDecision(
+                    recorded: recorded,
+                    engine: &self.confirmationEngine
+                )
+                if self.fieldConfirmationBarrier.needsFreshEngine {
+                    self.alignmentRuntime.reset()
+                }
+            }
+            let confirmationHUDIdle = matching.status == "active"
+                && !recorded
+                && self.fieldConfirmationBarrier.needsFreshEngine
+            let debugGeometry = confirmationHUDIdle
+                ? WallAlignmentDebugGeometry.hidden
+                : WallAlignmentDebugGeometry.evaluate(alignment: alignmentResult)
 
             DispatchQueue.main.async {
                 var next = self.snapshot
@@ -303,14 +406,96 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                 sift.showKeypoints = showDots
                 sift.overlayViewPoints = overlay
                 self.siftSnapshot = sift
+
+                var matchingSnap = self.matchingSnapshot
+                matchingSnap.status = matching.status
+                matchingSnap.queryKeypoints = matching.status == "active" ? "\(matching.queryKeypoints)" : "—"
+                matchingSnap.acceptedAfterRatio = matching.status == "active" ? "\(matching.acceptedAfterRatio)" : "—"
+                matchingSnap.acceptedUniquePoint3D = matching.status == "active" ? "\(matching.acceptedUniquePoint3D)" : "—"
+                matchingSnap.ratioRejected = matching.status == "active" ? "\(matching.ratioRejected)" : "—"
+                matchingSnap.insufficientDistinctPoint3D = matching.status == "active" ? "\(matching.insufficientDistinctPoint3D)" : "—"
+                matchingSnap.matchingMs = matching.status == "active" ? String(format: "%.2f", matching.matchingLatencyMs) : "—"
+                matchingSnap.stage3Ms = matching.status == "active" ? String(format: "%.2f", matching.stage3TotalMs) : "—"
+                matchingSnap.referenceRows = matching.referenceDescriptorCount > 0 ? "\(matching.referenceDescriptorCount)" : "—"
+                self.matchingSnapshot = matchingSnap
+                self.pnpSnapshot = RuntimePnP.snapshot(from: pnp)
+                if confirmationHUDIdle {
+                    self.confirmationSnapshot = ConfirmationRuntimeSnapshot()
+                    self.alignmentSnapshot = AlignmentRuntimeSnapshot()
+                    self.wallDebugSnapshot = WallDebugRuntimeSnapshot()
+                    self.wallDebugGeometry = .hidden
+                } else {
+                    if let confirmationTick {
+                        self.confirmationSnapshot = ConfirmationSnapshot.make(confirmationTick)
+                    }
+                    self.alignmentSnapshot = AlignmentSnapshot.make(alignmentResult)
+                    self.wallDebugGeometry = debugGeometry
+                    self.wallDebugSnapshot = WallDebugSnapshot.make(debugGeometry)
+                }
             }
         }
+    }
+
+    private static func sameARFrameSidecar(
+        _ transform: simd_float4x4,
+        timestamp: TimeInterval
+    ) -> ARKitCameraTransformSidecar {
+        let columns: [[Double]] = (0..<4).map { col in
+            (0..<4).map { row in Double(transform[col][row]) }
+        }
+        return .capture(columnMajor4x4: columns, timestamp: timestamp)
     }
 
     func dumpAllBuckets() {
         lock.lock()
         dumpAllBucketsLocked()
         lock.unlock()
+    }
+
+    private func ensureFixtureLoaded() {
+        guard !fixtureLoadAttempted else { return }
+        fixtureLoadAttempted = true
+        switch DevelopmentFixture.loadIfPresent() {
+        case .ready(let database):
+            referenceDatabase = database
+            matchingStatus = "active"
+            print("Matching: loaded development fixture rows=\(database.descriptorCount) unique3D=\(Set(database.point3dIds).count) notAWallPackage=\(database.notAWallPackage)")
+        case .inactive(let reason):
+            referenceDatabase = nil
+            matchingStatus = reason
+            print("Matching: inactive \(reason)")
+        }
+        sim3 = ValidatedSim3Loader.loadFromBundle(.main)
+        if let sim3 {
+            print("PnP: loaded S_wall_colmap status=\(sim3.status) scale=\(sim3.scale) metric-only")
+        } else {
+            print("PnP: S_wall_colmap missing; C_wall / observation-depth meters unavailable")
+        }
+    }
+
+    private func matchIfNeeded(siftObj: OpenCVSIFTResult?, preset: SIFTProcessingPreset) -> MatchingFrameResult {
+        let siftTotal = siftObj?.totalMilliseconds ?? 0
+        guard preset == .low else {
+            return .inactive(reason: "960×720 only", siftTotalMs: siftTotal)
+        }
+        guard let database = referenceDatabase else {
+            return .inactive(reason: matchingStatus, siftTotalMs: siftTotal)
+        }
+        guard let siftObj, siftObj.ok else {
+            return .inactive(reason: siftObj?.error ?? "sift not ok", siftTotalMs: siftTotal)
+        }
+        let nativeX = siftObj.nativeX.map(\.doubleValue)
+        let nativeY = siftObj.nativeY.map(\.doubleValue)
+        return RuntimeMatcher.match(
+            queryDescriptors: siftObj.descriptorData,
+            descriptorRows: Int(siftObj.descriptorRows),
+            descriptorCols: Int(siftObj.descriptorCols),
+            descriptorsFinite: siftObj.descriptorsFinite,
+            nativeX: nativeX,
+            nativeY: nativeY,
+            database: database,
+            siftTotalMs: siftTotal
+        )
     }
 
     private func dumpAllBucketsLocked() {

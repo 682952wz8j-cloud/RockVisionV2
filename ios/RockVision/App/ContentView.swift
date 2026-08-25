@@ -1,8 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// Camera + isolated AR session + OpenCV / SIFT diagnostic overlay + Field Test.
-/// Localization remains idle. No matching or PnP.
+/// Camera + Field Test UI. Localization comes from confirmation, not AR alignment.
 struct ContentView: View {
     @StateObject private var sessionHost = ARSessionHost()
     @StateObject private var openCV = OpenCVFrameProcessor()
@@ -11,31 +10,26 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { geo in
-            ZStack(alignment: .topLeading) {
-                ARCameraPreview(session: sessionHost.session)
+            ZStack(alignment: .bottomLeading) {
+                ARCameraPreview(session: sessionHost.session, debugGeometry: openCV.wallDebugGeometry)
                     .ignoresSafeArea()
                 KeypointOverlayView(points: openCV.siftSnapshot.overlayViewPoints)
                     .ignoresSafeArea()
-                VStack(alignment: .leading, spacing: 0) {
-                    DebugOverlayView(
-                        snapshot: sessionHost.snapshot,
-                        openCV: openCV.snapshot,
-                        sift: openCV.siftSnapshot,
-                        onSelectPreset: { preset in
-                            if !fieldTest.locksEngineerControls {
-                                openCV.setPreset(preset)
-                            }
-                        },
-                        onToggleKeypoints: { openCV.toggleKeypointOverlay() },
-                        onSelectScene: { scene in
-                            if !fieldTest.locksEngineerControls {
-                                openCV.setScene(scene)
-                            }
-                        }
-                    )
-                    Spacer()
-                    FieldTestPanel(controller: fieldTest)
-                }
+                FieldTestPanel(
+                    controller: fieldTest,
+                    tracking: sessionHost.snapshot.trackingState,
+                    localization: openCV.confirmationSnapshot.localization,
+                    confirmationWindow: openCV.confirmationSnapshot.window,
+                    alignment: openCV.alignmentSnapshot.status == "yes"
+                        ? "yes \(openCV.alignmentSnapshot.frame)"
+                        : "none",
+                    wallAxes: openCV.wallDebugSnapshot.visible == "yes"
+                        ? openCV.wallDebugSnapshot.axisLengths
+                        : "hidden",
+                    sift: openCV.siftSnapshot,
+                    matching: openCV.matchingSnapshot,
+                    pnp: openCV.pnpSnapshot
+                )
             }
             .onAppear {
                 sessionHost.frameConsumer = openCV
@@ -43,6 +37,9 @@ struct ContentView: View {
                 fieldTest.onApplyScene = { openCV.applyFieldTestScene($0) }
                 fieldTest.onApplyPreset = { openCV.applyFieldTestPreset($0) }
                 fieldTest.onSetLocked = { openCV.setFieldTestLocked($0) }
+                fieldTest.onResetConfirmation = { completion in
+                    openCV.resetConfirmation(completion: completion)
+                }
                 fieldTest.enterFieldTest()
                 openCV.updateViewContext(size: geo.size, orientation: currentOrientation())
                 sessionHost.start()

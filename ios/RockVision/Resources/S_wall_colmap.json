@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "S_wall_colmap.runtime.1",
+  "name": "S_wall_colmap",
+  "status": "VALIDATED",
+  "convention": "X_wall = s * R * X_colmap + t  (column vectors)",
+  "scale": 3.19764417024824,
+  "rotationMatrix": [
+    [
+      -0.800165030903251,
+      0.4649656470515442,
+      -0.37887051928269444
+    ],
+    [
+      0.599600894353238,
+      0.6355562104532535,
+      -0.4863610498848536
+    ],
+    [
+      0.01465233122738616,
+      -0.6163402067172307,
+      -0.7873436725937185
+    ]
+  ],
+  "translationMeters": [
+    -14.05705977150447,
+    31.486410778244565,
+    -36.569903167581565
+  ],
+  "note": "Validated Sim(3) for C_wall and observation-depth meters only. Does not enter PnP. Does not produce T_ARWorld_Wall."
+}

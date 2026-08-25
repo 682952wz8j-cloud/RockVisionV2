@@ -30,6 +30,13 @@ ios/Vendor/OpenCV/opencv/
 ios/Vendor/OpenCV/opencv_contrib/
 ios/Vendor/OpenCV/opencv2.xcframework/
 
+# Mac OpenCV 4.14.0 CLI/Python binding built from the same pinned source
+offline/vendor/opencv414/
+
+# Gate 3C development fixture binaries. Commit the manifest only.
+ios/RockVision/Resources/DevelopmentFixture/descriptors.bin
+ios/RockVision/Resources/DevelopmentFixture/landmarks.json
+
 # Field Test exports if copied from an iPhone into this repo
 **/FieldTests/
 gate3b_*.json

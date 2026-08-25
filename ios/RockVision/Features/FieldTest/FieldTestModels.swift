@@ -130,6 +130,31 @@ struct FieldTestSample: Codable, Equatable, Sendable {
     var rowsMatchKeypoints: Bool
     var skippedFrames: Int
     var achievedRateHz: Double
+    var queryKeypoints: Int? = nil
+    var referenceDescriptorCount: Int? = nil
+    var rawDescriptorCandidates: Int? = nil
+    var uniquePoint3DCandidates: Int? = nil
+    var insufficientDistinctPoint3D: Int? = nil
+    var ratioRejected: Int? = nil
+    var acceptedAfterRatio: Int? = nil
+    var acceptedUniquePoint3D: Int? = nil
+    var duplicatePoint3DRejected: Int? = nil
+    var bestDistanceMedian: Double? = nil
+    var bestRatioMedian: Double? = nil
+    var matchingLatencyMs: Double? = nil
+    var stage3TotalMs: Double? = nil
+    var diagnosticMatches: [DiagnosticMatch]? = nil
+    var pnpCorrespondences: [PnPCorrespondence]? = nil
+    var xyzMissingRejected: Int? = nil
+    var inputCorrespondenceCount: Int? = nil
+    var cameraSidecar: FieldTestCameraSidecar? = nil
+    var pnpDiagnostic: PnPFrameResult? = nil
+    var confirmation: ConfirmationTick? = nil
+    var confirmationStats: ConfirmationStats? = nil
+    var arkitSidecar: ARKitCameraTransformSidecar? = nil
+    var alignment: AlignmentFrameResult? = nil
+    var alignmentStats: AlignmentStats? = nil
+    var wallDebugGeometry: WallAlignmentDebugGeometry? = nil
 }
 
 struct FieldTestMetricStats: Codable, Equatable, Sendable {
@@ -168,6 +193,8 @@ struct FieldTestCellSummary: Codable, Equatable, Sendable {
     var preprocessMs: FieldTestMetricStats?
     var siftMs: FieldTestMetricStats?
     var totalMs: FieldTestMetricStats?
+    var acceptedUniquePoint3D: FieldTestMetricStats? = nil
+    var matchingMs: FieldTestMetricStats? = nil
 }
 
 struct FieldTestSessionRecord: Codable, Equatable, Sendable {
@@ -272,7 +299,27 @@ struct FieldTestSummary: Codable, Equatable, Sendable {
 }
 
 enum FieldTestExportSchema {
-    static let version = "gate3b.export.1"
+    static let version = "gate4b.runtime.1"
+    static let legacyRuntimeVersion = "gate4a.runtime.1"
+    static let legacyOfflineVersion = "gate3d.export.1"
+    static let provenanceOfflineBaseline = PnPConfig.offlineBaselineSession
+    static let provenanceRuntimeBaseline = "gate4a_20260825_104607"
+}
+
+struct FieldTestConfirmationConstants: Codable, Equatable, Sendable {
+    var note: String
+    var confirmWindow: Int
+    var adjacentRotationMaxDeg: Double
+    var adjacentCWallMaxMeters: Double
+    var adjacentRotationFlipGuardDeg: Double
+
+    static let namedUncalibrated = FieldTestConfirmationConstants(
+        note: "named uncalibrated constants; not calibration / not statistically optimized",
+        confirmWindow: ConfirmationConfig.confirmWindow,
+        adjacentRotationMaxDeg: ConfirmationConfig.adjacentRotationMaxDeg,
+        adjacentCWallMaxMeters: ConfirmationConfig.adjacentCWallMaxMeters,
+        adjacentRotationFlipGuardDeg: ConfirmationConfig.adjacentRotationFlipGuardDeg
+    )
 }
 
 enum FieldTestStorageError: Error, LocalizedError, Equatable {
@@ -361,7 +408,9 @@ enum FieldTestStatistics {
             occupancy: FieldTestMetricStats.from(valid.map(\.occupancyRatio)),
             preprocessMs: FieldTestMetricStats.from(valid.map(\.preprocessLatencyMs)),
             siftMs: FieldTestMetricStats.from(valid.map(\.siftLatencyMs)),
-            totalMs: FieldTestMetricStats.from(valid.map(\.totalLatencyMs))
+            totalMs: FieldTestMetricStats.from(valid.map(\.totalLatencyMs)),
+            acceptedUniquePoint3D: FieldTestMetricStats.from(valid.compactMap(\.acceptedUniquePoint3D).map(Double.init)),
+            matchingMs: FieldTestMetricStats.from(valid.compactMap(\.matchingLatencyMs))
         )
     }
 
@@ -381,7 +430,9 @@ enum FieldTestStatistics {
             occupancy: nil,
             preprocessMs: nil,
             siftMs: nil,
-            totalMs: nil
+            totalMs: nil,
+            acceptedUniquePoint3D: nil,
+            matchingMs: nil
         )
     }
 }

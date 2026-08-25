@@ -16,6 +16,7 @@ from offline.ingestion.cli import main as ingest_main  # noqa: E402
 from offline.ingestion.pipeline import repo_root_from  # noqa: E402
 from offline.metric_registration.cli import run_register  # noqa: E402
 from offline.qualification.cli import run_qualify  # noqa: E402
+from offline.reference_matching.cli import run_reference_match  # noqa: E402
 
 
 def main(argv: list[str] | None = None, root: Path | None = None) -> int:
@@ -29,6 +30,15 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     reconstruct_cmd.add_argument("wall_id")
     register_cmd = sub.add_parser("register", help="Metric Registration Gate: solve and validate S_wall_colmap")
     register_cmd.add_argument("wall_id")
+    match_cmd = sub.add_parser(
+        "reference-match",
+        help="Gate 3C: OpenCV reference SIFT, 2px association, freeze artifact, same-image/LOO (stops before Swift)",
+    )
+    match_cmd.add_argument("wall_id")
+    pnp_cmd = sub.add_parser("pnp", help="Gate 3D: pinned OpenCV 4.14.0 single-frame PnP (offline)")
+    pnp_cmd.add_argument("--self-test", action="store_true")
+    pnp_cmd.add_argument("--session", help="Field Test samples.jsonl (not gate3b_20260824_155143)")
+    pnp_cmd.add_argument("--wall-id", default="wall_jiulongfeng_01")
     args = parser.parse_args(argv)
     repo = root or repo_root_from(Path(__file__))
     if args.command == "ingest":
@@ -39,6 +49,12 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
         return run_reconstruct(args.wall_id, repo)
     if args.command == "register":
         return run_register(args.wall_id, repo)
+    if args.command == "reference-match":
+        return run_reference_match(args.wall_id, repo)
+    if args.command == "pnp":
+        from offline.pnp.cli import run_pnp
+
+        return run_pnp(args, repo)
     parser.error(f"unknown command {args.command}")
     return 2
 

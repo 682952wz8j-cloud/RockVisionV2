@@ -1,0 +1,18 @@
+{
+  "schema": "reference_matching.baseline_2px.1",
+  "wallId": "wall_jiulongfeng_01",
+  "developmentFixtureOnly": true,
+  "notAWallPackage": true,
+  "sourceArtifact": "offline/work/wall_jiulongfeng_01/reference_matching/baseline_2px",
+  "descriptorsPath": "descriptors.bin",
+  "landmarksPath": "landmarks.json",
+  "descriptorCount": 47207,
+  "uniquePoint3D": 13771,
+  "referenceImages": 47,
+  "descriptorsSha256": "635982437d892870719591ae397cbfc61d6902084e5533114dc32953dc37c8a1",
+  "landmarksSha256": "39b4292973e1495b91871fbd76a4989e5605107f9d09b61bb0513a63a4a371f6",
+  "descriptorsBytes": 24170004,
+  "landmarksBytes": 17651406,
+  "matcherHotPath": ["descriptor", "point3DID"],
+  "xyzNotUsedInMatching": true
+}

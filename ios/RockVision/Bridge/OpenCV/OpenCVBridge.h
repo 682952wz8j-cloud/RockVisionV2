@@ -47,7 +47,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-/// One SIFT extraction. Descriptors are validated then discarded (not persisted).
+/// One SIFT extraction. Descriptors are copied as row-major float32 NSData; the C++ Mat is released.
 @interface OpenCVSIFTResult : NSObject
 @property (nonatomic, assign) BOOL ok;
 @property (nonatomic, copy) NSString *status;
@@ -71,8 +71,20 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSArray<NSNumber *> *nativeY;
 @property (nonatomic, copy) NSArray<NSNumber *> *overlayNativeX;
 @property (nonatomic, copy) NSArray<NSNumber *> *overlayNativeY;
+@property (nonatomic, copy, nullable) NSData *descriptorData;
 @property (nonatomic, copy, nullable) NSString *error;
 @property (nonatomic, copy) NSString *parameterSummary;
+@end
+
+/// Packed BFMatcher KNN. indicesInt32 is queryCount * k little-endian int32 (-1 pad).
+/// distancesFloat32 is queryCount * k little-endian float32 (+inf pad).
+@interface OpenCVKNNResult : NSObject
+@property (nonatomic, assign) BOOL ok;
+@property (nonatomic, copy, nullable) NSString *error;
+@property (nonatomic, assign) int queryCount;
+@property (nonatomic, assign) int k;
+@property (nonatomic, copy) NSData *indicesInt32;
+@property (nonatomic, copy) NSData *distancesFloat32;
 @end
 
 @interface OpenCVBridge (SIFT)
@@ -92,6 +104,73 @@ NS_ASSUME_NONNULL_BEGIN
                                    targetWidth:(int)targetWidth
                                   targetHeight:(int)targetHeight
                                     overlayCap:(int)overlayCap;
+@end
+
+@interface OpenCVBridge (Matching)
+/// OpenCV BFMatcher NORM_L2, crossCheck=NO, k neighbors. Grouping / ratio stay in Swift.
++ (OpenCVKNNResult *)knnMatchL2QueryDescriptors:(nullable NSData *)query
+                           referenceDescriptors:(nullable NSData *)reference
+                                  descriptorDim:(int)dim
+                                              k:(int)k
+    NS_SWIFT_NAME(knnMatchL2(queryDescriptors:referenceDescriptors:descriptorDim:k:));
+@end
+
+@interface OpenCVProjectedPoints : NSObject
+@property (nonatomic, assign) BOOL ok;
+@property (nonatomic, copy, nullable) NSString *error;
+@property (nonatomic, copy) NSArray<NSArray<NSNumber *> *> *imagePoints;
+@end
+
+@interface OpenCVRodriguesResult : NSObject
+@property (nonatomic, assign) BOOL ok;
+@property (nonatomic, copy, nullable) NSString *error;
+@property (nonatomic, copy) NSArray<NSArray<NSNumber *> *> *rotationMatrix;
+@property (nonatomic, copy) NSArray<NSNumber *> *rvec;
+@end
+
+@interface OpenCVPnPResult : NSObject
+@property (nonatomic, assign) BOOL ok;
+@property (nonatomic, copy, nullable) NSString *error;
+@property (nonatomic, copy) NSString *cvVersion;
+@property (nonatomic, assign) BOOL ransacSuccess;
+@property (nonatomic, copy) NSArray<NSNumber *> *rvecRansac;
+@property (nonatomic, copy) NSArray<NSNumber *> *tvecRansac;
+@property (nonatomic, copy) NSArray<NSNumber *> *rvecRefined;
+@property (nonatomic, copy) NSArray<NSNumber *> *tvecRefined;
+@property (nonatomic, assign) BOOL refineOk;
+@property (nonatomic, copy) NSArray<NSNumber *> *inlierIndices;
+@property (nonatomic, assign) BOOL useExtrinsicGuess;
+@property (nonatomic, assign) int iterationsCount;
+@property (nonatomic, assign) double reprojectionError;
+@property (nonatomic, assign) double confidence;
+@property (nonatomic, copy) NSString *flagsName;
+@property (nonatomic, assign) int flagsValue;
+@property (nonatomic, copy) NSString *distortionModel;
+@end
+
+@interface OpenCVBridge (PnP)
++ (int)solvePnPFlagsEPNP;
++ (NSString *)solvePnPBaselineSummary;
+
++ (OpenCVProjectedPoints *)projectPointsObjectPoints:(NSArray<NSArray<NSNumber *> *> *)objectPoints
+                                                rvec:(NSArray<NSNumber *> *)rvec
+                                                tvec:(NSArray<NSNumber *> *)tvec
+                                        cameraMatrix:(NSArray<NSArray<NSNumber *> *> *)cameraMatrix
+                                          distCoeffs:(NSArray<NSNumber *> *)distCoeffs
+    NS_SWIFT_NAME(projectPoints(objectPoints:rvec:tvec:cameraMatrix:distCoeffs:));
+
++ (OpenCVRodriguesResult *)rodriguesRotationFromRvec:(NSArray<NSNumber *> *)rvec
+    NS_SWIFT_NAME(rodriguesRotation(fromRvec:));
+
++ (OpenCVRodriguesResult *)rodriguesRvecFromRotation:(NSArray<NSArray<NSNumber *> *> *)rotationMatrix
+    NS_SWIFT_NAME(rodriguesRvec(fromRotation:));
+
+/// Frozen Gate 3D baseline: EPNP + RANSAC, then RefineLM on RANSAC inliers only.
++ (OpenCVPnPResult *)solvePnPRansacThenRefineObjectPoints:(NSArray<NSArray<NSNumber *> *> *)objectPoints
+                                              imagePoints:(NSArray<NSArray<NSNumber *> *> *)imagePoints
+                                             cameraMatrix:(NSArray<NSArray<NSNumber *> *> *)cameraMatrix
+                                               distCoeffs:(NSArray<NSNumber *> *)distCoeffs
+    NS_SWIFT_NAME(solvePnPRansacThenRefine(objectPoints:imagePoints:cameraMatrix:distCoeffs:));
 @end
 
 NS_ASSUME_NONNULL_END

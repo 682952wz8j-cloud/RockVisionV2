@@ -22,17 +22,55 @@ enum FieldTestExport {
     ) -> String {
         let valid = samples.filter(\.valid).count
         var lines: [String] = [
-            "RockVision Gate 3B Field Test",
+            "RockVision Gate 4B Field Test",
             "session: \(session.sessionID)",
             "status: \(session.status)",
             "samples: \(samples.count)  (valid \(valid) / invalid \(samples.count - valid))",
             "OpenCV: \(session.openCVVersion)",
             "App: \(identity.display)",
             "schema: \(FieldTestExportSchema.version)",
+            "offlineBaseline: \(FieldTestExportSchema.provenanceOfflineBaseline)",
+            "runtimeBaseline: \(FieldTestExportSchema.provenanceRuntimeBaseline)",
             "SIFT: \(session.siftParameters)",
             "testMode: \(session.testMode)",
             "requestedScene: \(session.requestedScene ?? "—")"
         ]
+        if let stats = samples.compactMap(\.confirmationStats).last {
+            let lastTick = samples.compactMap(\.confirmation).last
+            lines.append("localization: \(lastTick?.localizationState ?? ConfirmationConfig.localizationIdle)")
+            lines.append("confirmWindow: \(ConfirmationConfig.confirmWindow)  (uncalibrated)")
+            lines.append("pnpEval: \(stats.pnpEvaluations)  qualified: \(stats.qualifiedCount)  unqualified: \(stats.unqualifiedCount)")
+            lines.append("confirmAttempts: \(stats.confirmationAttemptCount)  localizedEntries: \(stats.localizedEntryCount)  longestStreak: \(stats.longestValidStreak)")
+            lines.append("resets: \(stats.resetCount)  unqual=\(stats.resetUnqualified) rot=\(stats.resetAdjacentRotation) cWall=\(stats.resetAdjacentCWall) depth=\(stats.resetPositiveDepth) nonFinite=\(stats.resetNonFinite) flip=\(stats.resetAntiFlip)")
+            lines.append("afterLocalizedAccepted: \(stats.acceptedAfterFirstLocalized)  localizedLosses: \(stats.localizedLossCount)")
+            if let seq = stats.firstLocalizedSequence {
+                lines.append("firstLocalizedSequence: \(seq.map(String.init).joined(separator: ","))")
+            }
+            lines.append("confirmedEqualsLatestRefined: \(stats.confirmedAlwaysEqualsLatestRefined)")
+            let lastAlignment = samples.compactMap(\.alignment).last
+            if let aligned = lastAlignment, aligned.hasT_ARWorld_Wall, let id = aligned.provenance?.confirmedFrameID {
+                lines.append("T_ARWorld_Wall: yes frame=\(id)")
+            } else {
+                lines.append("T_ARWorld_Wall: none")
+            }
+            if let alignStats = samples.compactMap(\.alignmentStats).last {
+                lines.append("productionAlignmentCalled: \(alignStats.generatedCount > 0)")
+                if let first = alignStats.firstGeneratedFrameID {
+                    lines.append("firstT_ARWorld_WallFrameID: \(first)")
+                }
+                lines.append("alignmentGenerated: \(alignStats.generatedCount)  cleared: \(alignStats.clearedCount)")
+                lines.append("renderedRoute: \(alignStats.renderedRoute)")
+            }
+            let lastGeom = samples.compactMap(\.wallDebugGeometry).last
+            if let geom = lastGeom, geom.visible,
+               let x = geom.axisLengthX, let y = geom.axisLengthY, let z = geom.axisLengthZ {
+                lines.append("wallDebugGeometry: \(geom.kind) visible frame=\(geom.sourceFrameID.map(String.init) ?? "—")")
+                lines.append(String(format: "axisLengths_m: X=%.6f Y=%.6f Z=%.6f", x, y, z))
+                lines.append("validatedLandmarks: \(geom.validatedLandmarkCount)")
+            } else {
+                lines.append("wallDebugGeometry: hidden")
+            }
+        }
         if let summary {
             lines.append("phase: \(summary.phase)")
             for cell in summary.cells where cell.status != .pending {
@@ -46,6 +84,27 @@ enum FieldTestExport {
                 }
                 if let kp = cell.keypoints?.median {
                     extra += "  kpMed=\(String(format: "%.0f", kp))"
+                }
+                if let match = cell.matchingMs?.median {
+                    extra += "  matchMed=\(String(format: "%.1f", match))ms"
+                }
+                if let unique = cell.acceptedUniquePoint3D?.median {
+                    extra += "  unique3DMed=\(String(format: "%.0f", unique))"
+                }
+                let corr = samples.filter { $0.valid && $0.scene == cell.scene && $0.presetLabel == cell.presetLabel }
+                if let inputMed = FieldTestMetricStats.from(corr.compactMap(\.inputCorrespondenceCount).map(Double.init))?.median {
+                    extra += "  pnpInMed=\(String(format: "%.0f", inputMed))"
+                }
+                let pnp = corr.compactMap(\.pnpDiagnostic)
+                if !pnp.isEmpty {
+                    let candidates = pnp.filter(\.candidateQualified).count
+                    extra += "  pnpCand=\(candidates)/\(pnp.count)"
+                    if let inlierMed = FieldTestMetricStats.from(pnp.map { Double($0.inlierCount) })?.median {
+                        extra += "  inlierMed=\(String(format: "%.0f", inlierMed))"
+                    }
+                    if let depthMed = FieldTestMetricStats.from(pnp.compactMap(\.medianInlierDepthMeters))?.median {
+                        extra += "  obsDepthMed=\(String(format: "%.2f", depthMed))m"
+                    }
                 }
                 lines.append("\(cell.scene) \(cell.presetLabel) \(cell.status.rawValue) \(cell.progressLabel)\(extra)")
             }

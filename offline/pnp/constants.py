@@ -1,0 +1,28 @@
+"""Frozen Gate 3D PnP constants. Names, not magic numbers."""
+
+from __future__ import annotations
+
+from offline.reference_matching.constants import PINNED_OPENCV_COMMIT, PINNED_OPENCV_TAG, PINNED_OPENCV_VERSION
+
+USE_EXTRINSIC_GUESS = False
+ITERATIONS_COUNT = 100
+REPROJECTION_ERROR_NATIVE_PX = 8.0
+CONFIDENCE = 0.99
+FLAGS_NAME = "SOLVEPNP_EPNP"
+FLAGS_VALUE = 1
+DISTORTION_MODEL = "zeros"
+QUERY_COORDINATE_SPACE = "nativeCapturedImage"
+EXPECTED_NATIVE_WIDTH = 1920
+EXPECTED_NATIVE_HEIGHT = 1440
+ASSOCIATION_RADIUS_PX = 2.0
+POSE_NAME = "T_opencvCam_colmap"
+POSE_CONVENTION = "X_cam = R * X_colmap + t"
+CAMERA_CENTER_CONVENTION = "C_colmap = -R^T * t"
+
+FORBIDDEN_FIELD_TEST = "gate3b_20260824_155143"
+
+__all__ = [
+    "PINNED_OPENCV_COMMIT",
+    "PINNED_OPENCV_TAG",
+    "PINNED_OPENCV_VERSION",
+]

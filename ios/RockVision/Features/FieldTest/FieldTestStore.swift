@@ -73,10 +73,10 @@ final class FieldTestStore {
     func createSession(openCVVersion: String, plan: FieldTestRunPlan = .full) throws -> FieldTestSessionHandle {
         try fileManager.createDirectory(at: rootURL, withIntermediateDirectories: true)
         let stamp = Self.timestampFormatter.string(from: Date())
-        var id = "gate3b_\(stamp)"
+        var id = "gate4b_\(stamp)"
         var url = rootURL.appendingPathComponent(id, isDirectory: true)
         if fileManager.fileExists(atPath: url.path) {
-            id = "gate3b_\(stamp)_\(UUID().uuidString.prefix(6))"
+            id = "gate4b_\(stamp)_\(UUID().uuidString.prefix(6))"
             url = rootURL.appendingPathComponent(id, isDirectory: true)
         }
         try fileManager.createDirectory(at: url, withIntermediateDirectories: true)
@@ -204,9 +204,22 @@ final class FieldTestSessionHandle {
         struct Report: Codable {
             var session: FieldTestSessionRecord
             var summary: FieldTestSummary
+            var confirmationStats: ConfirmationStats?
+            var alignmentStats: AlignmentStats?
+            var confirmationConstants: FieldTestConfirmationConstants
             var samples: [FieldTestSample]
         }
-        try atomicWrite(Report(session: session, summary: summary, samples: samples), to: reportURL)
+        try atomicWrite(
+            Report(
+                session: session,
+                summary: summary,
+                confirmationStats: samples.compactMap(\.confirmationStats).last,
+                alignmentStats: samples.compactMap(\.alignmentStats).last,
+                confirmationConstants: .namedUncalibrated,
+                samples: samples
+            ),
+            to: reportURL
+        )
     }
 
     func loadSession() throws -> FieldTestSessionRecord {
