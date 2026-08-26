@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "gate4b.landmarks.1",
+  "status": "FROZEN",
+  "purpose": "Gate 4B physical metric validation",
+  "wallID": "wall_jiulongfeng_01",
+  "coordinateFrame": "WallMetricMeters",
+  "coordinateConvention": {
+    "source": "WallLocal metres from Terra PLY / SRSOrigin",
+    "sourceToWallTransform": "identity",
+    "S_wall_colmapApplied": false
+  },
+  "selection": {
+    "method": "human-selected from geometry before AR physical measurement",
+    "selectedBeforePhysicalMeasurement": true,
+    "physicalMeasurementStartedAtFreeze": false,
+    "replacementAfterFreezeAllowed": false
+  },
+  "sourcePackage": {
+    "path": "incoming/wall_jiulongfeng_01/Gate4B_4points_white_wall.zip",
+    "sha256": "043bbcdfc788a421851bff5a01f2e86c9c0bb5cc2cb0c1c42173fb0770622207",
+    "sha256Definition": "SHA-256 of exact ZIP file bytes"
+  },
+  "sourceConsistency": {
+    "comparison": "parsed numeric XYZ; 3D Euclidean distance",
+    "maxAllowedDifferenceMeters": 0.001,
+    "actualMaxDifferenceMeters": 0.0
+  },
+  "landmarks": [
+    {
+      "id": "W01",
+      "wallXYZMeters": [
+        -11.0079,
+        26.0123,
+        -38.8601
+      ],
+      "physicalIdentifiabilityConfirmed": true
+    },
+    {
+      "id": "W02",
+      "wallXYZMeters": [
+        -11.5775,
+        25.7312,
+        -46.39
+      ],
+      "physicalIdentifiabilityConfirmed": true
+    },
+    {
+      "id": "W03",
+      "wallXYZMeters": [
+        -26.4578,
+        25.5131,
+        -38.4759
+      ],
+      "physicalIdentifiabilityConfirmed": true
+    },
+    {
+      "id": "W04",
+      "wallXYZMeters": [
+        -26.3984,
+        25.0606,
+        -46.3409
+      ],
+      "physicalIdentifiabilityConfirmed": true
+    }
+  ]
+}
