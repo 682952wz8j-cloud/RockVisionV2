@@ -45,7 +45,8 @@ Stage 4 — AR Alignment                       IN PROGRESS
            formal field: gate4a_20260825_104607
   Gate 4A — METRIC ALIGNMENT                 PASS / CLOSED
   Gate 4B                                  diagnostic geometry present;
-                                           measurement preparation NOT STARTED;
+                                           landmarks FROZEN (W01–W04);
+                                           measurement preparation IN PROGRESS;
                                            physical measurement NOT STARTED;
                                            not PASS
 Stage 5 — Route AR                           BLOCKED
@@ -56,7 +57,7 @@ Stage 5 — Route AR                           BLOCKED
 | 1 | Clean iOS app, ARKit session, camera frames | **PASS** |
 | 2 | COLMAP reconstruction + `S_wall_colmap` | **PASS** (`S_wall_colmap` **VALIDATED**) |
 | 3 | Visual query → matches → confirmed `T_opencvCam_colmap` | **PASS** (Gates 3A–3E current requirements) |
-| 4 | `T_ARWorld_Wall` / metric AR alignment | **IN PROGRESS** — Gate 4A **PASS / CLOSED**; Gate 4B diagnostic present, measurement not started |
+| 4 | `T_ARWorld_Wall` / metric AR alignment | **IN PROGRESS** — Gate 4A **PASS / CLOSED**; Gate 4B landmarks **FROZEN**, physical measurement not started |
 | 5 | Route polylines in AR | **BLOCKED** until Gate 4B physical validation and an explicit Stage 5 open |
 
 Stage 2 **PASS** and `S_wall_colmap` **VALIDATED** clear the Sim(3)
@@ -80,7 +81,7 @@ Stage 4 sub-gates:
 |------|------|--------|
 | 4A same-frame / lifetime | Rolling `T_ARWorld_Wall` from confirmed last-frame pose + same ARFrame | **PASS / CLOSED** — formal field `gate4a_20260825_104607` |
 | 4A metric alignment | Wall meters → ARWorld meters SE(3) | **PASS / CLOSED** |
-| 4B | Metric Wall geometry in ARWorld | diagnostic geometry present; measurement preparation **NOT STARTED**; physical measurement **NOT STARTED**; **not PASS** |
+| 4B | Metric Wall geometry in ARWorld | diagnostic geometry present; landmarks **FROZEN** (`validation/gate4b/gate4b_landmarks_frozen.json`, W01–W04); measurement preparation **IN PROGRESS**; physical measurement **NOT STARTED**; **not PASS** |
 
 ---
 
@@ -88,7 +89,7 @@ Stage 4 sub-gates:
 
 **Gate 4A — PASS / CLOSED** (same-frame / lifetime and metric SE(3)).
 
-**Gate 4B — diagnostic geometry present; measurement not started; not PASS.**
+**Gate 4B — diagnostic geometry present; landmarks FROZEN (W01–W04); measurement preparation IN PROGRESS; physical measurement not started; not PASS.**
 
 Formal provenance:
 
@@ -112,12 +113,14 @@ loss clears `T_ARWorld_Wall` immediately. This is **not** persistent
 Wall↔ARWorld lock.
 
 Gate 4B Layer 1 origin + 1 m XYZ debug geometry consumes that production
-`T` only. Do not treat visible axes as Gate 4B PASS.
+`T` only. Formal landmarks W01–W04 are **FROZEN** in
+`validation/gate4b/gate4b_landmarks_frozen.json`. Do not treat visible
+axes as Gate 4B PASS.
 
-**Current discipline** (until Gate 4B measurement is **explicitly
-opened**):
+**Current discipline** (until remaining Gate 4B measurement work is
+**explicitly opened**):
 
-- Do not prepare landmarks
+- Do not reselect, replace, or optimize frozen W01–W04
 - Do not start Gate 4B physical measurement
 - Do not start Stage 5 / climbing route rendering
 - Do not implement persistent world lock
@@ -169,7 +172,9 @@ GPS (coarse Wall ID candidates only)
   → Gate 3E confirmation (last-frame pose)            [implemented]
   → S_wall_colmap (VALIDATED)
   → productionAlignment → T_ARWorld_Wall              [Gate 4A CLOSED]
-  → Gate 4B diagnostic origin + 1 m axes              [present; measurement not started]
+  → Gate 4B diagnostic origin + 1 m axes              [present]
+  → Gate 4B landmarks W01–W04                         [FROZEN; validation/gate4b]
+  → Gate 4B physical measurement                      [NOT STARTED]
   → route rendering                                   [Stage 5; BLOCKED]
 ```
 
@@ -207,8 +212,9 @@ Frozen. Do not float versions or swap algorithms inside a gate.
 `S_wall_colmap` is **VALIDATED** for the current wall (scale
 **3.19764417024824** meters / recon-unit). Matching success is not a
 pose. Confirmed `T_opencvCam_colmap` is the confirmation-window last
-frame. Gate 4A metric `T_ARWorld_Wall` is SE(3). Gate 4B physical
-measurement has not started. Stage 5 remains **BLOCKED**.
+frame. Gate 4A metric `T_ARWorld_Wall` is SE(3). Gate 4B landmarks
+W01–W04 are **FROZEN**. Physical measurement has not started. Stage 5
+remains **BLOCKED**.
 
 ---
 
@@ -221,14 +227,15 @@ Allowed now:
 
 Allowed only when **explicitly opened**:
 
-- Gate 4B measurement preparation (human-confirmed landmarks +
-  independent measurement method)
+- Remaining Gate 4B measurement preparation (independent measurement method against frozen W01–W04)
+- Gate 4B physical measurement
 - Stage 5 route rendering
 - Persistent Wall↔ARWorld lock (not part of Gate 4A)
 
 **Not allowed now**
 
-- Landmark guessing or Gate 4B physical measurement
+- Reselecting or replacing frozen W01–W04
+- Gate 4B physical measurement until explicitly opened
 - Climbing route rendering / Stage 5
 - Persistent lock / ARAnchor persistence / smoothing / Kalman
 - Empirical scale, offset, or extra axis flip in the overlay
