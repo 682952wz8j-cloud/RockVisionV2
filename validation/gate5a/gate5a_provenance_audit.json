@@ -1,0 +1,221 @@
+{
+  "schemaVersion": "gate5a.provenance.audit.1",
+  "kind": "audit",
+  "notARoutePackage": true,
+  "notProduction": true,
+  "gate5APass": false,
+  "firstRouteFrozen": false,
+  "auditedAt": "2026-08-27",
+  "purpose": "Gate 5A provenance-first start checkpoint. Not authorization to create routes.json and not Gate 5A PASS.",
+  "status": {
+    "STAGE_5_OPEN": true,
+    "STAGE_5_PASS": false,
+    "GATE_5A_STARTED": true,
+    "GATE_5A_PASS": false,
+    "GATE_5A_INPUT_READY": "NOT_PROVEN",
+    "ROUTE_PACKAGE_CREATED": false,
+    "ROUTE_RENDERING_STARTED": false,
+    "FIRST_ROUTE_FROZEN": false
+  },
+  "sourceDxf": {
+    "path": "incoming/wall_jiulongfeng_01/test routes.dxf",
+    "gitignored": true,
+    "sizeBytes": 7120,
+    "sha256": "3c9528439396ba744e6dc04c909c2f6e679104171a499be57b616834c888fd17",
+    "creatorComments": [
+      "Created by CloudCompare v2.14.beta (Jun 29 2026)",
+      "Created 2026-08-19T16:07:50",
+      "dxflib 3.17.0.0"
+    ],
+    "header": {
+      "$ACADVER": "AC1009",
+      "$INSUNITS": "missing",
+      "$INSBASE": [0.0, 0.0, 0.0],
+      "$EXTMIN": [-27.8782991886138909, 22.4604230403900154, -47.6597055912017851],
+      "$EXTMAX": [-8.9965663433074958, 26.8565001010894768, -36.4629407405853243]
+    },
+    "entityTypeCounts": {
+      "POLYLINE": 3,
+      "VERTEX": 19,
+      "SEQEND": 3
+    }
+  },
+  "coordinateRanges": {
+    "includingDummyOriginsBBox": {
+      "xmin": -27.020038604736328,
+      "xmax": 0.0,
+      "ymin": 0.0,
+      "ymax": 25.998239517211914,
+      "zmin": -46.80144500732422,
+      "zmax": 0.0
+    },
+    "excludingDummyOriginsVertexBBox": {
+      "xmin": -27.020038604736328,
+      "xmax": -9.854826927185059,
+      "ymin": 23.318683624267578,
+      "ymax": 25.998239517211914,
+      "zmin": -46.80144500732422,
+      "zmax": -37.32120132446289
+    }
+  },
+  "zeroZeroZero": {
+    "vertexAtOrigin": false,
+    "polylineDummyOriginCount": 3,
+    "dummyOriginClassification": "DXF POLYLINE entity location (group 10/20/30), not a VERTEX. AutoCAD 3D polyline base point. Not classified as a climbing-route vertex.",
+    "dummyOriginEvidenceLevel": "SUPPORTED"
+  },
+  "polylines": [
+    {
+      "layer": "POLYLINE_001",
+      "dxfFlags70": 8,
+      "dxfFlags70Meaning": "bit 8 = 3D polyline (DXF POLYLINE flag)",
+      "dummyOrigin": [0.0, 0.0, 0.0],
+      "vertexCount": 8,
+      "numericLength": 14.460760645,
+      "numericLengthNote": "numeric length; units unproven",
+      "vertices": [
+        [-24.02208709716797, 25.198854446411133, -46.80144500732422],
+        [-24.47772216796875, 25.169706344604492, -44.06718444824219],
+        [-26.743297576904297, 25.04014778137207, -44.25067901611328],
+        [-27.020038604736328, 25.01769256591797, -42.9462890625],
+        [-26.62284278869629, 25.045272827148438, -41.233463287353516],
+        [-24.413806915283203, 25.16014289855957, -40.72309494018555],
+        [-23.93240737915039, 25.17730712890625, -39.323204040527344],
+        [-23.63201904296875, 23.595252990722656, -37.32120132446289]
+      ],
+      "centroid": [-25.108027696609497, 24.925547122955322, -42.08332014083862],
+      "nearestFrozenLandmark": {"id": "W03", "distanceNumeric": 3.896227},
+      "verticesInsideWhiteWallYSkin": 7,
+      "verticesOutsideWhiteWallYSkin": 1
+    },
+    {
+      "layer": "POLYLINE_002",
+      "dxfFlags70": 8,
+      "dxfFlags70Meaning": "bit 8 = 3D polyline (DXF POLYLINE flag)",
+      "dummyOrigin": [0.0, 0.0, 0.0],
+      "vertexCount": 5,
+      "numericLength": 9.693031728,
+      "numericLengthNote": "numeric length; units unproven",
+      "vertices": [
+        [-10.266645431518555, 23.859628677368164, -46.788917541503906],
+        [-10.29449462890625, 24.545883178710938, -43.85649108886719],
+        [-10.233866691589355, 23.318683624267578, -42.2381591796875],
+        [-10.26134967803955, 24.791427612304688, -39.89960479736328],
+        [-9.854826927185059, 24.130556106567383, -38.18111038208008]
+      ],
+      "centroid": [-10.182236671447754, 24.12923583984375, -42.19285659790039],
+      "nearestFrozenLandmark": {"id": "W01", "distanceNumeric": 3.915982},
+      "verticesInsideWhiteWallYSkin": 1,
+      "verticesOutsideWhiteWallYSkin": 4
+    },
+    {
+      "layer": "POLYLINE_003",
+      "dxfFlags70": 8,
+      "dxfFlags70Meaning": "bit 8 = 3D polyline (DXF POLYLINE flag)",
+      "dummyOrigin": [0.0, 0.0, 0.0],
+      "vertexCount": 6,
+      "numericLength": 9.251687839,
+      "numericLengthNote": "numeric length; units unproven",
+      "vertices": [
+        [-13.748878479003906, 25.763465881347656, -46.72932434082031],
+        [-14.309965133666992, 25.739185333251953, -44.666690826416016],
+        [-13.402446746826172, 25.784446716308594, -42.7978515625],
+        [-14.208612442016602, 25.73343276977539, -41.2445182800293],
+        [-14.090777397155762, 25.739084243774414, -39.395111083984375],
+        [-14.121172904968262, 25.998239517211914, -37.98712921142578]
+      ],
+      "centroid": [-13.980308850606283, 25.792975743611652, -42.13677088419596],
+      "nearestFrozenLandmark": {"id": "W01", "distanceNumeric": 4.429434},
+      "verticesInsideWhiteWallYSkin": 6,
+      "verticesOutsideWhiteWallYSkin": 0
+    }
+  ],
+  "whiteWallYSkinFromGate4BPackage": {
+    "source": "incoming/wall_jiulongfeng_01/Gate4B_4points_white_wall.zip points.json whiteWallCropApprox.Y_skin (read-only)",
+    "Y": [24.75, 26.15],
+    "note": "Used only as a comparison band. Not a DXF source-model proof."
+  },
+  "comparisons": {
+    "blockRPlyVertexNearestNeighbor": {
+      "ply": "incoming/wall_jiulongfeng_01/九龙峰森林站大楼/models/pc/0/terra_ply/BlockR/BlockR.ply",
+      "method": "nearest PLY vertex (not triangle-surface distance)",
+      "query": "19 DXF VERTEX records; POLYLINE dummy origins excluded",
+      "min": 0.01410692133885146,
+      "median": 0.03662702055495774,
+      "p90": 0.18747491236597708,
+      "max": 0.21297545085239517,
+      "evidenceLevel": "SUPPORTED",
+      "note": "Spatial consistency with BlockR.ply vertices. Not source-model identity. Not unit proof. Not export-identity proof."
+    },
+    "frozenLandmarksW01W04": {
+      "coordinateFrameOfLandmarks": "WallMetricMeters",
+      "dxfOverlapWithLandmarkBBox": "SUPPORTED spatial overlap of VERTEX bbox with W01-W04 bbox; not identity of frames",
+      "evidenceLevel": "SUPPORTED"
+    },
+    "colmapReconUnitHypothesis": {
+      "test": "If DXF were COLMAP recon units, DXF * S_wall_colmap (3.19764417024824) would match WallMetricMeters landmark bbox",
+      "result": "mismatch (scaled DXF bbox far from W01-W04)",
+      "evidenceLevel": "NOT_PROVEN",
+      "note": "Mismatch is evidence against a COLMAP-unit interpretation. It does not prove WallMetricMeters."
+    }
+  },
+  "provenanceQuestions": {
+    "cloudCompareSourceModelFile": {
+      "answer": "NOT_PROVEN",
+      "note": "No CloudCompare project/session file names the model used to digitize these polylines. DXF timestamp 2026-08-19T16:07:50. Gate 4B ZIP is dated 2026-08-26 and is not a DXF source record."
+    },
+    "sourceModelIsGate4BWallLocalTerraPly": {
+      "answer": "SUPPORTED",
+      "note": "VERTEX nearest-neighbor distances to BlockR.ply are centimetre-to-decimetre. That is spatial consistency, not model-identity proof."
+    },
+    "exportIsIdentityNoExtraTRS": {
+      "answer": "NOT_PROVEN",
+      "note": "No export log. CloudCompare global-shift / output-frame settings were not recorded."
+    },
+    "unitsAreMeters": {
+      "answer": "NOT_PROVEN",
+      "note": "$INSUNITS missing. Numeric magnitude overlaps WallLocal metres; that is not unit proof."
+    },
+    "alreadyWallMetricMeters": {
+      "answer": "NOT_PROVEN",
+      "note": "WallMetricMeters requires proven source identity + identity export + metres + relation to frozen WallMetricMeters. Spatial consistency alone stays SUPPORTED."
+    },
+    "stillColmapReconUnits": {
+      "answer": "NOT_PROVEN",
+      "note": "Scale test against S_wall_colmap mismatches frozen landmark bbox. Frame is not thereby proven."
+    }
+  },
+  "coordinateFrameEvidence": {
+    "V1_ENU": "NOT_PROVEN",
+    "WallLocal_WallMetricMeters": "SUPPORTED",
+    "raw_UTM": "NOT_PROVEN",
+    "COLMAP_recon_units": "NOT_PROVEN",
+    "ARWorld": "NOT_PROVEN",
+    "declaredFrame": "UNKNOWN"
+  },
+  "routeIdentity": {
+    "status": "NOT_PROVEN",
+    "availableLabels": ["POLYLINE_001", "POLYLINE_002", "POLYLINE_003"],
+    "note": "DXF layer names only. No climbing-route ID, name, grade, or bolt count was invented."
+  },
+  "unfrozenRecommendation": {
+    "layer": "POLYLINE_003",
+    "frozen": false,
+    "reason": "All 6 VERTEX records lie in the Gate 4B white-wall Y_skin band; VERTEX NN to BlockR.ply is tight; X span is small (near-vertical on the Stage 4 facade). Completeness is lower than POLYLINE_001 (6 vs 8 points). Not selected. Not frozen.",
+    "alternatives": {
+      "POLYLINE_001": "Most VERTEX records (8) and longest numeric length; last VERTEX is outside white-wall Y_skin.",
+      "POLYLINE_002": "Fewest VERTEX records; 4 of 5 outside white-wall Y_skin."
+    }
+  },
+  "priorQualificationReport": {
+    "path": "offline/work/wall_jiulongfeng_01/qualification/route_coordinate_report.json",
+    "note": "Read-only. vertexCount=22 includes 3 POLYLINE dummy origins. Not used as authoritative this round."
+  },
+  "missingEvidenceForGate5APass": [
+    "Proven CloudCompare source model identity",
+    "Proven identity export (no extra T/R/S/scale)",
+    "Proven units metres ($INSUNITS or equivalent written proof)",
+    "Proven relation to frozen WallMetricMeters",
+    "Climbing-route identity (ID + name) for one polyline"
+  ]
+}

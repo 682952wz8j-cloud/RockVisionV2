@@ -50,8 +50,11 @@ Stage 4 — AR Alignment                       PASS
                                            (visual identity, 2026-08-27)
 Stage 5 — Route AR                           OPEN / IN PROGRESS
                                            explicitly opened 2026-08-27
-                                           Gate 5A NOT STARTED
+                                           Gate 5A IN PROGRESS
+                                           Gate 5A NOT PASS
+                                           Route package NOT CREATED
                                            Route rendering NOT STARTED
+                                           First route NOT FROZEN
                                            Stage 5 NOT PASS
 ```
 
@@ -61,7 +64,7 @@ Stage 5 — Route AR                           OPEN / IN PROGRESS
 | 2 | COLMAP reconstruction + `S_wall_colmap` | **PASS** (`S_wall_colmap` **VALIDATED**) |
 | 3 | Visual query → matches → confirmed `T_opencvCam_colmap` | **PASS** (Gates 3A–3E current requirements) |
 | 4 | `T_ARWorld_Wall` / metric AR alignment | **PASS** — Gate 4A **PASS / CLOSED**; Gate 4B landmarks **FROZEN**, AR physical measurement **PASS / CLOSED** (`validation/gate4b/gate4b_ar_physical_measurement.json`) |
-| 5 | Route polylines in AR | **OPEN / IN PROGRESS** (opened 2026-08-27). Gate 5A **NOT STARTED**. Route rendering **NOT STARTED / NOT AUTHORIZED**. Stage 5 **NOT PASS** |
+| 5 | Route polylines in AR | **OPEN / IN PROGRESS** (opened 2026-08-27). Gate 5A **IN PROGRESS** (provenance-first, started 2026-08-27). Gate 5A **NOT PASS**. Route package **NOT CREATED / NOT AUTHORIZED**. Route rendering **NOT STARTED / NOT AUTHORIZED**. First route **NOT FROZEN**. Stage 5 **NOT PASS** |
 
 Stage 2 **PASS** and `S_wall_colmap` **VALIDATED** clear the Sim(3)
 prerequisite. Gate 4A **PASS / CLOSED** means production `T_ARWorld_Wall`
@@ -94,7 +97,7 @@ Stage 4 sub-gates:
 
 **Gate 4B — PASS / CLOSED** (landmarks FROZEN W01–W04; AR physical measurement PASS, visual identity 2026-08-27).
 
-**Stage 5 — OPEN / IN PROGRESS** (explicitly opened 2026-08-27). Gate 5A **NOT STARTED**. Route rendering **NOT STARTED / NOT AUTHORIZED**. Stage 5 **NOT PASS**.
+**Stage 5 — OPEN / IN PROGRESS** (explicitly opened 2026-08-27). Gate 5A **IN PROGRESS** (provenance-first; this round is the Gate 5A start protocol). Gate 5A **NOT PASS**. Route package **NOT CREATED / NOT AUTHORIZED**. Route rendering **NOT STARTED / NOT AUTHORIZED**. First route **NOT FROZEN**. Stage 5 **NOT PASS**.
 
 Formal provenance:
 
@@ -103,6 +106,7 @@ Formal provenance:
   `qualifiedCount=19`)
 - Gate 4A field session (same-frame / lifetime): `gate4a_20260825_104607`
 - Gate 4B AR physical measurement: `validation/gate4b/gate4b_ar_physical_measurement.json` (2026-08-27 visual identity; supporting Field Test `gate4b_20260827_121932`)
+- Gate 5A provenance audit (audit only; not a route package; not PASS): `validation/gate5a/gate5a_provenance_audit.json`
 
 Production output (when Localization = localized):
 
@@ -126,12 +130,14 @@ corners after 3D-model identity confirmation. That is Gate 4B PASS.
 It is **not** persistent Wall↔ARWorld lock and **not** permission to
 render routes.
 
-**Current discipline** (Stage 5 **OPEN / IN PROGRESS**; Gate 5A **NOT STARTED**; route rendering **NOT AUTHORIZED**):
+**Current discipline** (Stage 5 **OPEN / IN PROGRESS**; Gate 5A **IN PROGRESS**; Gate 5A **NOT PASS**; route rendering **NOT AUTHORIZED**):
 
 - Do not reselect, replace, or optimize frozen W01–W04
 - Do not tune scale, offset, flip, or `T_ARWorld_Wall` from marker appearance
-- Do not start Gate 5A implementation without a separate explicit protocol
+- Do not create a route package / `routes.json` without subsequent explicit authorization
+- Do not execute Gate 5A PASS closure without subsequent explicit authorization
 - Do not start route rendering
+- Do not freeze a first route in this README
 - Do not implement persistent world lock
 - Do not restore `T_opencvCam_colmap * inverse(S)` as camera SE(3)
 
@@ -184,7 +190,7 @@ GPS (coarse Wall ID candidates only)
   → Gate 4B diagnostic origin + 1 m axes              [present]
   → Gate 4B landmarks W01–W04                         [FROZEN; validation/gate4b]
   → Gate 4B physical measurement                      [PASS]
-  → route rendering                                   [Stage 5 OPEN / IN PROGRESS; Gate 5A NOT STARTED; rendering NOT AUTHORIZED]
+  → route rendering                                   [Stage 5 OPEN / IN PROGRESS; Gate 5A IN PROGRESS / NOT PASS; package NOT AUTHORIZED; rendering NOT AUTHORIZED]
 ```
 
 Gate 3C loads a **development fixture**, not a production Wall Package.
@@ -224,8 +230,10 @@ pose. Confirmed `T_opencvCam_colmap` is the confirmation-window last
 frame. Gate 4A metric `T_ARWorld_Wall` is SE(3). Gate 4B landmarks
 W01–W04 are **FROZEN**. Gate 4B AR physical measurement is **PASS / CLOSED**.
 Stage 5 is **OPEN / IN PROGRESS** (opened 2026-08-27). Gate 5A is
-**NOT STARTED**. Route rendering is **NOT AUTHORIZED**. Stage 5 is
-**NOT PASS**.
+**IN PROGRESS** (provenance-first, started 2026-08-27). Gate 5A is
+**NOT PASS**. Route package creation is **NOT AUTHORIZED**. Route
+rendering is **NOT AUTHORIZED**. First route is **NOT FROZEN**. Stage 5
+is **NOT PASS**.
 
 ---
 
@@ -233,17 +241,25 @@ Stage 5 is **OPEN / IN PROGRESS** (opened 2026-08-27). Gate 5A is
 
 Allowed now:
 
-- Human review of the Stage 5 opening audit
+- Human review of this Gate 5A provenance audit
+- Human confirmation of DXF source model / units / export procedure
+- Human selection / naming of the first test route
 - Human review of `GATE_5A_INPUT_READY`
-- Gate 5A implementation only after a separate explicit protocol
 - Explicit instruction to push for GitHub review (not implied)
+
+Route package creation and Gate 5A PASS closure await subsequent
+explicit authorization / execution protocol. They are **not** started
+by this Gate 5A start protocol.
 
 **Not allowed now**
 
-- Gate 5A implementation without a separate explicit protocol
+- Creating `routes.json` / a production route package
+- Executing Gate 5A PASS closure
 - Route rendering
-- `routes.json` / production route package / DXF in the app bundle
+- DXF in the app bundle
 - Gate 5B / 5C / 5D / 5E
+- Treating spatial consistency as WallMetricMeters **PROVEN**
+- Writing a first route as selected / frozen in this README
 - Reselecting or replacing frozen W01–W04
 - Tuning scale, offset, flip, or production `T` from marker appearance
 - Persistent lock / ARAnchor persistence / smoothing / Kalman
@@ -251,7 +267,7 @@ Allowed now:
 - GPS, compass, or manual Sim(3) as a localization success
 - SuperPoint, LightGlue, SuperGlue, hloc, Core ML features, on-device
   Python, or on-device COLMAP
-- Declaring Stage 5 PASS, Gate 5A started, or route rendering authorized
+- Declaring Stage 5 PASS, Gate 5A PASS, or route rendering authorized
 
 ---
 

@@ -49,8 +49,11 @@ Stage 4 — AR Alignment                       PASS
                                            (visual identity, 2026-08-27)
 Stage 5 — Route AR                           OPEN / IN PROGRESS
                                            explicitly opened 2026-08-27
-                                           Gate 5A NOT STARTED
+                                           Gate 5A IN PROGRESS
+                                           Gate 5A NOT PASS
+                                           Route package NOT CREATED
                                            Route rendering NOT STARTED
+                                           First route NOT FROZEN
                                            Stage 5 NOT PASS
 ```
 
@@ -65,9 +68,12 @@ Landmarks W01–W04 are **FROZEN** in
 AR physical measurement is **PASS / CLOSED**
 ([`validation/gate4b/gate4b_ar_physical_measurement.json`](../validation/gate4b/gate4b_ar_physical_measurement.json),
 visual identity 2026-08-27). Stage 5 is **OPEN / IN PROGRESS**
-(explicitly opened 2026-08-27). Gate 5A is **NOT STARTED**. Route
-rendering is **NOT STARTED / NOT AUTHORIZED**. Stage 5 is **NOT PASS**.
-Gate 5A implementation requires a separate explicit protocol.
+(explicitly opened 2026-08-27). Gate 5A is **IN PROGRESS**
+(provenance-first, started 2026-08-27). Gate 5A is **NOT PASS**. The
+route package is **NOT CREATED / NOT AUTHORIZED**. Route rendering is
+**NOT STARTED / NOT AUTHORIZED**. First route is **NOT FROZEN**. Stage 5
+is **NOT PASS**. This Gate 5A start protocol is not authorization to
+create a route package and not Gate 5A PASS closure.
 
 ---
 
@@ -77,6 +83,8 @@ Gate 5A implementation requires a separate explicit protocol.
 - Current numbering: Stages **1–5**; Stage 3 contains Gate **3A–3E**;
   Stage 4 contains Gate **4A / 4B**
 - Live Stage 5 uses Gate **5A–5E** numbering
+- Live Gate **5A** is route geometry ingestion (provenance-first);
+  currently **IN PROGRESS**, **NOT PASS**
 - The Gate 0–11 chapters below are the **early plan numbering**
 - Live Gate **3C** is reference matching (this document’s historical
   “Gate 4”)
@@ -384,8 +392,9 @@ Thresholds are named and marked uncalibrated.
 **Live equivalent: Gate 4A PASS / CLOSED; Gate 4B PASS / CLOSED
 (landmarks FROZEN W01–W04; AR physical measurement PASS, visual identity
 2026-08-27). Stage 4 = PASS. Stage 5 = OPEN / IN PROGRESS. Gate 5A =
-NOT STARTED. Route rendering = NOT STARTED / NOT AUTHORIZED. Stage 5 =
-NOT PASS.**
+IN PROGRESS. Gate 5A = NOT PASS. Route package = NOT CREATED / NOT
+AUTHORIZED. Route rendering = NOT STARTED / NOT AUTHORIZED. Stage 5 =
+NOT PASS. First route = NOT FROZEN.**
 
 Stage 3 has produced confirmed `T_opencvCam_colmap`. Gate 4A generates
 `T_ARWorld_Wall` from that pose, validated `S_wall_colmap`, and the
@@ -401,8 +410,8 @@ W01–W04 are **FROZEN**. AR physical measurement is **PASS / CLOSED**
 reselect frozen landmarks. Do **not** tune production `T` from overlay
 appearance.
 
-- Do **not** start route rendering. Gate 5A implementation requires a
-  separate explicit protocol.
+- Do **not** start route rendering. Do **not** create a route package.
+  Gate 5A PASS closure awaits subsequent explicit authorization.
 - Do **not** use runtime GPS or T/R/S as a substitute.
 - Do **not** use bbox size as proof of meters.
 - Do **not** restore `T_opencvCam_colmap * inverse(S_wall_colmap)` as
@@ -412,9 +421,10 @@ If debug axes drift or sit in the wrong place: debug correspondences,
 PnP, `K`, `T` direction, `S_wall_colmap` — not a T/R/S slider, and not
 an empirical scale in the overlay.
 
-**STOP.** Stage 5 is OPEN / IN PROGRESS. Do not start Gate 5A
-implementation without a separate explicit protocol. Do not start route
-rendering. Frozen W01–W04 are unchanged.
+**STOP.** Stage 5 is OPEN / IN PROGRESS. Gate 5A is IN PROGRESS
+(provenance-first). Do not create a route package. Do not execute Gate
+5A PASS closure without subsequent explicit authorization. Do not start
+route rendering. Frozen W01–W04 are unchanged.
 
 ---
 
