@@ -45,8 +45,7 @@ Stage 4 — AR Alignment                       IN PROGRESS
   Gate 4A — METRIC ALIGNMENT                 PASS / CLOSED
   Gate 4B                                  diagnostic geometry present;
                                            landmarks FROZEN (W01–W04);
-                                           measurement preparation IN PROGRESS;
-                                           physical measurement NOT STARTED;
+                                           AR physical measurement IN PROGRESS;
                                            not PASS
 Stage 5 — Route AR                           BLOCKED
 ```
@@ -59,8 +58,7 @@ to render routes.
 Gate 4B Layer 1 diagnostic geometry (origin + 1 m XYZ axes) is present.
 Landmarks W01–W04 are **FROZEN** in
 [`validation/gate4b/gate4b_landmarks_frozen.json`](../validation/gate4b/gate4b_landmarks_frozen.json).
-Measurement preparation is **IN PROGRESS**. Physical measurement has
-**not** started. Gate 4B is **not** PASS.
+AR physical measurement is **IN PROGRESS**. Gate 4B is **not** PASS.
 
 ---
 
@@ -372,7 +370,7 @@ Thresholds are named and marked uncalibrated.
 ## Gate 8 — Coordinate alignment test
 
 **Live equivalent: Gate 4A PASS / CLOSED; Gate 4B diagnostic present,
-landmarks FROZEN (W01–W04); physical measurement not started.**
+landmarks FROZEN (W01–W04); AR physical measurement IN PROGRESS; not PASS.**
 
 Stage 3 has produced confirmed `T_opencvCam_colmap`. Gate 4A generates
 `T_ARWorld_Wall` from that pose, validated `S_wall_colmap`, and the
@@ -383,9 +381,10 @@ Gate 4A is **not** persistent Wall↔ARWorld lock.
 
 Gate 4B Layer 1 diagnostic geometry (Wall origin + 1 m XYZ axes) is
 present and consumes production `T_ARWorld_Wall` only. Formal landmarks
-W01–W04 are **FROZEN**. Physical landmark measurement has **not**
-started. Do **not** treat diagnostic axes as Gate 4B PASS. Do **not**
-reselect frozen landmarks.
+W01–W04 are **FROZEN**. AR physical measurement is **IN PROGRESS**.
+Do **not** treat diagnostic axes or markers as Gate 4B PASS. Do **not**
+reselect frozen landmarks. Do **not** tune production `T` from overlay
+appearance.
 
 - Do **not** render climbing routes.
 - Do **not** use runtime GPS or T/R/S as a substitute.
@@ -397,8 +396,9 @@ If debug axes drift or sit in the wrong place: debug correspondences,
 PnP, `K`, `T` direction, `S_wall_colmap` — not a T/R/S slider, and not
 an empirical scale in the overlay.
 
-**STOP.** Remaining Gate 4B measurement preparation (independent method)
-and physical measurement start only when explicitly opened.
+**STOP.** Do not declare Gate 4B PASS. Do not start Stage 5. Record
+on-site virtual-marker vs physical-point observations against frozen
+W01–W04 only.
 
 ---
 

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "gate4b.arPhysicalMeasurement.1",
+  "status": "IN_PROGRESS",
+  "check": "GATE_4B_AR_PHYSICAL_MEASUREMENT",
+  "purpose": "Compare virtual W01–W04 marker centers to physical landmarks to validate production T_ARWorld_Wall",
+  "wallID": "wall_jiulongfeng_01",
+  "coordinateFrame": "WallMetricMeters",
+  "frozenLandmarksManifest": "validation/gate4b/gate4b_landmarks_frozen.json",
+  "localMetricGtArtifact": "validation/gate4b/gate4b_local_metric_gt.json",
+  "runtimeFixture": "ios/RockVision/Resources/Gate4BMeasurementFixture.json",
+  "gate4b": "NOT_PASS",
+  "stage5": "BLOCKED",
+  "opened": true,
+  "transformTuningAllowed": false,
+  "landmarkReplacementAllowed": false,
+  "method": "While Localization = localized and Markers = 4/4, compare each predicted marker center to the identifiable physical point. Do not treat prediction as its own ground truth. Do not apply S_wall_colmap again. Do not use the 2 cm local-metric GT uncertainty as an AR PASS/FAIL threshold.",
+  "landmarks": ["W01", "W02", "W03", "W04"],
+  "w02Note": "W02 remains in the runtime marker set. Its inner/outer frame-corner tape distances are not local-metric GT. Record AR placement against the same physical identity if it can be pointed to; otherwise note ambiguity.",
+  "observations": [],
+  "physicalErrorMeters": null,
+  "result": null
+}
