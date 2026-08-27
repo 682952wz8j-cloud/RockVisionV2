@@ -1,0 +1,166 @@
+{
+  "schemaVersion": "gate5a.identity.evidence.upgrade.route_test_01.1",
+  "kind": "identity_provenance_evidence_upgrade",
+  "notARoutePackage": true,
+  "notProduction": true,
+  "gate5APass": false,
+  "firstRouteFrozen": false,
+  "subject": "incoming/route_test_01_white_wall.dxf",
+  "evidenceDate": "2026-08-27",
+  "purpose": "Add DIRECT CloudCompare object-property GS/Scale reads for BlockR Vertices and route_test_01 Polyline Vertices. Re-evaluate DXF_TO_BLOCKR_RELATION. Not Gate 5A PASS. Not route-package authorization. Not first-route freeze.",
+  "screenshotEvidence": "HUMAN_REVIEWED_EXTERNAL_EVIDENCE",
+  "screenshotEvidenceNote": "Screenshots were human-reviewed 2026-08-27. They are not stored as paths inside this repository. No fake repository screenshot path was created.",
+  "priorClosure": {
+    "commit": "d2754bcf0ff3abc763e99d7374aee5a0dbe93599",
+    "DXF_TO_BLOCKR_RELATION_then": "IDENTITY_SUPPORTED",
+    "WallMetricMeters_then": "SUPPORTED",
+    "ORIGINAL_SESSION_TRANSFORM_EVIDENCE_then": "NOT_AVAILABLE",
+    "SESSION_FILE_then": "NOT_FOUND"
+  },
+  "status": {
+    "STAGE_5_OPEN": true,
+    "STAGE_5_PASS": false,
+    "GATE_5A_STARTED": true,
+    "GATE_5A_PASS": false,
+    "GATE_5A_INPUT_READY": "YES",
+    "GATE_5A_PROVENANCE_CLOSURE_COMPLETED": true,
+    "DXF_TO_BLOCKR_RELATION": "IDENTITY_PROVEN",
+    "WallMetricMeters": "PROVEN",
+    "ORIGINAL_SESSION_TRANSFORM_EVIDENCE": "DIRECT_READ",
+    "SESSION_FILE": "NOT_FOUND",
+    "ROUTE_PACKAGE_CREATED": false,
+    "ROUTE_RENDERING_STARTED": false,
+    "FIRST_ROUTE_FROZEN": false,
+    "note": "IDENTITY_PROVEN and WallMetricMeters PROVEN are not Gate 5A PASS, not package authorization, and not first-route freeze."
+  },
+  "dxfIdentityCheck": {
+    "path": "incoming/route_test_01_white_wall.dxf",
+    "sizeBytes": 6042,
+    "sha256": "33700b0907e44bca387297a72b7736b119dfd28f65c6f13e5c2123df85f76c40",
+    "acceptedReauditSha256": "33700b0907e44bca387297a72b7736b119dfd28f65c6f13e5c2123df85f76c40",
+    "sha256ConsistentWithAcceptedReaudit": true,
+    "selfReportedCreator": "CloudCompare v2.14.beta (Jun 29 2026)"
+  },
+  "blockREvidence": {
+    "objectPath": "BlockR.ply / Mesh / Vertices",
+    "points": 875394,
+    "globalShift": [0.0, 0.0, 0.0],
+    "globalScale": 1.0,
+    "bboxApproximateFromScreenshot": {
+      "xmin": -103.354,
+      "xmax": 36.275,
+      "ymin": -113.046,
+      "ymax": 199.658,
+      "zmin": -60.8557,
+      "zmax": -11.6319
+    },
+    "acceptedPlyBbox": {
+      "xmin": -103.35446166992188,
+      "xmax": 36.274986267089844,
+      "ymin": -113.0455551147461,
+      "ymax": 199.6580810546875,
+      "zmin": -60.855655670166016,
+      "zmax": -11.631939888000488
+    },
+    "bboxConsistentWithAcceptedPly": true,
+    "GLOBAL_SHIFT_SCALE_EVIDENCE": "DIRECT_OBJECT_PROPERTY_READ",
+    "evidenceLevel": "DIRECT_OBJECT_PROPERTY_READ",
+    "sessionAlsoShowsW01Ply": true,
+    "sessionAlsoShowsW01PlyNote": "DB tree shows W01.ply from the Gate 4B package path. Consistent with drawing-log loaded_W_markers. Not used as IDENTITY_PROVEN primary evidence."
+  },
+  "polylineEvidence": {
+    "objectPath": "Polyline / Vertices",
+    "points": 11,
+    "globalShift": [0.0, 0.0, 0.0],
+    "globalScale": 1.0,
+    "bboxApproximateFromScreenshot": {
+      "xmin": -18.0841,
+      "xmax": -15.9898,
+      "ymin": 25.5781,
+      "ymax": 25.6312,
+      "zmin": -47.3674,
+      "zmax": -39.0976
+    },
+    "globalBoxCenterFromScreenshot": [-17.036951, 25.604660, -43.232502],
+    "acceptedDxfVertexBbox": {
+      "xmin": -18.084136962890625,
+      "xmax": -15.989765167236328,
+      "ymin": 25.57808494567871,
+      "ymax": 25.631235122680664,
+      "zmin": -47.36744689941406,
+      "zmax": -39.097557067871094
+    },
+    "bboxConsistentWithAcceptedDxf": true,
+    "bboxDifferenceIsDisplayRounding": true,
+    "GLOBAL_SHIFT_SCALE_EVIDENCE": "DIRECT_OBJECT_PROPERTY_READ",
+    "evidenceLevel": "DIRECT_OBJECT_PROPERTY_READ"
+  },
+  "SESSION_FILE": "NOT_FOUND",
+  "SESSION_FILE_note": "No .bin / .ccprj next to the DXF. SESSION_FILE answers whether a saved project artifact exists. It does not negate DIRECT_READ of object properties in the open original session.",
+  "ORIGINAL_SESSION_TRANSFORM_EVIDENCE": "DIRECT_READ",
+  "drawingLogOperatorRecordUnchanged": {
+    "global_shift": "none",
+    "extra_T_R_S": "none",
+    "classification": "OPERATOR_RECORDED",
+    "notReclassifiedAsMachineRead": true
+  },
+  "UPSTREAM_FRAME_PROVENANCE": {
+    "result": "ESTABLISHED_BY_EXISTING_GATE4B_EVIDENCE",
+    "reInferredFromDxfThisRound": false,
+    "citations": [
+      {
+        "artifact": "validation/gate4b/gate4b_landmarks_frozen.json",
+        "fields": {
+          "coordinateFrame": "WallMetricMeters",
+          "coordinateConvention.source": "WallLocal metres from Terra PLY / SRSOrigin",
+          "coordinateConvention.sourceToWallTransform": "identity",
+          "coordinateConvention.S_wall_colmapApplied": false,
+          "sourcePackage.path": "incoming/wall_jiulongfeng_01/Gate4B_4points_white_wall.zip"
+        }
+      },
+      {
+        "artifact": "incoming/wall_jiulongfeng_01/Gate4B_4points_white_wall.zip Gate4B_4points_white_wall/README.txt",
+        "statement": "坐标与 BlockR.ply 相同（WallLocal 米），不要平移/缩放/翻轴。"
+      },
+      {
+        "artifact": "incoming/wall_jiulongfeng_01/Gate4B_4points_white_wall.zip Gate4B_4points_white_wall/points.json",
+        "fields": {
+          "sourceFile": "incoming/wall_jiulongfeng_01/九龙峰森林站大楼/models/pc/0/terra_ply/BlockR/BlockR.ply",
+          "sourceFrame": "WallLocal metres (Terra BlockR.ply relative to metadata.xml SRSOrigin). Same as the mesh; do not transform."
+        }
+      }
+    ]
+  },
+  "TOOL_PATH": {
+    "result": "OPERATOR_RECORDED / NO_CONTRADICTION",
+    "machineProven": false,
+    "note": "Screenshot shows object name Polyline (consistent with recorded rename failure). That is not new machine proof of Trace/Draw versus Point List Picking."
+  },
+  "officialExporterSemanticsUnchanged": {
+    "forum": "https://cloudcompare.org/forum/viewtopic.php?t=5985",
+    "v213Changelog": "https://github.com/CloudCompare/CloudCompare/releases/tag/v2.13",
+    "dxfVersion": "CloudCompare v2.14.beta (Jun 29 2026)",
+    "after213Fix": true
+  },
+  "provenanceLogic": "Gate 4B proves BlockR frame + direct original-session BlockR GS/Scale + direct original-session Polyline GS/Scale + accepted Polyline↔DXF geometry identity + official exporter semantics = DXF inherits BlockR WallMetricMeters frame. NN remains consistency evidence only.",
+  "nnNotUsedAsProvenPrimaryEvidence": true,
+  "empiricalTransformApplied": false,
+  "identityProvenAndConditions": {
+    "1_dxfSha256ConsistentWithAcceptedReaudit": "YES",
+    "2_upstreamFrameProvenanceCitesExistingGate4B": "YES",
+    "3_toolPathTraceDrawNoPlpContradiction": "YES",
+    "3_toolPathEvidence": "OPERATOR_RECORDED / NO_CONTRADICTION (not machine-proven; not this round's new identity proof)",
+    "4_cloudCompareVersionAfter213GlobalShiftPolylineFix": "YES",
+    "5_officialDxfPolylineWritesGlobalCoordinatesAndCorrespondsToThis214ExportPath": "YES",
+    "6_independentEvidenceSupportingNoNonIdentityTransform": "YES",
+    "6_evidence": "DIRECT_OBJECT_PROPERTY_READ BlockR Vertices GS=(0,0,0) Scale=1 AND Polyline Vertices GS=(0,0,0) Scale=1; Points=11; bbox consistent with accepted DXF; no material contradiction. SESSION_FILE=NOT_FOUND does not auto-fail this condition.",
+    "7_noEmpiricalTRSApplied": "YES",
+    "8_noMaterialContradiction": "YES",
+    "DXF_TO_BLOCKR_RELATION": "IDENTITY_PROVEN"
+  },
+  "DXF_TO_BLOCKR_RELATION": "IDENTITY_PROVEN",
+  "WallMetricMetersEvidence": {
+    "level": "PROVEN",
+    "because": "UPSTREAM_FRAME_PROVENANCE established BlockR as WallMetricMeters AND DXF_TO_BLOCKR_RELATION = IDENTITY_PROVEN."
+  }
+}
