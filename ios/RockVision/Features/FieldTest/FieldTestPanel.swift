@@ -43,105 +43,52 @@ struct FieldTestPanel: View {
     var sift: SIFTRuntimeSnapshot = SIFTRuntimeSnapshot()
     var matching: MatchingRuntimeSnapshot = MatchingRuntimeSnapshot()
     var pnp: PnPRuntimeSnapshot = PnPRuntimeSnapshot()
-    @State private var copied = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Field Test")
-                .font(.system(size: 15, weight: .semibold, design: .monospaced))
-            statusRow("Scene", currentSceneLabel)
-            statusRow("Processing", "960×720")
-            statusRow("Valid", "\(currentValidLabel) / \(FieldTestPolicy.targetValidSamples)")
-            statusRow("Tracking", tracking)
-            statusRow("Matching", matching.status)
-            statusRow("Query kp", matching.queryKeypoints)
-            statusRow("Accepted", matching.acceptedAfterRatio)
-            statusRow("Unique 3D", matching.acceptedUniquePoint3D)
-            statusRow("SIFT", ms(sift.siftMs))
-            statusRow("Match", ms(matching.matchingMs))
-            statusRow("Stage3", ms(matching.stage3Ms))
-            statusRow("PnP", pnp.status)
-            statusRow("PnP in", pnp.inputCorr)
-            statusRow("RANSAC inliers", pnp.inliers)
-            statusRow("Inlier ratio", pnp.inlierRatio)
-            statusRow("Reproj", pnp.reproj)
-            statusRow("C_wall", pnp.cWall)
-            statusRow("obs-depth sanity", pnp.obsDepth)
-            statusRow("Localization", localization)
-            statusRow("Confirm window", confirmationWindow)
-            statusRow("T_ARWorld_Wall", alignment)
-            statusRow("Wall axes", wallAxes)
-            statusRow("Markers", wallMarkers)
+        let actions = Gate4BPhysicalValidationHUD.actions(hasResumableSession: controller.hasResumableSession)
+        let _ = retainedDiagnosticRows
+        VStack(alignment: .leading, spacing: 3) {
+            Text(Gate4BPhysicalValidationHUD.title)
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
 
-            Text(controller.instruction)
-                .font(.system(size: 13, weight: .regular, design: .monospaced))
-                .fixedSize(horizontal: false, vertical: true)
-
-            HStack(spacing: 10) {
-                sceneChip("A")
-                sceneChip("B")
-                sceneChip("C")
+            if actions.showUnfinishedBanner {
+                Text(Gate4BPhysicalValidationHUD.unfinishedMessage)
+                    .font(.system(size: 11, weight: .regular, design: .monospaced))
+            } else {
+                ForEach(visibleRows, id: \.title) { row in
+                    statusRow(row.title, row.value)
+                }
             }
 
             if let error = controller.persistErrorLabel {
                 Text("Persist error: \(error)")
-                    .font(.system(size: 11, weight: .regular, design: .monospaced))
+                    .font(.system(size: 10, weight: .regular, design: .monospaced))
                     .foregroundStyle(.red)
             }
-            if let gate = launchBlockReason, showsLaunchButton {
-                Text(gate)
-                    .font(.system(size: 12, weight: .regular, design: .monospaced))
-                    .foregroundStyle(.yellow)
-            }
 
-            if controller.phase == .complete {
-                Text("Test Complete")
-                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
-            }
-
-            HStack(spacing: 8) {
-                if controller.hasResumableSession {
+            HStack(spacing: 6) {
+                if actions.showResume {
                     fieldButton("Resume", emphasized: true, enabled: controller.canStartTest, action: controller.resume)
-                    fieldButton("New Session", emphasized: false, enabled: controller.canStartTest, action: controller.startNewSession)
-                } else {
-                    switch controller.phase {
-                    case .readyToStart(let scene):
-                        fieldButton("Start \(scene.rawValue)", emphasized: true, enabled: canPressLaunch, action: controller.startOfficialNext)
-                    case .readyToStartNext(_, let scene):
-                        fieldButton("Continue \(scene.rawValue)", emphasized: true, enabled: canPressLaunch, action: controller.startOfficialNext)
-                    case .complete:
-                        fieldButton("New Session", emphasized: false, enabled: controller.canStartTest, action: controller.startNewSession)
-                    case .idle:
-                        fieldButton("New Session", emphasized: true, enabled: controller.canStartTest, action: controller.startNewSession)
-                    default:
-                        fieldButton("Abort", emphasized: false, enabled: true, action: controller.abort)
-                    }
+                }
+                if actions.showNewSession {
+                    fieldButton("New Session", emphasized: !actions.showResume, enabled: controller.canStartTest, action: controller.startNewSession)
                 }
             }
-
-            HStack(spacing: 8) {
+            if actions.showShareResults {
                 fieldButton(
-                    "Share Current Results",
+                    "Share Results",
                     emphasized: controller.phase == .complete || controller.canExport,
                     enabled: controller.canExport,
                     action: controller.shareCurrentResults
                 )
-                fieldButton("Copy Summary", emphasized: false, enabled: controller.canCopySummary) {
-                    _ = controller.copySummary()
-                    copied = true
-                }
-            }
-            if copied {
-                Text(controller.copyFeedback ?? "Summary copied")
-                    .font(.system(size: 11, weight: .regular, design: .monospaced))
             }
         }
         .foregroundStyle(.white)
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.black.opacity(0.72), in: RoundedRectangle(cornerRadius: 8))
-        .padding(.horizontal, 12)
-        .padding(.bottom, 12)
+        .padding(8)
+        .frame(maxWidth: 260, alignment: .leading)
+        .background(Color.black.opacity(0.62), in: RoundedRectangle(cornerRadius: 6))
+        .padding(.leading, 10)
+        .padding(.bottom, 10)
         .onAppear { controller.enterFieldTest() }
         .sheet(isPresented: $controller.isSharePresented) {
             if let url = controller.shareZIPURL {
@@ -150,27 +97,27 @@ struct FieldTestPanel: View {
         }
     }
 
-    private var launchBlockReason: String? {
-        FieldTestLaunchGate.blockReason(
-            storageReady: controller.storageReady,
+    private var visibleRows: [Gate4BPhysicalValidationHUD.StatusRow] {
+        Gate4BPhysicalValidationHUD.visibleRows(
+            scene: currentSceneLabel,
             tracking: tracking,
-            matchingStatus: matching.status,
-            presetLabel: sift.presetLabel,
-            processingLabel: sift.processing
+            localization: localization,
+            confirmationWindow: confirmationWindow,
+            alignment: alignment,
+            wallAxes: wallAxes,
+            wallMarkers: wallMarkers
         )
     }
 
-    private var showsLaunchButton: Bool {
-        switch controller.phase {
-        case .readyToStart, .readyToStartNext:
-            return !controller.hasResumableSession
-        default:
-            return false
-        }
-    }
-
-    private var canPressLaunch: Bool {
-        controller.canStartTest && launchBlockReason == nil
+    /// Stage 3 diagnostics stay computed from live snapshots; Gate 4B HUD does not render them.
+    var retainedDiagnosticRows: [Gate4BPhysicalValidationHUD.StatusRow] {
+        Gate4BPhysicalValidationHUD.diagnosticRows(
+            processing: "960×720",
+            valid: "\(currentValidLabel) / \(FieldTestPolicy.targetValidSamples)",
+            matching: matching,
+            sift: sift,
+            pnp: pnp
+        )
     }
 
     private var currentSceneLabel: String {
@@ -189,42 +136,19 @@ struct FieldTestPanel: View {
         return parts.first.map(String.init) ?? "—"
     }
 
-    private func sceneChip(_ scene: String) -> some View {
-        let status = controller.summary?.cells.first {
-            $0.scene == scene && $0.presetLabel == SIFTProcessingPreset.low.label
-        }?.status ?? .pending
-        let label: String
-        switch status {
-        case .complete: label = "complete"
-        case .incomplete: label = "incomplete"
-        case .running: label = "running"
-        case .notRequested: label = "—"
-        case .pending: label = "pending"
-        }
-        return Text("\(scene) \(label)")
-            .font(.system(size: 12, weight: .semibold, design: .monospaced))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(Color.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 5))
-    }
-
     private func statusRow(_ title: String, _ value: String) -> some View {
         Text("\(title): \(value)")
-            .font(.system(size: 13, weight: .regular, design: .monospaced))
-    }
-
-    private func ms(_ value: String) -> String {
-        value == "—" ? "—" : "\(value) ms"
+            .font(.system(size: 11, weight: .regular, design: .monospaced))
     }
 
     private func fieldButton(_ title: String, emphasized: Bool, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
                 .foregroundStyle(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .frame(minHeight: 36)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .frame(minHeight: 28)
                 .background(emphasized ? Color.white.opacity(0.36) : Color.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 5))
                 .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.white.opacity(0.7), lineWidth: 1))
                 .contentShape(Rectangle())
