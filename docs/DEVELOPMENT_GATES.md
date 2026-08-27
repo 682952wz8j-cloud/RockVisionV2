@@ -47,7 +47,11 @@ Stage 4 — AR Alignment                       PASS
                                            landmarks FROZEN (W01–W04);
                                            AR physical measurement PASS
                                            (visual identity, 2026-08-27)
-Stage 5 — Route AR                           BLOCKED
+Stage 5 — Route AR                           OPEN / IN PROGRESS
+                                           explicitly opened 2026-08-27
+                                           Gate 5A NOT STARTED
+                                           Route rendering NOT STARTED
+                                           Stage 5 NOT PASS
 ```
 
 `S_wall_colmap` is **VALIDATED**. Gate 4A production `T_ARWorld_Wall` is
@@ -60,8 +64,10 @@ Landmarks W01–W04 are **FROZEN** in
 [`validation/gate4b/gate4b_landmarks_frozen.json`](../validation/gate4b/gate4b_landmarks_frozen.json).
 AR physical measurement is **PASS / CLOSED**
 ([`validation/gate4b/gate4b_ar_physical_measurement.json`](../validation/gate4b/gate4b_ar_physical_measurement.json),
-visual identity 2026-08-27). Stage 5 remains **BLOCKED** until
-explicitly opened.
+visual identity 2026-08-27). Stage 5 is **OPEN / IN PROGRESS**
+(explicitly opened 2026-08-27). Gate 5A is **NOT STARTED**. Route
+rendering is **NOT STARTED / NOT AUTHORIZED**. Stage 5 is **NOT PASS**.
+Gate 5A implementation requires a separate explicit protocol.
 
 ---
 
@@ -70,6 +76,7 @@ explicitly opened.
 - **Live status source of truth = `README.md`**
 - Current numbering: Stages **1–5**; Stage 3 contains Gate **3A–3E**;
   Stage 4 contains Gate **4A / 4B**
+- Live Stage 5 uses Gate **5A–5E** numbering
 - The Gate 0–11 chapters below are the **early plan numbering**
 - Live Gate **3C** is reference matching (this document’s historical
   “Gate 4”)
@@ -79,6 +86,8 @@ explicitly opened.
 - Live Gate **4A** is production `T_ARWorld_Wall` (this document’s
   historical “Gate 8” alignment product)
 - Live Gate **4B** is metric Wall-frame validation in ARWorld
+- Historical Gate 9 roughly corresponds to future live Gate 5C + 5D;
+  do **not** execute historical Gate 9 as live Stage 5
 - Do **not** treat historical Gate 8 as still blocked on missing pose
 
 ---
@@ -374,7 +383,9 @@ Thresholds are named and marked uncalibrated.
 
 **Live equivalent: Gate 4A PASS / CLOSED; Gate 4B PASS / CLOSED
 (landmarks FROZEN W01–W04; AR physical measurement PASS, visual identity
-2026-08-27). Stage 5 BLOCKED until explicitly opened.**
+2026-08-27). Stage 4 = PASS. Stage 5 = OPEN / IN PROGRESS. Gate 5A =
+NOT STARTED. Route rendering = NOT STARTED / NOT AUTHORIZED. Stage 5 =
+NOT PASS.**
 
 Stage 3 has produced confirmed `T_opencvCam_colmap`. Gate 4A generates
 `T_ARWorld_Wall` from that pose, validated `S_wall_colmap`, and the
@@ -390,7 +401,8 @@ W01–W04 are **FROZEN**. AR physical measurement is **PASS / CLOSED**
 reselect frozen landmarks. Do **not** tune production `T` from overlay
 appearance.
 
-- Do **not** render climbing routes until Stage 5 is explicitly opened.
+- Do **not** start route rendering. Gate 5A implementation requires a
+  separate explicit protocol.
 - Do **not** use runtime GPS or T/R/S as a substitute.
 - Do **not** use bbox size as proof of meters.
 - Do **not** restore `T_opencvCam_colmap * inverse(S_wall_colmap)` as
@@ -400,8 +412,9 @@ If debug axes drift or sit in the wrong place: debug correspondences,
 PnP, `K`, `T` direction, `S_wall_colmap` — not a T/R/S slider, and not
 an empirical scale in the overlay.
 
-**STOP.** Do not start Stage 5 until explicitly opened. Frozen W01–W04
-are unchanged.
+**STOP.** Stage 5 is OPEN / IN PROGRESS. Do not start Gate 5A
+implementation without a separate explicit protocol. Do not start route
+rendering. Frozen W01–W04 are unchanged.
 
 ---
 
