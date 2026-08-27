@@ -22,8 +22,9 @@
     "w02RemovedOrReplaced": false
   },
   "gate4b": {
-    "status": "NOT_PASS",
-    "formalArPhysicalMeasurement": "NOT_STARTED",
+    "status": "PASS",
+    "formalArPhysicalMeasurement": "PASS",
+    "formalArPhysicalMeasurementArtifact": "validation/gate4b/gate4b_ar_physical_measurement.json",
     "thisCheckIsNotArPhysicalMeasurement": true
   },
   "acceptance": {

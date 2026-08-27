@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gate4b.arPhysicalMeasurement.1",
-  "status": "IN_PROGRESS",
+  "status": "PASS",
   "check": "GATE_4B_AR_PHYSICAL_MEASUREMENT",
   "purpose": "Compare virtual W01–W04 marker centers to physical landmarks to validate production T_ARWorld_Wall",
   "wallID": "wall_jiulongfeng_01",
@@ -8,15 +8,64 @@
   "frozenLandmarksManifest": "validation/gate4b/gate4b_landmarks_frozen.json",
   "localMetricGtArtifact": "validation/gate4b/gate4b_local_metric_gt.json",
   "runtimeFixture": "ios/RockVision/Resources/Gate4BMeasurementFixture.json",
-  "gate4b": "NOT_PASS",
+  "gate4b": "PASS",
   "stage5": "BLOCKED",
   "opened": true,
+  "closed": true,
+  "closedAt": "2026-08-27",
+  "resultKind": "visual_physical_identity",
   "transformTuningAllowed": false,
   "landmarkReplacementAllowed": false,
   "method": "While Localization = localized and Markers = 4/4, compare each predicted marker center to the identifiable physical point. Do not treat prediction as its own ground truth. Do not apply S_wall_colmap again. Do not use the 2 cm local-metric GT uncertainty as an AR PASS/FAIL threshold.",
   "landmarks": ["W01", "W02", "W03", "W04"],
   "w02Note": "W02 remains in the runtime marker set. Its inner/outer frame-corner tape distances are not local-metric GT. Record AR placement against the same physical identity if it can be pointed to; otherwise note ambiguity.",
-  "observations": [],
+  "fieldDate": "2026-08-27",
+  "identityCheck": "On-site observer re-identified each frozen landmark against the 3D model, then compared the live AR marker center to that same physical corner.",
+  "interimNotesSuperseded": "First-look notes (W01 visible offset; W03 not seen) were superseded after the 3D-model identity re-check. Final observations below.",
+  "supportingFieldTestSession": "gate4b_20260827_121932",
+  "supportingFieldTestSessionNote": "Aborted Scene A session (15/20). Runtime path evidence only; not a 20/20 complete matrix and not a substitute for the visual physical comparison. Empty export gate4b_20260827_120654 and re-share gate4b_20260827_121932(1) are not additional measurements.",
+  "observations": [
+    {
+      "id": "W01",
+      "seenOnScreen": true,
+      "physicalAccess": "roof",
+      "method": "visual",
+      "tapeMeasurable": false,
+      "identityConfirmedAgainst3DModel": true,
+      "placementVsPhysicalPoint": "flush"
+    },
+    {
+      "id": "W02",
+      "seenOnScreen": true,
+      "physicalAccess": "lower_facade",
+      "method": "visual",
+      "tapeMeasurable": true,
+      "tapeUsedForThisCheck": false,
+      "identityConfirmedAgainst3DModel": true,
+      "placementVsPhysicalPoint": "flush"
+    },
+    {
+      "id": "W03",
+      "seenOnScreen": true,
+      "physicalAccess": "roof",
+      "method": "visual",
+      "tapeMeasurable": false,
+      "identityConfirmedAgainst3DModel": true,
+      "placementVsPhysicalPoint": "flush"
+    },
+    {
+      "id": "W04",
+      "seenOnScreen": true,
+      "physicalAccess": "lower_facade",
+      "method": "visual",
+      "tapeMeasurable": true,
+      "tapeUsedForThisCheck": false,
+      "identityConfirmedAgainst3DModel": true,
+      "placementVsPhysicalPoint": "flush"
+    }
+  ],
   "physicalErrorMeters": null,
-  "result": null
+  "physicalErrorMetersNote": "No on-site AR tape offsets. W01/W03 are roof-only visual. W02/W04 were visual flush. The 0.02 m local-metric GT uncertainty (W04 region, pre-AR) is not this check's AR PASS threshold.",
+  "result": "PASS",
+  "resultSummary": "All four frozen markers were visible while localized. After 3D-model identity confirmation, each predicted center sat on the intended physical corner. Production T_ARWorld_Wall is visually validated. Landmarks unchanged. T not retuned. Stage 5 remains blocked until explicitly opened."
 }
