@@ -72,6 +72,9 @@
 		A10000000000000100000044 /* Gate4BPhysicalValidationHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000044 /* Gate4BPhysicalValidationHUD.swift */; };
 		A10000000000000100000045 /* Gate4BPhysicalValidationHUDTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000045 /* Gate4BPhysicalValidationHUDTests.swift */; };
 		A10000000000000100000046 /* Gate5BRouteTransformTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000046 /* Gate5BRouteTransformTests.swift */; };
+		A10000000000000100000047 /* RuntimeRouteBinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000047 /* RuntimeRouteBinding.swift */; };
+		A10000000000000100000048 /* Gate5CRouteFixture.json in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000048 /* Gate5CRouteFixture.json */; };
+		A10000000000000100000049 /* Gate5CRuntimeRouteBindingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000049 /* Gate5CRuntimeRouteBindingTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -144,6 +147,9 @@
 		A20000000000000100000044 /* Gate4BPhysicalValidationHUD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate4BPhysicalValidationHUD.swift; sourceTree = "<group>"; };
 		A20000000000000100000045 /* Gate4BPhysicalValidationHUDTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate4BPhysicalValidationHUDTests.swift; sourceTree = "<group>"; };
 		A20000000000000100000046 /* Gate5BRouteTransformTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate5BRouteTransformTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000047 /* RuntimeRouteBinding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeRouteBinding.swift; sourceTree = "<group>"; };
+		A20000000000000100000048 /* Gate5CRouteFixture.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Gate5CRouteFixture.json; sourceTree = "<group>"; };
+		A20000000000000100000049 /* Gate5CRuntimeRouteBindingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate5CRuntimeRouteBindingTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -304,6 +310,7 @@
 				A2000000000000010000003B /* ProductionAlignment.swift */,
 				A2000000000000010000003E /* WallAlignmentDebugGeometry.swift */,
 				A20000000000000100000041 /* Gate4BMeasurementFixture.swift */,
+				A20000000000000100000047 /* RuntimeRouteBinding.swift */,
 			);
 			path = PnP;
 			sourceTree = "<group>";
@@ -314,6 +321,7 @@
 				A20000000000000100000027 /* DevelopmentFixture */,
 				A20000000000000100000033 /* S_wall_colmap.json */,
 				A20000000000000100000042 /* Gate4BMeasurementFixture.json */,
+				A20000000000000100000048 /* Gate5CRouteFixture.json */,
 				A20000000000000100000034 /* PnPSceneAParity.json */,
 				A20000000000000100000035 /* PnPSceneAParityExpected.json */,
 			);
@@ -340,6 +348,7 @@
 				A20000000000000100000043 /* Gate4BMeasurementInstrumentationTests.swift */,
 				A20000000000000100000045 /* Gate4BPhysicalValidationHUDTests.swift */,
 				A20000000000000100000046 /* Gate5BRouteTransformTests.swift */,
+				A20000000000000100000049 /* Gate5CRuntimeRouteBindingTests.swift */,
 			);
 			path = RockVisionTests;
 			sourceTree = "<group>";
@@ -451,6 +460,7 @@
 				A10000000000000100000027 /* DevelopmentFixture in Resources */,
 				A10000000000000100000033 /* S_wall_colmap.json in Resources */,
 				A10000000000000100000042 /* Gate4BMeasurementFixture.json in Resources */,
+				A10000000000000100000048 /* Gate5CRouteFixture.json in Resources */,
 				A10000000000000100000034 /* PnPSceneAParity.json in Resources */,
 				A10000000000000100000035 /* PnPSceneAParityExpected.json in Resources */,
 			);
@@ -498,6 +508,7 @@
 				A1000000000000010000003B /* ProductionAlignment.swift in Sources */,
 				A1000000000000010000003E /* WallAlignmentDebugGeometry.swift in Sources */,
 				A10000000000000100000041 /* Gate4BMeasurementFixture.swift in Sources */,
+				A10000000000000100000047 /* RuntimeRouteBinding.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -522,6 +533,7 @@
 				A10000000000000100000043 /* Gate4BMeasurementInstrumentationTests.swift in Sources */,
 				A10000000000000100000045 /* Gate4BPhysicalValidationHUDTests.swift in Sources */,
 				A10000000000000100000046 /* Gate5BRouteTransformTests.swift in Sources */,
+				A10000000000000100000049 /* Gate5CRuntimeRouteBindingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

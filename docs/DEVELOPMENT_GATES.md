@@ -54,9 +54,12 @@ Stage 5 — Route AR                           OPEN / IN PROGRESS
                                            First route FROZEN (route_test_01)
                                            Gate 5B PASS / CLOSED
                                            GATE_5B_PASS = YES
+                                           Gate 5C PASS / CLOSED
+                                           GATE_5C_PASS = YES
+                                           Route runtime data binding PASS
                                            Route package NOT CREATED
                                            Route rendering NOT STARTED
-                                           Gate 5C–5E NOT STARTED
+                                           Gate 5D–5E NOT STARTED
                                            Stage 5 NOT PASS
 ```
 
@@ -72,18 +75,21 @@ AR physical measurement is **PASS / CLOSED**
 ([`validation/gate4b/gate4b_ar_physical_measurement.json`](../validation/gate4b/gate4b_ar_physical_measurement.json),
 visual identity 2026-08-27). Stage 5 is **OPEN / IN PROGRESS**
 (explicitly opened 2026-08-27). Gate 5A is **PASS / CLOSED**. First
-route is **FROZEN** (`route_test_01`). Gate 5B is **PASS / CLOSED**. The
+route is **FROZEN** (`route_test_01`). Gate 5B is **PASS / CLOSED**. Gate 5C
+is **PASS / CLOSED**. The
 route package is
 **NOT CREATED / NOT AUTHORIZED**. Route rendering is
-**NOT STARTED / NOT AUTHORIZED**. Gate 5C–5E are **NOT STARTED**. Stage 5
+**NOT STARTED / NOT AUTHORIZED**. Gate 5D–5E are **NOT STARTED**. Stage 5
 is **NOT PASS**. Canonical ingested polyline:
 [`validation/gate5a/gate5a_ingested_route_test_01.json`](../validation/gate5a/gate5a_ingested_route_test_01.json).
 PASS closure:
 [`validation/gate5a/gate5a_pass_closure_route_test_01.json`](../validation/gate5a/gate5a_pass_closure_route_test_01.json).
 Gate 5B transform correctness:
 [`validation/gate5b/gate5b_route_transform_correctness_route_test_01.json`](../validation/gate5b/gate5b_route_transform_correctness_route_test_01.json).
+Gate 5C runtime route binding:
+[`validation/gate5c/gate5c_runtime_route_binding_route_test_01.json`](../validation/gate5c/gate5c_runtime_route_binding_route_test_01.json).
 `DXF_TO_BLOCKR_RELATION = IDENTITY_PROVEN`. `WallMetricMeters = PROVEN`.
-`GATE_5A_INPUT_READY = YES`. `GATE_5A_PASS = YES`. `GATE_5B_PASS = YES`. That is **not**
+`GATE_5A_INPUT_READY = YES`. `GATE_5A_PASS = YES`. `GATE_5B_PASS = YES`. `GATE_5C_PASS = YES`. That is **not**
 production Wall Package `routes.json` authorization and
 **not** route-rendering authorization. Prior Gate 5A provenance artifacts
 remain historical and unoverwritten.
@@ -99,6 +105,7 @@ remain historical and unoverwritten.
 - Live Gate **5A** is route geometry ingestion (provenance-first);
   currently **PASS / CLOSED**; first route **FROZEN** (`route_test_01`)
 - Live Gate **5B** is route transform correctness; currently **PASS / CLOSED**
+- Live Gate **5C** is runtime route data binding; currently **PASS / CLOSED**
 - The Gate 0–11 chapters below are the **early plan numbering**
 - Live Gate **3C** is reference matching (this document’s historical
   “Gate 4”)
@@ -409,7 +416,7 @@ Thresholds are named and marked uncalibrated.
 PASS / CLOSED. First route = FROZEN (route_test_01). Gate 5B =
 PASS / CLOSED. Route package =
 NOT CREATED / NOT AUTHORIZED. Route rendering = NOT STARTED / NOT
-AUTHORIZED. Gate 5C–5E = NOT STARTED / NOT AUTHORIZED. Stage 5 =
+AUTHORIZED. Gate 5C = PASS / CLOSED. Gate 5D–5E = NOT STARTED / NOT AUTHORIZED. Stage 5 =
 NOT PASS.**
 
 Stage 3 has produced confirmed `T_opencvCam_colmap`. Gate 4A generates
@@ -427,7 +434,7 @@ reselect frozen landmarks. Do **not** tune production `T` from overlay
 appearance.
 
 - Do **not** start route rendering. Do **not** create a production route
-  package. Gate 5C awaits a later explicit protocol.
+  package. Gate 5D awaits a later explicit protocol.
 - Do **not** use runtime GPS or T/R/S as a substitute.
 - Do **not** use bbox size as proof of meters.
 - Do **not** restore `T_opencvCam_colmap * inverse(S_wall_colmap)` as
@@ -438,9 +445,10 @@ PnP, `K`, `T` direction, `S_wall_colmap` — not a T/R/S slider, and not
 an empirical scale in the overlay.
 
 **STOP.** Stage 5 is OPEN / IN PROGRESS. Gate 5A is PASS / CLOSED. First
-route is FROZEN (route_test_01). Gate 5B is PASS / CLOSED. Do not create a
+route is FROZEN (route_test_01). Gate 5B is PASS / CLOSED. Gate 5C is
+PASS / CLOSED. Do not create a
 production route
-package. Do not start Gate 5C without a later explicit protocol. Do not
+package. Do not start Gate 5D without a later explicit protocol. Do not
 start route rendering. Frozen W01–W04 are unchanged.
 
 ---

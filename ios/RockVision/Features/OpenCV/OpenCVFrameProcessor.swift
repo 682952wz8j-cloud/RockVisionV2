@@ -18,6 +18,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
     @Published private(set) var alignmentSnapshot = AlignmentRuntimeSnapshot()
     @Published private(set) var wallDebugSnapshot = WallDebugRuntimeSnapshot()
     @Published private(set) var wallDebugGeometry = WallAlignmentDebugGeometry.hidden
+    @Published private(set) var runtimeRouteBinding = RuntimeRouteBinding.unbound
 
     private let queue = DispatchQueue(label: "com.rockvision.v2.opencv", qos: .userInitiated)
     private let lock = NSLock()
@@ -56,6 +57,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
     private var matchingStatus = "inactive"
     private var sim3: ValidatedSim3?
     private var measurementFixture: Gate4BMeasurementFixture?
+    private var verifiedFrozenRoute: VerifiedFrozenRoute?
     private var confirmationEngine = LocalizationConfirmation()
     private var alignmentRuntime = ProductionAlignmentRuntime()
     private var fieldConfirmationBarrier = FieldConfirmationSessionBarrier()
@@ -180,6 +182,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                 self.alignmentSnapshot = AlignmentRuntimeSnapshot()
                 self.wallDebugSnapshot = WallDebugRuntimeSnapshot()
                 self.wallDebugGeometry = .hidden
+                self.runtimeRouteBinding = .unbound
                 completion?()
             }
         }
@@ -381,6 +384,12 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                     measurementFixture: self.measurementFixture,
                     currentWallID: self.referenceDatabase?.wallId
                 )
+            let routeBinding = confirmationHUDIdle
+                ? RuntimeRouteBinding.unbound
+                : RuntimeRouteBinding.evaluate(
+                    verifiedRoute: self.verifiedFrozenRoute,
+                    alignment: alignmentResult
+                )
 
             DispatchQueue.main.async {
                 var next = self.snapshot
@@ -433,6 +442,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                     self.alignmentSnapshot = AlignmentRuntimeSnapshot()
                     self.wallDebugSnapshot = WallDebugRuntimeSnapshot()
                     self.wallDebugGeometry = .hidden
+                    self.runtimeRouteBinding = .unbound
                 } else {
                     if let confirmationTick {
                         self.confirmationSnapshot = ConfirmationSnapshot.make(confirmationTick)
@@ -440,6 +450,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                     self.alignmentSnapshot = AlignmentSnapshot.make(alignmentResult)
                     self.wallDebugGeometry = debugGeometry
                     self.wallDebugSnapshot = WallDebugSnapshot.make(debugGeometry)
+                    self.runtimeRouteBinding = routeBinding
                 }
             }
         }
@@ -476,6 +487,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
         }
         sim3 = ValidatedSim3Loader.loadFromBundle(.main)
         measurementFixture = Gate4BMeasurementFixture.loadFromBundle(.main)
+        verifiedFrozenRoute = VerifiedFrozenRoute.loadFromBundle(.main)
         if let sim3 {
             print("PnP: loaded S_wall_colmap status=\(sim3.status) scale=\(sim3.scale) metric-only")
         } else {
