@@ -1,0 +1,85 @@
+{
+  "schemaVersion": "gate4b.localMetricGt.1",
+  "status": "PASS",
+  "check": "LOCAL_METRIC_GROUND_TRUTH_CHECK",
+  "purpose": "Pre-AR local metric ground-truth check (W04 region only)",
+  "wallID": "wall_jiulongfeng_01",
+  "coordinateFrame": "WallMetricMeters",
+  "coordinateConvention": {
+    "source": "WallLocal metres from Terra PLY / SRSOrigin",
+    "sourceToWallTransform": "identity",
+    "S_wall_colmapApplied": false
+  },
+  "frozenLandmarks": {
+    "manifest": "validation/gate4b/gate4b_landmarks_frozen.json",
+    "ids": [
+      "W01",
+      "W02",
+      "W03",
+      "W04"
+    ],
+    "unchanged": true,
+    "w02RemovedOrReplaced": false
+  },
+  "gate4b": {
+    "status": "NOT_PASS",
+    "formalArPhysicalMeasurement": "NOT_STARTED",
+    "thisCheckIsNotArPhysicalMeasurement": true
+  },
+  "acceptance": {
+    "region": "W04",
+    "reason": "W04 physically unambiguous on site",
+    "furtherOnSiteLocalMetricMeasurementsRequired": false,
+    "workingGroundTruthUncertaintyMeters": 0.02
+  },
+  "acceptedPairs": [
+    {
+      "id": "W04-R04H",
+      "from": "W04",
+      "to": "R04H",
+      "kind": "horizontal",
+      "fromWallXYZMeters": [
+        -26.3984,
+        25.0606,
+        -46.3409
+      ],
+      "toWallXYZMeters": [
+        -24.9044,
+        25.0701,
+        -46.3883
+      ],
+      "modelDistanceMeters": 1.495,
+      "measuredDistanceMeters": 1.48,
+      "deltaMeters": 0.015,
+      "usedForAcceptance": true
+    },
+    {
+      "id": "W04-R04V",
+      "from": "W04",
+      "to": "R04V",
+      "kind": "vertical",
+      "fromWallXYZMeters": [
+        -26.3984,
+        25.0606,
+        -46.3409
+      ],
+      "toWallXYZMeters": [
+        -26.4051,
+        25.1164,
+        -47.9579
+      ],
+      "modelDistanceMeters": 1.618,
+      "measuredDistanceMeters": 1.6,
+      "deltaMeters": 0.018,
+      "usedForAcceptance": true
+    }
+  ],
+  "excludedFromAcceptance": [
+    {
+      "region": "W02",
+      "reason": "inner/outer frame-corner physical definition ambiguity",
+      "fieldMeasurementsUsedForAcceptance": false,
+      "landmarkRemovedOrReplaced": false
+    }
+  ]
+}
