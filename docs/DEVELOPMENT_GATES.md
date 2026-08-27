@@ -49,11 +49,12 @@ Stage 4 — AR Alignment                       PASS
                                            (visual identity, 2026-08-27)
 Stage 5 — Route AR                           OPEN / IN PROGRESS
                                            explicitly opened 2026-08-27
-                                           Gate 5A IN PROGRESS
-                                           Gate 5A NOT PASS
+                                           Gate 5A PASS / CLOSED
+                                           GATE_5A_PASS = YES
+                                           First route FROZEN (route_test_01)
                                            Route package NOT CREATED
                                            Route rendering NOT STARTED
-                                           First route NOT FROZEN
+                                           Gate 5B–5E NOT STARTED
                                            Stage 5 NOT PASS
 ```
 
@@ -68,23 +69,19 @@ Landmarks W01–W04 are **FROZEN** in
 AR physical measurement is **PASS / CLOSED**
 ([`validation/gate4b/gate4b_ar_physical_measurement.json`](../validation/gate4b/gate4b_ar_physical_measurement.json),
 visual identity 2026-08-27). Stage 5 is **OPEN / IN PROGRESS**
-(explicitly opened 2026-08-27). Gate 5A is **IN PROGRESS**
-(provenance-first, started 2026-08-27). Gate 5A is **NOT PASS**. The
-route package is **NOT CREATED / NOT AUTHORIZED**. Route rendering is
-**NOT STARTED / NOT AUTHORIZED**. First route is **NOT FROZEN**. Stage 5
-is **NOT PASS**. Gate 5A provenance re-audit of `route_test_01` is
-recorded in
-[`validation/gate5a/gate5a_provenance_reaudit_route_test_01.json`](../validation/gate5a/gate5a_provenance_reaudit_route_test_01.json).
-This-round `GATE_5A_INPUT_READY = YES` with
-`DXF_TO_BLOCKR_RELATION = IDENTITY_SUPPORTED` was accepted at re-audit.
-Provenance closure is recorded in
-[`validation/gate5a/gate5a_provenance_closure_route_test_01.json`](../validation/gate5a/gate5a_provenance_closure_route_test_01.json)
-(historical; identity then `IDENTITY_SUPPORTED`). Identity evidence
-upgrade is recorded in
-[`validation/gate5a/gate5a_identity_evidence_upgrade_route_test_01.json`](../validation/gate5a/gate5a_identity_evidence_upgrade_route_test_01.json).
-Current: `DXF_TO_BLOCKR_RELATION = IDENTITY_PROVEN`; `WallMetricMeters =
-PROVEN`. That is **not** Gate 5A PASS, **not** first-route freeze, and
-**not** route-package authorization. Gate 5A remains **IN PROGRESS**.
+(explicitly opened 2026-08-27). Gate 5A is **PASS / CLOSED**. First
+route is **FROZEN** (`route_test_01`). The route package is
+**NOT CREATED / NOT AUTHORIZED**. Route rendering is
+**NOT STARTED / NOT AUTHORIZED**. Gate 5B–5E are **NOT STARTED**. Stage 5
+is **NOT PASS**. Canonical ingested polyline:
+[`validation/gate5a/gate5a_ingested_route_test_01.json`](../validation/gate5a/gate5a_ingested_route_test_01.json).
+PASS closure:
+[`validation/gate5a/gate5a_pass_closure_route_test_01.json`](../validation/gate5a/gate5a_pass_closure_route_test_01.json).
+`DXF_TO_BLOCKR_RELATION = IDENTITY_PROVEN`. `WallMetricMeters = PROVEN`.
+`GATE_5A_INPUT_READY = YES`. `GATE_5A_PASS = YES`. That is **not**
+production Wall Package `routes.json` authorization and
+**not** route-rendering authorization. Prior Gate 5A provenance artifacts
+remain historical and unoverwritten.
 
 ---
 
@@ -95,7 +92,7 @@ PROVEN`. That is **not** Gate 5A PASS, **not** first-route freeze, and
   Stage 4 contains Gate **4A / 4B**
 - Live Stage 5 uses Gate **5A–5E** numbering
 - Live Gate **5A** is route geometry ingestion (provenance-first);
-  currently **IN PROGRESS**, **NOT PASS**
+  currently **PASS / CLOSED**; first route **FROZEN** (`route_test_01`)
 - The Gate 0–11 chapters below are the **early plan numbering**
 - Live Gate **3C** is reference matching (this document’s historical
   “Gate 4”)
@@ -403,9 +400,10 @@ Thresholds are named and marked uncalibrated.
 **Live equivalent: Gate 4A PASS / CLOSED; Gate 4B PASS / CLOSED
 (landmarks FROZEN W01–W04; AR physical measurement PASS, visual identity
 2026-08-27). Stage 4 = PASS. Stage 5 = OPEN / IN PROGRESS. Gate 5A =
-IN PROGRESS. Gate 5A = NOT PASS. Route package = NOT CREATED / NOT
-AUTHORIZED. Route rendering = NOT STARTED / NOT AUTHORIZED. Stage 5 =
-NOT PASS. First route = NOT FROZEN.**
+PASS / CLOSED. First route = FROZEN (route_test_01). Route package =
+NOT CREATED / NOT AUTHORIZED. Route rendering = NOT STARTED / NOT
+AUTHORIZED. Gate 5B–5E = NOT STARTED / NOT AUTHORIZED. Stage 5 =
+NOT PASS.**
 
 Stage 3 has produced confirmed `T_opencvCam_colmap`. Gate 4A generates
 `T_ARWorld_Wall` from that pose, validated `S_wall_colmap`, and the
@@ -421,8 +419,8 @@ W01–W04 are **FROZEN**. AR physical measurement is **PASS / CLOSED**
 reselect frozen landmarks. Do **not** tune production `T` from overlay
 appearance.
 
-- Do **not** start route rendering. Do **not** create a route package.
-  Gate 5A PASS closure awaits subsequent explicit authorization.
+- Do **not** start route rendering. Do **not** create a production route
+  package. Gate 5B awaits a later explicit protocol.
 - Do **not** use runtime GPS or T/R/S as a substitute.
 - Do **not** use bbox size as proof of meters.
 - Do **not** restore `T_opencvCam_colmap * inverse(S_wall_colmap)` as
@@ -432,10 +430,10 @@ If debug axes drift or sit in the wrong place: debug correspondences,
 PnP, `K`, `T` direction, `S_wall_colmap` — not a T/R/S slider, and not
 an empirical scale in the overlay.
 
-**STOP.** Stage 5 is OPEN / IN PROGRESS. Gate 5A is IN PROGRESS
-(provenance-first). Do not create a route package. Do not execute Gate
-5A PASS closure without subsequent explicit authorization. Do not start
-route rendering. Frozen W01–W04 are unchanged.
+**STOP.** Stage 5 is OPEN / IN PROGRESS. Gate 5A is PASS / CLOSED. First
+route is FROZEN (route_test_01). Do not create a production route
+package. Do not start Gate 5B without a later explicit protocol. Do not
+start route rendering. Frozen W01–W04 are unchanged.
 
 ---
 

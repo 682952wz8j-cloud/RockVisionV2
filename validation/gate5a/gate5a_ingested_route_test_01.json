@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "gate5a.ingested.route.1",
+  "kind": "canonical_ingested_route",
+  "routeId": "route_test_01",
+  "routeName": "white-wall test line 01",
+  "wallId": "wall_jiulongfeng_01",
+  "source": {
+    "path": "incoming/route_test_01_white_wall.dxf",
+    "sha256": "33700b0907e44bca387297a72b7736b119dfd28f65c6f13e5c2123df85f76c40",
+    "sizeBytes": 6042
+  },
+  "identityBasis": "filename",
+  "coordinateFrame": "WallMetricMeters",
+  "provenance": "IDENTITY_PROVEN",
+  "dummyOriginExcluded": true,
+  "pointCount": 11,
+  "polyline": [
+    [
+      -16.777332305908203,
+      25.605234146118164,
+      -47.36744689941406
+    ],
+    [
+      -16.912446975708008,
+      25.594392776489258,
+      -46.47579574584961
+    ],
+    [
+      -17.138164520263672,
+      25.582088470458984,
+      -45.32247543334961
+    ],
+    [
+      -17.22393798828125,
+      25.57929229736328,
+      -44.62041473388672
+    ],
+    [
+      -16.65515899658203,
+      25.604154586791992,
+      -44.05005645751953
+    ],
+    [
+      -16.53187370300293,
+      25.608875274658203,
+      -43.41041946411133
+    ],
+    [
+      -16.517581939697266,
+      25.608205795288086,
+      -42.634525299072266
+    ],
+    [
+      -16.508649826049805,
+      25.612014770507812,
+      -41.64543151855469
+    ],
+    [
+      -15.989765167236328,
+      25.631235122680664,
+      -40.49665832519531
+    ],
+    [
+      -16.98672103881836,
+      25.57808494567871,
+      -39.6428337097168
+    ],
+    [
+      -18.084136962890625,
+      25.599119186401367,
+      -39.097557067871094
+    ]
+  ],
+  "polylineSha256": "ff6ff3ee58303634d369b919284ee8c827a80eb57a9403004614cda6194d2f99",
+  "bbox": {
+    "xmin": -18.084136962890625,
+    "xmax": -15.989765167236328,
+    "ymin": 25.57808494567871,
+    "ymax": 25.631235122680664,
+    "zmin": -47.36744689941406,
+    "zmax": -39.097557067871094
+  },
+  "drawingLogPath": "incoming/route_test_01_white_wall_drawing_log.txt",
+  "sourceEvidence": [
+    "validation/gate5a/gate5a_provenance_reaudit_route_test_01.json",
+    "validation/gate5a/gate5a_identity_evidence_upgrade_route_test_01.json"
+  ],
+  "productionRoutePackage": "NOT_CREATED",
+  "rendering": "NOT_STARTED",
+  "FIRST_ROUTE_FROZEN": false,
+  "gate5aPass": false,
+  "status": "READY_FOR_PASS_CLOSURE"
+}

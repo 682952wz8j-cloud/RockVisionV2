@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "gate5a.pass.closure.1",
+  "kind": "gate5a_pass_closure",
+  "ingestedArtifact": "validation/gate5a/gate5a_ingested_route_test_01.json",
+  "ingestedPolylineSha256": "ff6ff3ee58303634d369b919284ee8c827a80eb57a9403004614cda6194d2f99",
+  "FIRST_ROUTE_FROZEN": true,
+  "FIRST_ROUTE_ID": "route_test_01",
+  "GATE_5A_PASS": true,
+  "gate5AStatus": "PASS_CLOSED",
+  "productionRoutePackage": "NOT_CREATED",
+  "rendering": "NOT_STARTED",
+  "allowedNext": "GATE_5B_LATER_EXPLICIT_PROTOCOL"
+}
