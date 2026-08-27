@@ -71,6 +71,7 @@
 		A10000000000000100000043 /* Gate4BMeasurementInstrumentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000043 /* Gate4BMeasurementInstrumentationTests.swift */; };
 		A10000000000000100000044 /* Gate4BPhysicalValidationHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000044 /* Gate4BPhysicalValidationHUD.swift */; };
 		A10000000000000100000045 /* Gate4BPhysicalValidationHUDTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000045 /* Gate4BPhysicalValidationHUDTests.swift */; };
+		A10000000000000100000046 /* Gate5BRouteTransformTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000046 /* Gate5BRouteTransformTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -142,6 +143,7 @@
 		A20000000000000100000043 /* Gate4BMeasurementInstrumentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate4BMeasurementInstrumentationTests.swift; sourceTree = "<group>"; };
 		A20000000000000100000044 /* Gate4BPhysicalValidationHUD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate4BPhysicalValidationHUD.swift; sourceTree = "<group>"; };
 		A20000000000000100000045 /* Gate4BPhysicalValidationHUDTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate4BPhysicalValidationHUDTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000046 /* Gate5BRouteTransformTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate5BRouteTransformTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -337,6 +339,7 @@
 				A20000000000000100000040 /* WallAlignmentDebugGeometryTests.swift */,
 				A20000000000000100000043 /* Gate4BMeasurementInstrumentationTests.swift */,
 				A20000000000000100000045 /* Gate4BPhysicalValidationHUDTests.swift */,
+				A20000000000000100000046 /* Gate5BRouteTransformTests.swift */,
 			);
 			path = RockVisionTests;
 			sourceTree = "<group>";
@@ -518,6 +521,7 @@
 				A10000000000000100000040 /* WallAlignmentDebugGeometryTests.swift in Sources */,
 				A10000000000000100000043 /* Gate4BMeasurementInstrumentationTests.swift in Sources */,
 				A10000000000000100000045 /* Gate4BPhysicalValidationHUDTests.swift in Sources */,
+				A10000000000000100000046 /* Gate5BRouteTransformTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

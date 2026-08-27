@@ -78,6 +78,16 @@ enum CoordinateTransforms {
         return Homogeneous.apply(t, point: point)
     }
 
+    /// Gate 5B: apply an existing production `T_ARWorld_Wall` once to a
+    /// WallMetricMeters route position. Does not construct `T`. Does not
+    /// take Sim(3) or a second scale. Vertices are positions (`w = 1`).
+    static func applyFrozenWallRoutePointToARWorld(
+        wallPointMeters: [Double],
+        T_ARWorld_Wall: [[Double]]
+    ) throws -> [Double] {
+        try apply(T_ARWorld_Wall, point: wallPointMeters)
+    }
+
     static func rowMajor(fromColumnMajor columns: [[Double]]) throws -> [[Double]] {
         guard Homogeneous.isFinite4x4(columns) else { throw CoordinateTransformError.nonFinite }
         return (0..<4).map { r in (0..<4).map { c in columns[c][r] } }
