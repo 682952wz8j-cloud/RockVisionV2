@@ -107,24 +107,174 @@ final class Gate4BPhysicalValidationHUDTests: XCTestCase {
         XCTAssertEqual(rows.first { $0.title == "Markers" }?.value, "4/4")
     }
 
-    func testSceneChipsHiddenAndPrimaryActionsVisible() {
-        let actions = Gate4BPhysicalValidationHUD.actions(hasResumableSession: false)
-        XCTAssertFalse(actions.showSceneChips)
-        XCTAssertTrue(actions.showNewSession)
-        XCTAssertTrue(actions.showShareResults)
-        XCTAssertFalse(actions.showCopySummary)
-        XCTAssertFalse(actions.showResume)
-        XCTAssertFalse(actions.showUnfinishedBanner)
-    }
-
-    func testResumeOnlyWhenUnfinishedSession() {
-        let unfinished = Gate4BPhysicalValidationHUD.actions(hasResumableSession: true)
+    func testUnfinishedSessionShowsResumeAndHidesStartMeasurement() {
+        let unfinished = Gate4BPhysicalValidationHUD.actions(
+            hasResumableSession: true,
+            phase: .readyToStart(.A)
+        )
         XCTAssertTrue(unfinished.showUnfinishedBanner)
         XCTAssertTrue(unfinished.showResume)
         XCTAssertTrue(unfinished.showNewSession)
+        XCTAssertFalse(unfinished.showStartMeasurement)
         XCTAssertFalse(unfinished.showShareResults)
         XCTAssertFalse(unfinished.showCopySummary)
         XCTAssertFalse(unfinished.showSceneChips)
+        XCTAssertFalse(unfinished.showAbort)
+    }
+
+    func testReadyToStartShowsStartMeasurement() {
+        let actions = Gate4BPhysicalValidationHUD.actions(
+            hasResumableSession: false,
+            phase: .readyToStart(.A)
+        )
+        XCTAssertTrue(actions.showStartMeasurement)
+        XCTAssertFalse(actions.showResume)
+        XCTAssertFalse(actions.showNewSession)
+        XCTAssertFalse(actions.showUnfinishedBanner)
+        XCTAssertFalse(actions.showSceneChips)
+        XCTAssertFalse(actions.showCopySummary)
+        XCTAssertFalse(actions.showAbort)
+        XCTAssertFalse(actions.showShareResults)
+    }
+
+    func testReadyToStartNextShowsStartMeasurement() {
+        let actions = Gate4BPhysicalValidationHUD.actions(
+            hasResumableSession: false,
+            phase: .readyToStartNext(finished: .A, next: .B)
+        )
+        XCTAssertTrue(actions.showStartMeasurement)
+        XCTAssertFalse(actions.showResume)
+        XCTAssertFalse(actions.showSceneChips)
+        XCTAssertFalse(actions.showCopySummary)
+    }
+
+    func testStartMeasurementWiresToStartOfficialNext() throws {
+        XCTAssertEqual(Gate4BPhysicalValidationHUD.startMeasurementTitle, "Start Measurement")
+        XCTAssertEqual(Gate4BPhysicalValidationHUD.startMeasurementControllerMethod, "startOfficialNext")
+        let panel = try String(
+            contentsOfFile: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("RockVision/Features/FieldTest/FieldTestPanel.swift")
+                .path,
+            encoding: .utf8
+        )
+        XCTAssertTrue(panel.contains("Gate4BPhysicalValidationHUD.startMeasurementTitle"))
+        XCTAssertTrue(panel.contains("action: controller.startOfficialNext"))
+        XCTAssertFalse(panel.contains("action: controller.startScene"))
+        XCTAssertFalse(panel.contains("Start A"))
+        XCTAssertFalse(panel.contains("Continue A"))
+    }
+
+    func testSamplingAndWaitingTrackingHideStartMeasurement() {
+        let waiting = Gate4BPhysicalValidationHUD.actions(
+            hasResumableSession: false,
+            phase: .waitingTracking(scene: .A, preset: .low)
+        )
+        XCTAssertFalse(waiting.showStartMeasurement)
+        XCTAssertTrue(waiting.showAbort)
+        let sampling = Gate4BPhysicalValidationHUD.actions(
+            hasResumableSession: false,
+            phase: .sampling(scene: .A, preset: .low)
+        )
+        XCTAssertFalse(sampling.showStartMeasurement)
+        XCTAssertTrue(sampling.showAbort)
+        XCTAssertFalse(sampling.showNewSession)
+        XCTAssertFalse(sampling.showShareResults)
+    }
+
+    func testCompleteShowsNewSessionAndShareResults() {
+        let actions = Gate4BPhysicalValidationHUD.actions(
+            hasResumableSession: false,
+            phase: .complete,
+            canExport: true
+        )
+        XCTAssertFalse(actions.showStartMeasurement)
+        XCTAssertTrue(actions.showNewSession)
+        XCTAssertTrue(actions.showShareResults)
+        XCTAssertFalse(actions.showResume)
+        XCTAssertFalse(actions.showSceneChips)
+        XCTAssertFalse(actions.showCopySummary)
+    }
+
+    func testABCChipsRemainHidden() {
+        let phases: [FieldTestPhase] = [
+            .readyToStart(.A),
+            .readyToStartNext(finished: .A, next: .B),
+            .waitingTracking(scene: .A, preset: .low),
+            .sampling(scene: .A, preset: .low),
+            .complete,
+            .idle
+        ]
+        for phase in phases {
+            let actions = Gate4BPhysicalValidationHUD.actions(hasResumableSession: false, phase: phase)
+            XCTAssertFalse(actions.showSceneChips, "\(phase)")
+        }
+        let unfinished = Gate4BPhysicalValidationHUD.actions(hasResumableSession: true, phase: .readyToStart(.A))
+        XCTAssertFalse(unfinished.showSceneChips)
+    }
+
+    func testCopySummaryRemainsHidden() {
+        let phases: [FieldTestPhase] = [
+            .readyToStart(.A),
+            .readyToStartNext(finished: .A, next: .B),
+            .complete,
+            .idle
+        ]
+        for phase in phases {
+            let actions = Gate4BPhysicalValidationHUD.actions(
+                hasResumableSession: false,
+                phase: phase,
+                canExport: true
+            )
+            XCTAssertFalse(actions.showCopySummary, "\(phase)")
+        }
+        XCTAssertFalse(
+            Gate4BPhysicalValidationHUD.actions(hasResumableSession: true).showCopySummary
+        )
+    }
+
+    func testStartMeasurementKeepsLaunchGate() {
+        XCTAssertTrue(
+            Gate4BPhysicalValidationHUD.startMeasurementEnabled(
+                canStartTest: true,
+                storageReady: true,
+                tracking: "normal",
+                matchingStatus: "active",
+                presetLabel: "960×720",
+                processingLabel: "960×720"
+            )
+        )
+        XCTAssertFalse(
+            Gate4BPhysicalValidationHUD.startMeasurementEnabled(
+                canStartTest: true,
+                storageReady: true,
+                tracking: "limited",
+                matchingStatus: "active",
+                presetLabel: "960×720",
+                processingLabel: "960×720"
+            )
+        )
+        XCTAssertFalse(
+            Gate4BPhysicalValidationHUD.startMeasurementEnabled(
+                canStartTest: false,
+                storageReady: false,
+                tracking: "normal",
+                matchingStatus: "active",
+                presetLabel: "960×720",
+                processingLabel: "960×720"
+            )
+        )
+    }
+
+    func testShareResultsDoesNotReplaceStartMeasurementWhenReady() {
+        let ready = Gate4BPhysicalValidationHUD.actions(
+            hasResumableSession: false,
+            phase: .readyToStart(.A),
+            canExport: true
+        )
+        XCTAssertTrue(ready.showStartMeasurement)
+        XCTAssertTrue(ready.showShareResults)
     }
 
     func testDiagnosticRowsStillMappedFromSnapshots() {

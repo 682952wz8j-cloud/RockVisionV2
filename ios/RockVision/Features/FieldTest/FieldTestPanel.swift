@@ -45,7 +45,11 @@ struct FieldTestPanel: View {
     var pnp: PnPRuntimeSnapshot = PnPRuntimeSnapshot()
 
     var body: some View {
-        let actions = Gate4BPhysicalValidationHUD.actions(hasResumableSession: controller.hasResumableSession)
+        let actions = Gate4BPhysicalValidationHUD.actions(
+            hasResumableSession: controller.hasResumableSession,
+            phase: controller.phase,
+            canExport: controller.canExport
+        )
         let _ = retainedDiagnosticRows
         VStack(alignment: .leading, spacing: 3) {
             Text(Gate4BPhysicalValidationHUD.title)
@@ -55,6 +59,10 @@ struct FieldTestPanel: View {
                 Text(Gate4BPhysicalValidationHUD.unfinishedMessage)
                     .font(.system(size: 11, weight: .regular, design: .monospaced))
             } else {
+                if controller.phase == .complete {
+                    Text("Measurement session complete")
+                        .font(.system(size: 11, weight: .regular, design: .monospaced))
+                }
                 ForEach(visibleRows, id: \.title) { row in
                     statusRow(row.title, row.value)
                 }
@@ -72,6 +80,24 @@ struct FieldTestPanel: View {
                 }
                 if actions.showNewSession {
                     fieldButton("New Session", emphasized: !actions.showResume, enabled: controller.canStartTest, action: controller.startNewSession)
+                }
+                if actions.showStartMeasurement {
+                    fieldButton(
+                        Gate4BPhysicalValidationHUD.startMeasurementTitle,
+                        emphasized: true,
+                        enabled: Gate4BPhysicalValidationHUD.startMeasurementEnabled(
+                            canStartTest: controller.canStartTest,
+                            storageReady: controller.storageReady,
+                            tracking: tracking,
+                            matchingStatus: matching.status,
+                            presetLabel: sift.presetLabel,
+                            processingLabel: sift.processing
+                        ),
+                        action: controller.startOfficialNext
+                    )
+                }
+                if actions.showAbort {
+                    fieldButton("Abort", emphasized: false, enabled: true, action: controller.abort)
                 }
             }
             if actions.showShareResults {

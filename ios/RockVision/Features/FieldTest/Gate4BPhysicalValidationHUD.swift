@@ -15,10 +15,15 @@ enum Gate4BPhysicalValidationHUD {
         var showUnfinishedBanner: Bool
         var showResume: Bool
         var showNewSession: Bool
+        var showStartMeasurement: Bool
+        var showAbort: Bool
         var showShareResults: Bool
         var showCopySummary: Bool
         var showSceneChips: Bool
     }
+
+    static let startMeasurementTitle = "Start Measurement"
+    static let startMeasurementControllerMethod = "startOfficialNext"
 
     static let visibleTitles = [
         "Scene",
@@ -97,25 +102,87 @@ enum Gate4BPhysicalValidationHUD {
         ]
     }
 
-    static func actions(hasResumableSession: Bool) -> Actions {
+    static func actions(
+        hasResumableSession: Bool,
+        phase: FieldTestPhase = .readyToStart(.A),
+        canExport: Bool = false
+    ) -> Actions {
         if hasResumableSession {
             return Actions(
                 showUnfinishedBanner: true,
                 showResume: true,
                 showNewSession: true,
+                showStartMeasurement: false,
+                showAbort: false,
                 showShareResults: false,
                 showCopySummary: false,
                 showSceneChips: false
             )
         }
-        return Actions(
-            showUnfinishedBanner: false,
-            showResume: false,
-            showNewSession: true,
-            showShareResults: true,
-            showCopySummary: false,
-            showSceneChips: false
-        )
+        switch phase {
+        case .readyToStart, .readyToStartNext:
+            return Actions(
+                showUnfinishedBanner: false,
+                showResume: false,
+                showNewSession: false,
+                showStartMeasurement: true,
+                showAbort: false,
+                showShareResults: canExport,
+                showCopySummary: false,
+                showSceneChips: false
+            )
+        case .waitingTracking, .sampling:
+            return Actions(
+                showUnfinishedBanner: false,
+                showResume: false,
+                showNewSession: false,
+                showStartMeasurement: false,
+                showAbort: true,
+                showShareResults: false,
+                showCopySummary: false,
+                showSceneChips: false
+            )
+        case .complete:
+            return Actions(
+                showUnfinishedBanner: false,
+                showResume: false,
+                showNewSession: true,
+                showStartMeasurement: false,
+                showAbort: false,
+                showShareResults: true,
+                showCopySummary: false,
+                showSceneChips: false
+            )
+        case .idle:
+            return Actions(
+                showUnfinishedBanner: false,
+                showResume: false,
+                showNewSession: true,
+                showStartMeasurement: false,
+                showAbort: false,
+                showShareResults: canExport,
+                showCopySummary: false,
+                showSceneChips: false
+            )
+        }
+    }
+
+    static func startMeasurementEnabled(
+        canStartTest: Bool,
+        storageReady: Bool,
+        tracking: String,
+        matchingStatus: String,
+        presetLabel: String,
+        processingLabel: String
+    ) -> Bool {
+        guard canStartTest else { return false }
+        return FieldTestLaunchGate.blockReason(
+            storageReady: storageReady,
+            tracking: tracking,
+            matchingStatus: matchingStatus,
+            presetLabel: presetLabel,
+            processingLabel: processingLabel
+        ) == nil
     }
 
     static func wallTransformLabel(_ alignment: String) -> String {
