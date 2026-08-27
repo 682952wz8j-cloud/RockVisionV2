@@ -26,6 +26,7 @@ struct ContentView: View {
                     wallAxes: openCV.wallDebugSnapshot.visible == "yes"
                         ? openCV.wallDebugSnapshot.axisLengths
                         : "hidden",
+                    wallMarkers: openCV.wallDebugSnapshot.markers,
                     sift: openCV.siftSnapshot,
                     matching: openCV.matchingSnapshot,
                     pnp: openCV.pnpSnapshot

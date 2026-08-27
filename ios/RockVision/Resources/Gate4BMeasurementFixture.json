@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "gate4b.measurementFixture.1",
+  "developmentValidationOnly": true,
+  "notAProductionRouteAsset": true,
+  "sourceFormalManifest": "validation/gate4b/gate4b_landmarks_frozen.json",
+  "localMetricGtArtifact": "validation/gate4b/gate4b_local_metric_gt.json",
+  "wallID": "wall_jiulongfeng_01",
+  "coordinateFrame": "WallMetricMeters",
+  "landmarks": [
+    {
+      "id": "W01",
+      "wallXYZMeters": [-11.0079, 26.0123, -38.8601]
+    },
+    {
+      "id": "W02",
+      "wallXYZMeters": [-11.5775, 25.7312, -46.39]
+    },
+    {
+      "id": "W03",
+      "wallXYZMeters": [-26.4578, 25.5131, -38.4759]
+    },
+    {
+      "id": "W04",
+      "wallXYZMeters": [-26.3984, 25.0606, -46.3409]
+    }
+  ]
+}

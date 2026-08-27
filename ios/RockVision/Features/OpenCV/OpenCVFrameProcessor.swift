@@ -55,6 +55,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
     private var fixtureLoadAttempted = false
     private var matchingStatus = "inactive"
     private var sim3: ValidatedSim3?
+    private var measurementFixture: Gate4BMeasurementFixture?
     private var confirmationEngine = LocalizationConfirmation()
     private var alignmentRuntime = ProductionAlignmentRuntime()
     private var fieldConfirmationBarrier = FieldConfirmationSessionBarrier()
@@ -354,7 +355,11 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                 alignment: matching.status == "active" ? alignmentResult : nil,
                 alignmentStats: matching.status == "active" ? alignmentStats : nil,
                 wallDebugGeometry: matching.status == "active"
-                    ? WallAlignmentDebugGeometry.evaluate(alignment: alignmentResult)
+                    ? WallAlignmentDebugGeometry.evaluate(
+                        alignment: alignmentResult,
+                        measurementFixture: self.measurementFixture,
+                        currentWallID: self.referenceDatabase?.wallId
+                    )
                     : nil
             ) ?? false
             if matching.status == "active" {
@@ -371,7 +376,11 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                 && self.fieldConfirmationBarrier.needsFreshEngine
             let debugGeometry = confirmationHUDIdle
                 ? WallAlignmentDebugGeometry.hidden
-                : WallAlignmentDebugGeometry.evaluate(alignment: alignmentResult)
+                : WallAlignmentDebugGeometry.evaluate(
+                    alignment: alignmentResult,
+                    measurementFixture: self.measurementFixture,
+                    currentWallID: self.referenceDatabase?.wallId
+                )
 
             DispatchQueue.main.async {
                 var next = self.snapshot
@@ -466,6 +475,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
             print("Matching: inactive \(reason)")
         }
         sim3 = ValidatedSim3Loader.loadFromBundle(.main)
+        measurementFixture = Gate4BMeasurementFixture.loadFromBundle(.main)
         if let sim3 {
             print("PnP: loaded S_wall_colmap status=\(sim3.status) scale=\(sim3.scale) metric-only")
         } else {

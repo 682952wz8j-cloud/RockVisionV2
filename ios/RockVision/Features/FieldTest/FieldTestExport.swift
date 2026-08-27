@@ -67,6 +67,15 @@ enum FieldTestExport {
                 lines.append("wallDebugGeometry: \(geom.kind) visible frame=\(geom.sourceFrameID.map(String.init) ?? "—")")
                 lines.append(String(format: "axisLengths_m: X=%.6f Y=%.6f Z=%.6f", x, y, z))
                 lines.append("validatedLandmarks: \(geom.validatedLandmarkCount)")
+                lines.append("measurementMarkers: \(geom.markerCount ?? geom.markers?.count ?? 0)/4")
+                if let markers = geom.markers, !markers.isEmpty {
+                    for marker in markers {
+                        let predicted = marker.predictedARWorldXYZMeters
+                        lines.append(
+                            "marker \(marker.landmarkID) wall=\(formatXYZ(marker.wallXYZMeters)) arWorld=\(formatXYZ(predicted)) visibleByAlignment=\(marker.visibleByAlignmentState)"
+                        )
+                    }
+                }
             } else {
                 lines.append("wallDebugGeometry: hidden")
             }
@@ -111,6 +120,11 @@ enum FieldTestExport {
         }
         lines.append("Paste this summary into chat. Attach the Share ZIP for full JSON.")
         return lines.joined(separator: "\n")
+    }
+
+    private static func formatXYZ(_ xyz: [Double]) -> String {
+        guard xyz.count == 3 else { return "—" }
+        return String(format: "[%.6f, %.6f, %.6f]", xyz[0], xyz[1], xyz[2])
     }
 
     /// Writes official JSON/JSONL into `sessionDir`, then stages a ZIP under `stagingRoot` (tmp only).

@@ -39,6 +39,7 @@ struct FieldTestPanel: View {
     var confirmationWindow: String = "0/3"
     var alignment: String = "none"
     var wallAxes: String = "hidden"
+    var wallMarkers: String = "0/4"
     var sift: SIFTRuntimeSnapshot = SIFTRuntimeSnapshot()
     var matching: MatchingRuntimeSnapshot = MatchingRuntimeSnapshot()
     var pnp: PnPRuntimeSnapshot = PnPRuntimeSnapshot()
@@ -70,6 +71,7 @@ struct FieldTestPanel: View {
             statusRow("Confirm window", confirmationWindow)
             statusRow("T_ARWorld_Wall", alignment)
             statusRow("Wall axes", wallAxes)
+            statusRow("Markers", wallMarkers)
 
             Text(controller.instruction)
                 .font(.system(size: 13, weight: .regular, design: .monospaced))

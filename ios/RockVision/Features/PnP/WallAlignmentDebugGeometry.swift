@@ -17,6 +17,9 @@ struct WallAlignmentDebugGeometry: Codable, Equatable, Sendable {
     var consumedProductionT_ARWorld_Wall: Bool
     var renderedRoute: Bool
     var validatedLandmarkCount: Int
+    /// Runtime measurement-marker occupancy. Not physical validation. Additive; missing in old JSON.
+    var markerCount: Int?
+    var markers: [Gate4BRuntimeMarker]?
     var sourceFrameID: UInt64?
     var sourceTimestamp: TimeInterval?
     var T_ARWorld_Wall: [[Double]]?
@@ -40,6 +43,8 @@ struct WallAlignmentDebugGeometry: Codable, Equatable, Sendable {
         consumedProductionT_ARWorld_Wall: false,
         renderedRoute: false,
         validatedLandmarkCount: 0,
+        markerCount: 0,
+        markers: [],
         sourceFrameID: nil,
         sourceTimestamp: nil,
         T_ARWorld_Wall: nil,
@@ -58,7 +63,13 @@ struct WallAlignmentDebugGeometry: Codable, Equatable, Sendable {
     )
 
     /// Only path: p_ARWorld = T_ARWorld_Wall * p_wall, with T from productionAlignment.
-    static func evaluate(alignment: AlignmentFrameResult) -> WallAlignmentDebugGeometry {
+    /// Measurement markers share this evaluate path and the same T. Fixture/wallID are optional
+    /// so existing axes-only callers stay unchanged.
+    static func evaluate(
+        alignment: AlignmentFrameResult,
+        measurementFixture: Gate4BMeasurementFixture? = nil,
+        currentWallID: String? = nil
+    ) -> WallAlignmentDebugGeometry {
         guard alignment.hasT_ARWorld_Wall,
               alignment.productionAlignmentCalled,
               let transform = alignment.T_ARWorld_Wall,
@@ -71,6 +82,11 @@ struct WallAlignmentDebugGeometry: Codable, Equatable, Sendable {
             let xEnd = try CoordinateTransforms.apply(transform, point: WallAlignmentDebugConfig.xAxisWall)
             let yEnd = try CoordinateTransforms.apply(transform, point: WallAlignmentDebugConfig.yAxisWall)
             let zEnd = try CoordinateTransforms.apply(transform, point: WallAlignmentDebugConfig.zAxisWall)
+            let runtimeMarkers = try makeMarkers(
+                transform: transform,
+                fixture: measurementFixture,
+                currentWallID: currentWallID
+            )
             let x = sub(xEnd, origin)
             let y = sub(yEnd, origin)
             let z = sub(zEnd, origin)
@@ -82,6 +98,7 @@ struct WallAlignmentDebugGeometry: Codable, Equatable, Sendable {
                 && xEnd.allSatisfy(\.isFinite)
                 && yEnd.allSatisfy(\.isFinite)
                 && zEnd.allSatisfy(\.isFinite)
+                && runtimeMarkers.allSatisfy { $0.predictedARWorldXYZMeters.allSatisfy(\.isFinite) }
                 && lenX.isFinite && lenY.isFinite && lenZ.isFinite
                 && det.isFinite
             guard finite else {
@@ -94,6 +111,8 @@ struct WallAlignmentDebugGeometry: Codable, Equatable, Sendable {
                 consumedProductionT_ARWorld_Wall: true,
                 renderedRoute: false,
                 validatedLandmarkCount: 0,
+                markerCount: runtimeMarkers.count,
+                markers: runtimeMarkers,
                 sourceFrameID: provenance.confirmedFrameID,
                 sourceTimestamp: provenance.confirmedTimestamp,
                 T_ARWorld_Wall: transform,
@@ -112,6 +131,23 @@ struct WallAlignmentDebugGeometry: Codable, Equatable, Sendable {
             )
         } catch {
             return refused(reason: "nonFinite", provenance: provenance, transform: transform)
+        }
+    }
+
+    private static func makeMarkers(
+        transform: [[Double]],
+        fixture: Gate4BMeasurementFixture?,
+        currentWallID: String?
+    ) throws -> [Gate4BRuntimeMarker] {
+        guard let fixture else { return [] }
+        return try fixture.activeLandmarks(currentWallID: currentWallID).map { landmark in
+            let predicted = try CoordinateTransforms.apply(transform, point: landmark.wallXYZMeters)
+            return Gate4BRuntimeMarker(
+                landmarkID: landmark.id,
+                wallXYZMeters: landmark.wallXYZMeters,
+                predictedARWorldXYZMeters: predicted,
+                visibleByAlignmentState: true
+            )
         }
     }
 
@@ -152,20 +188,23 @@ struct WallAlignmentDebugGeometry: Codable, Equatable, Sendable {
 struct WallDebugRuntimeSnapshot: Equatable, Sendable {
     var visible: String = "no"
     var axisLengths: String = "—"
+    var markers: String = "0/4"
 }
 
 enum WallDebugSnapshot {
     static func make(_ geometry: WallAlignmentDebugGeometry) -> WallDebugRuntimeSnapshot {
+        let markerLabel = "\(geometry.markerCount ?? geometry.markers?.count ?? 0)/4"
         guard geometry.visible,
               let x = geometry.axisLengthX,
               let y = geometry.axisLengthY,
               let z = geometry.axisLengthZ
         else {
-            return WallDebugRuntimeSnapshot()
+            return WallDebugRuntimeSnapshot(markers: markerLabel)
         }
         return WallDebugRuntimeSnapshot(
             visible: "yes",
-            axisLengths: String(format: "X=%.3f Y=%.3f Z=%.3f m", x, y, z)
+            axisLengths: String(format: "X=%.3f Y=%.3f Z=%.3f m", x, y, z),
+            markers: markerLabel
         )
     }
 }

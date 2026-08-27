@@ -66,6 +66,9 @@
 		A1000000000000010000003E /* WallAlignmentDebugGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000003E /* WallAlignmentDebugGeometry.swift */; };
 		A1000000000000010000003F /* WallAlignmentDebugOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000003F /* WallAlignmentDebugOverlay.swift */; };
 		A10000000000000100000040 /* WallAlignmentDebugGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000040 /* WallAlignmentDebugGeometryTests.swift */; };
+		A10000000000000100000041 /* Gate4BMeasurementFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000041 /* Gate4BMeasurementFixture.swift */; };
+		A10000000000000100000042 /* Gate4BMeasurementFixture.json in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000042 /* Gate4BMeasurementFixture.json */; };
+		A10000000000000100000043 /* Gate4BMeasurementInstrumentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000043 /* Gate4BMeasurementInstrumentationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -132,6 +135,9 @@
 		A2000000000000010000003E /* WallAlignmentDebugGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallAlignmentDebugGeometry.swift; sourceTree = "<group>"; };
 		A2000000000000010000003F /* WallAlignmentDebugOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallAlignmentDebugOverlay.swift; sourceTree = "<group>"; };
 		A20000000000000100000040 /* WallAlignmentDebugGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallAlignmentDebugGeometryTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000041 /* Gate4BMeasurementFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate4BMeasurementFixture.swift; sourceTree = "<group>"; };
+		A20000000000000100000042 /* Gate4BMeasurementFixture.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Gate4BMeasurementFixture.json; sourceTree = "<group>"; };
+		A20000000000000100000043 /* Gate4BMeasurementInstrumentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate4BMeasurementInstrumentationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -290,6 +296,7 @@
 				A2000000000000010000003A /* CoordinateTransforms.swift */,
 				A2000000000000010000003B /* ProductionAlignment.swift */,
 				A2000000000000010000003E /* WallAlignmentDebugGeometry.swift */,
+				A20000000000000100000041 /* Gate4BMeasurementFixture.swift */,
 			);
 			path = PnP;
 			sourceTree = "<group>";
@@ -299,6 +306,7 @@
 			children = (
 				A20000000000000100000027 /* DevelopmentFixture */,
 				A20000000000000100000033 /* S_wall_colmap.json */,
+				A20000000000000100000042 /* Gate4BMeasurementFixture.json */,
 				A20000000000000100000034 /* PnPSceneAParity.json */,
 				A20000000000000100000035 /* PnPSceneAParityExpected.json */,
 			);
@@ -322,6 +330,7 @@
 				A2000000000000010000003C /* CoordinateTransformsTests.swift */,
 				A2000000000000010000003D /* ProductionAlignmentTests.swift */,
 				A20000000000000100000040 /* WallAlignmentDebugGeometryTests.swift */,
+				A20000000000000100000043 /* Gate4BMeasurementInstrumentationTests.swift */,
 			);
 			path = RockVisionTests;
 			sourceTree = "<group>";
@@ -432,6 +441,7 @@
 				A10000000000000100000006 /* Assets.xcassets in Resources */,
 				A10000000000000100000027 /* DevelopmentFixture in Resources */,
 				A10000000000000100000033 /* S_wall_colmap.json in Resources */,
+				A10000000000000100000042 /* Gate4BMeasurementFixture.json in Resources */,
 				A10000000000000100000034 /* PnPSceneAParity.json in Resources */,
 				A10000000000000100000035 /* PnPSceneAParityExpected.json in Resources */,
 			);
@@ -477,6 +487,7 @@
 				A1000000000000010000003A /* CoordinateTransforms.swift in Sources */,
 				A1000000000000010000003B /* ProductionAlignment.swift in Sources */,
 				A1000000000000010000003E /* WallAlignmentDebugGeometry.swift in Sources */,
+				A10000000000000100000041 /* Gate4BMeasurementFixture.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -498,6 +509,7 @@
 				A1000000000000010000003C /* CoordinateTransformsTests.swift in Sources */,
 				A1000000000000010000003D /* ProductionAlignmentTests.swift in Sources */,
 				A10000000000000100000040 /* WallAlignmentDebugGeometryTests.swift in Sources */,
+				A10000000000000100000043 /* Gate4BMeasurementInstrumentationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
