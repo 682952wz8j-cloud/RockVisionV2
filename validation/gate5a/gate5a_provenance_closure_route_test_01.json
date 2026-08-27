@@ -1,0 +1,316 @@
+{
+  "schemaVersion": "gate5a.provenance.closure.route_test_01.1",
+  "kind": "provenance_closure",
+  "notARoutePackage": true,
+  "notProduction": true,
+  "gate5APass": false,
+  "firstRouteFrozen": false,
+  "subject": "incoming/route_test_01_white_wall.dxf",
+  "auditedAt": "2026-08-27",
+  "purpose": "Gate 5A provenance closure of route_test_01: attempt to upgrade DXF_TO_BLOCKR_RELATION from IDENTITY_SUPPORTED to IDENTITY_PROVEN, or honestly keep IDENTITY_SUPPORTED. Not Gate 5A PASS. Not route-package authorization. Not first-route freeze.",
+  "acceptedReaudit": {
+    "commit": "c7aa282bd71183397a84e1a2b83ce7494fe837d2",
+    "GATE_5A_INPUT_READY": "YES",
+    "DXF_TO_BLOCKR_RELATION_atReaudit": "IDENTITY_SUPPORTED",
+    "WallMetricMeters_atReaudit": "SUPPORTED",
+    "geometryReopenedThisRound": false
+  },
+  "status": {
+    "STAGE_5_OPEN": true,
+    "STAGE_5_PASS": false,
+    "GATE_5A_STARTED": true,
+    "GATE_5A_PASS": false,
+    "GATE_5A_INPUT_READY": "YES",
+    "DXF_TO_BLOCKR_RELATION": "IDENTITY_SUPPORTED",
+    "WallMetricMeters": "SUPPORTED",
+    "ORIGINAL_SESSION_TRANSFORM_EVIDENCE": "NOT_AVAILABLE",
+    "SESSION_FILE": "NOT_FOUND",
+    "REPRODUCTION": "NOT_PERFORMED",
+    "ROUTE_PACKAGE_CREATED": false,
+    "ROUTE_RENDERING_STARTED": false,
+    "FIRST_ROUTE_FROZEN": false,
+    "note": "IDENTITY_SUPPORTED is a valid closure result. It is not Gate 5A PASS, not package authorization, and not first-route freeze."
+  },
+  "dxfIdentityCheck": {
+    "path": "incoming/route_test_01_white_wall.dxf",
+    "sizeBytes": 6042,
+    "sha256": "33700b0907e44bca387297a72b7736b119dfd28f65c6f13e5c2123df85f76c40",
+    "acceptedReauditSha256": "33700b0907e44bca387297a72b7736b119dfd28f65c6f13e5c2123df85f76c40",
+    "sha256ConsistentWithAcceptedReaudit": true,
+    "selfReportedCreator": "CloudCompare v2.14.beta (Jun 29 2026)",
+    "selfReportedCreated": "2026-08-27T18:45:59",
+    "dxflib": "3.17.0.0"
+  },
+  "UPSTREAM_FRAME_PROVENANCE": {
+    "result": "ESTABLISHED_BY_EXISTING_GATE4B_EVIDENCE",
+    "reInferredFromDxfThisRound": false,
+    "citations": [
+      {
+        "artifact": "validation/gate4b/gate4b_landmarks_frozen.json",
+        "fields": {
+          "coordinateFrame": "WallMetricMeters",
+          "coordinateConvention.source": "WallLocal metres from Terra PLY / SRSOrigin",
+          "coordinateConvention.sourceToWallTransform": "identity",
+          "coordinateConvention.S_wall_colmapApplied": false,
+          "sourcePackage.path": "incoming/wall_jiulongfeng_01/Gate4B_4points_white_wall.zip"
+        }
+      },
+      {
+        "artifact": "incoming/wall_jiulongfeng_01/Gate4B_4points_white_wall.zip Gate4B_4points_white_wall/README.txt",
+        "statement": "坐标与 BlockR.ply 相同（WallLocal 米），不要平移/缩放/翻轴。 CloudCompare: 先打开 BlockR.ply"
+      },
+      {
+        "artifact": "incoming/wall_jiulongfeng_01/Gate4B_4points_white_wall.zip Gate4B_4points_white_wall/points.json",
+        "fields": {
+          "sourceFile": "incoming/wall_jiulongfeng_01/九龙峰森林站大楼/models/pc/0/terra_ply/BlockR/BlockR.ply",
+          "sourceFrame": "WallLocal metres (Terra BlockR.ply relative to metadata.xml SRSOrigin). Same as the mesh; do not transform."
+        }
+      },
+      {
+        "artifact": "validation/gate4b/gate4b_ar_physical_measurement.json",
+        "fields": {
+          "status": "PASS",
+          "coordinateFrame": "WallMetricMeters"
+        }
+      }
+    ],
+    "statement": "Existing Gate 4B frozen/validated evidence records WallMetricMeters as WallLocal metres from the Terra PLY / SRSOrigin with identity transform. The Gate 4B source package names BlockR.ply as that mesh. This round does not re-infer BlockR's frame from DXF proximity."
+  },
+  "terraMetadata": {
+    "path": "incoming/wall_jiulongfeng_01/九龙峰森林站大楼/models/pc/0/terra_ply/metadata.xml",
+    "SRS": "EPSG:32650",
+    "SRSOrigin": [597786.85842445458, 3333597.1281958264, 352.50399999973473],
+    "gate4BRecordedRelation": "WallLocal = PLY relative to SRSOrigin (identity); S_wall_colmapApplied=false"
+  },
+  "blockRMagnitude": {
+    "ply": "incoming/wall_jiulongfeng_01/九龙峰森林站大楼/models/pc/0/terra_ply/BlockR/BlockR.ply",
+    "vertexCount": 875394,
+    "bboxMin": [-103.35446166992188, -113.0455551147461, -60.855655670166016],
+    "bboxMax": [36.274986267089844, 199.6580810546875, -11.631939888000488],
+    "absMaxCoordinate": 199.6580810546875,
+    "typicalCloudCompareAutoShiftThresholdCited": 10000,
+    "AUTOMATIC_SHIFT_UNLIKELY": true,
+    "notActualGlobalShiftIdentity": true,
+    "note": "AUTOMATIC_SHIFT_UNLIKELY = YES because absMax << typical CC ~1e4 prompt threshold. This is not actual Global Shift = (0,0,0), Scale = 1."
+  },
+  "SESSION_FILE": {
+    "result": "NOT_FOUND",
+    "searched": [
+      "incoming/ next to route_test_01_white_wall.dxf",
+      "incoming/wall_jiulongfeng_01/",
+      "incoming/.../terra_ply/",
+      "repository for *.ccprj and CloudCompare .bin sessions (excluding COLMAP/OpenCV/vendor)"
+    ],
+    "adjacentToDxf": ["incoming/route_test_01_white_wall.dxf", "incoming/route_test_01_white_wall_drawing_log.txt"],
+    "drawingLogRecord": "cloudcompare_bin_session: not found next to this DXF",
+    "drawingLogConfirmedThisRound": true
+  },
+  "REPRODUCTION": {
+    "result": "NOT_PERFORMED",
+    "reason": "CloudCompare is not installed on this machine (not in PATH, not in /Applications as CloudCompare.app). No GUI available to load BlockR.ply, Trace/Draw a polyline, export DXF, and read Global Shift / Scale object state. Command-line CloudCompare is also absent.",
+    "doesNotAutoProven": true,
+    "doesNotAutoBlocked": true
+  },
+  "ORIGINAL_SESSION_TRANSFORM_EVIDENCE": {
+    "result": "NOT_AVAILABLE",
+    "meaning": "Neither a direct original-session GS/Scale read nor a qualifying controlled reproduction exists. IDENTITY_PROVEN is therefore not available via REPRODUCIBLE_SUPPORTED or DIRECT.",
+    "notDirectBecause": "SESSION_FILE = NOT_FOUND; no object-property screenshot of GS/Scale.",
+    "notReproducibleSupportedBecause": "REPRODUCTION = NOT_PERFORMED."
+  },
+  "Q1_softwareSemantics": {
+    "officialPolylineWritesGlobalCoordinates": {
+      "source": "CloudCompare administrator Daniel, forum thread 'DXF Export Shift Problem'",
+      "url": "https://cloudcompare.org/forum/viewtopic.php?t=5985",
+      "alternateUrl": "https://danielgm.net/cc/forum/viewtopic.php?t=5985",
+      "statement": "When saving polylines, CloudCompare writes the global coordinates. Point List Picking (then) did not transfer Global Shift from the original cloud to the exported polyline. Trace polyline does transfer Global Shift. Bug fixed in 2.13.alpha.",
+      "provesThisSessionIdentity": false
+    },
+    "officialBugFixVersion": {
+      "source": "CloudCompare v2.13.0 (Kharkiv) 2024-02-14 changelog / GitHub release",
+      "url": "https://github.com/CloudCompare/CloudCompare/releases/tag/v2.13",
+      "changelogUrl": "https://github.com/CloudCompare/CloudCompare/blob/master/CHANGELOG.md",
+      "statement": "Bug fixes: The 'Point List Picking' tool was not transferring the Global Shift information when exporting the list of points as a polyline.",
+      "provesThisSessionIdentity": false
+    },
+    "thisDxfVersionAfterFix": {
+      "dxfSelfReport": "CloudCompare v2.14.beta (Jun 29 2026)",
+      "after213Fix": true,
+      "proves": "This software version is not in the known unfixed Point List Picking Global Shift transfer bug window.",
+      "doesNotProve": [
+        "this session loaded BlockR with shift=(0,0,0), scale=1",
+        "this session used Trace/Draw rather than Point List Picking",
+        "this export added no extra T/R/S",
+        "DXF XYZ are identity global coordinates of BlockR"
+      ]
+    },
+    "dxfExporterPathCorrespondence": {
+      "result": "OFFICIAL_SEMANTICS_PLUS_VERSION",
+      "note": "Official statement is that polyline save writes global coordinates, and Trace polyline transfers Global Shift. This DXF is a CloudCompare 2.14.beta dxflib 3D POLYLINE export. That is Q1 software-semantics correspondence, not Q2 original-session proof."
+    }
+  },
+  "Q2_originalSessionFacts": {
+    "date": "2026-08-27",
+    "sessionFile": "NOT_FOUND",
+    "transformStateDirectRead": "NOT_AVAILABLE",
+    "cannotBeForgedFromQ1": true
+  },
+  "workflowChain": [
+    {
+      "step": "Gate 4B evidence: BlockR.ply is the WallLocal / WallMetricMeters mesh",
+      "question": "Q2 upstream (already accepted)",
+      "evidence": "UPSTREAM_FRAME_PROVENANCE citations; not re-inferred this round",
+      "level": "ESTABLISHED"
+    },
+    {
+      "step": "CloudCompare session: BlockR Global Shift / Scale",
+      "question": "Q2 original session",
+      "evidence": "SESSION_FILE NOT_FOUND; REPRODUCTION NOT_PERFORMED; AUTOMATIC_SHIFT_UNLIKELY from BlockR magnitude only",
+      "level": "NOT_AVAILABLE for actual GS/Scale; AUTOMATIC_SHIFT_UNLIKELY=YES is not actual identity"
+    },
+    {
+      "step": "Trace / Draw Polyline creation behavior",
+      "question": "Q2 original session",
+      "evidence": "drawing log OPERATOR_RECORDED tool = CloudCompare Trace/Draw polyline, BlockR.ply selected; no artifact contradicts Point List Picking",
+      "level": "OPERATOR_RECORDED / NO_CONTRADICTION"
+    },
+    {
+      "step": "CloudCompare 2.14 DXF exporter coordinate semantics",
+      "question": "Q1 software semantics",
+      "evidence": "Daniel forum t=5985 (polyline save writes global coordinates; Trace transfers GS); 2.13.0 changelog PLP GS-transfer fix; this DXF self-reports 2.14.beta after that fix",
+      "level": "OFFICIAL_PLUS_VERSION; not session-proven"
+    },
+    {
+      "step": "route_test_01 DXF XYZ vs identity BlockR frame",
+      "question": "DXF_TO_BLOCKR_RELATION",
+      "evidence": "Accepted re-audit NN consistency (not used as IDENTITY_PROVEN primary evidence); no empirical T/R/S applied; missing independent GS/Scale read or qualifying reproduction",
+      "level": "IDENTITY_SUPPORTED"
+    }
+  ],
+  "GlobalShiftScale": {
+    "evidenceLevel": "NOT_AVAILABLE",
+    "DIRECT_READ": false,
+    "REPRODUCTION": false,
+    "AUTOMATIC_SHIFT_UNLIKELY": true,
+    "actualShiftEqualsZeroScaleOne": "NOT_CLAIMED",
+    "note": "Do not treat AUTOMATIC_SHIFT_UNLIKELY as actual Global Shift = (0,0,0), Scale = 1."
+  },
+  "TOOL_PATH": {
+    "result": "OPERATOR_RECORDED / NO_CONTRADICTION",
+    "operatorRecord": "CloudCompare Trace/Draw polyline, BlockR.ply selected",
+    "pointListPickingContradictionFound": false,
+    "machineProven": false
+  },
+  "operatorFieldClassification": [
+    {
+      "field": "global_shift",
+      "logValue": "none",
+      "kind": "OPERATOR_RECORDED",
+      "DXF_VERIFICATION": "NOT_AVAILABLE",
+      "CONFLICT": "NO",
+      "note": "Not encoded in DXF. Absence of encoding is not MATCH and not VERIFIED."
+    },
+    {
+      "field": "extra_T_R_S",
+      "logValue": "none",
+      "kind": "OPERATOR_RECORDED",
+      "DXF_VERIFICATION": "NOT_AVAILABLE",
+      "CONFLICT": "NO"
+    },
+    {
+      "field": "units",
+      "logValue": "metres (same as BlockR.ply / WallLocal)",
+      "kind": "OPERATOR_RECORDED",
+      "DXF_VERIFICATION": "NOT_AVAILABLE",
+      "CONFLICT": "NO",
+      "note": "$INSUNITS missing. Absence is not VERIFIED metres."
+    },
+    {
+      "field": "tool",
+      "logValue": "CloudCompare Trace/Draw polyline, BlockR.ply selected",
+      "kind": "OPERATOR_RECORDED",
+      "DXF_VERIFICATION": "NOT_AVAILABLE",
+      "CONFLICT": "NO"
+    },
+    {
+      "field": "source_ply",
+      "logValue": "incoming/.../BlockR/BlockR.ply",
+      "kind": "OPERATOR_RECORDED",
+      "DXF_VERIFICATION": "NOT_AVAILABLE",
+      "CONFLICT": "NO",
+      "note": "PLY path exists on disk. DXF does not name the source PLY."
+    },
+    {
+      "field": "cc_object_name",
+      "logValue": "Polyline",
+      "kind": "OPERATOR_RECORDED",
+      "DXF_VERIFICATION": "NOT_AVAILABLE",
+      "CONFLICT": "NO",
+      "note": "DXF layer is POLYLINE_001 as already recorded; identity is filename."
+    },
+    {
+      "field": "cc_rename_succeeded",
+      "logValue": "no",
+      "kind": "OPERATOR_RECORDED",
+      "DXF_VERIFICATION": "NOT_AVAILABLE",
+      "CONFLICT": "NO"
+    },
+    {
+      "field": "dxf_group8_layer_in_file",
+      "logValue": "POLYLINE_001",
+      "kind": "OPERATOR_RECORDED",
+      "DXF_VERIFICATION": "VERIFIED",
+      "CONFLICT": "NO"
+    },
+    {
+      "field": "vertex_count",
+      "logValue": 11,
+      "kind": "OPERATOR_RECORDED",
+      "DXF_VERIFICATION": "VERIFIED",
+      "CONFLICT": "NO",
+      "note": "11 VERTEX records; dummy origin excluded"
+    },
+    {
+      "field": "route_id",
+      "logValue": "route_test_01",
+      "kind": "OPERATOR_RECORDED",
+      "DXF_VERIFICATION": "NOT_AVAILABLE",
+      "CONFLICT": "NO",
+      "note": "Filename identity is route_test_01; not a DXF entity field"
+    }
+  ],
+  "identityProvenAndConditions": {
+    "1_dxfSha256ConsistentWithAcceptedReaudit": "YES",
+    "2_upstreamFrameProvenanceCitesExistingGate4B": "YES",
+    "3_toolPathTraceDrawNoPlpContradiction": "YES",
+    "3_toolPathEvidence": "OPERATOR_RECORDED / NO_CONTRADICTION (not machine-proven)",
+    "4_cloudCompareVersionAfter213GlobalShiftPolylineFix": "YES",
+    "5_officialDxfPolylineWritesGlobalCoordinatesAndCorrespondsToThis214ExportPath": "YES",
+    "5_scope": "Q1 software semantics only; not Q2 original-session transform proof",
+    "6_independentEvidenceSupportingNoNonIdentityTransform": "NO",
+    "6_missing": [
+      "DIRECT original-session GS/Scale read (SESSION_FILE NOT_FOUND)",
+      "qualifying controlled reproduction (REPRODUCTION NOT_PERFORMED)",
+      "object-property screenshot of identity GS/Scale",
+      "other machine-verifiable independent evidence"
+    ],
+    "6_insufficientAlone": [
+      "BlockR magnitude making automatic shift unlikely",
+      "operator log global_shift=none / extra_T_R_S=none",
+      "accepted NN consistency",
+      "official 'DXF writes global coordinates'",
+      "version after 2.13 bug fix"
+    ],
+    "7_noEmpiricalTRSApplied": "YES",
+    "8_noMaterialContradiction": "YES",
+    "DXF_TO_BLOCKR_RELATION": "IDENTITY_SUPPORTED",
+    "notIdentityProvenBecause": "Condition 6 fails: ORIGINAL_SESSION_TRANSFORM_EVIDENCE = NOT_AVAILABLE. Operator log + official semantics + post-fix version + small coordinates + accepted NN remain IDENTITY_SUPPORTED."
+  },
+  "DXF_TO_BLOCKR_RELATION": "IDENTITY_SUPPORTED",
+  "WallMetricMetersEvidence": {
+    "level": "SUPPORTED",
+    "notProvenBecause": "WallMetricMeters = PROVEN requires IDENTITY_PROVEN and established UPSTREAM_FRAME_PROVENANCE. Upstream is cited; relation remains IDENTITY_SUPPORTED."
+  },
+  "nnUsedOnlyAs": "consistency check already accepted at re-audit; not IDENTITY_PROVEN primary evidence; geometry not re-measured as a new closeness campaign this round",
+  "empiricalTransformApplied": false,
+  "circularityAvoided": true
+}

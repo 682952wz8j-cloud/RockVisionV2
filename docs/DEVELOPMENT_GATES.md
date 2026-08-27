@@ -76,10 +76,15 @@ is **NOT PASS**. Gate 5A provenance re-audit of `route_test_01` is
 recorded in
 [`validation/gate5a/gate5a_provenance_reaudit_route_test_01.json`](../validation/gate5a/gate5a_provenance_reaudit_route_test_01.json).
 This-round `GATE_5A_INPUT_READY = YES` with
-`DXF_TO_BLOCKR_RELATION = IDENTITY_SUPPORTED`. That is **not** Gate 5A
-PASS, **not** first-route freeze, **not** WallMetricMeters **PROVEN**,
-and **not** route-package authorization. Gate 5A remains **IN PROGRESS**.
-This round is a provenance re-audit of `route_test_01`.
+`DXF_TO_BLOCKR_RELATION = IDENTITY_SUPPORTED` was accepted at re-audit.
+Provenance closure is recorded in
+[`validation/gate5a/gate5a_provenance_closure_route_test_01.json`](../validation/gate5a/gate5a_provenance_closure_route_test_01.json).
+Relation remains `IDENTITY_SUPPORTED`; `WallMetricMeters` remains
+**SUPPORTED**. Missing independent evidence of non-identity transform
+absence (no original CloudCompare session file; controlled reproduction
+not performed). That is **not** Gate 5A PASS, **not** first-route freeze,
+**not** WallMetricMeters **PROVEN**, and **not** route-package
+authorization. Gate 5A remains **IN PROGRESS**.
 
 ---
 
