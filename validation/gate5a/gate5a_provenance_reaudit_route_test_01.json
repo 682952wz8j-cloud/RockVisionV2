@@ -1,0 +1,696 @@
+{
+  "schemaVersion": "gate5a.provenance.reaudit.route_test_01.1",
+  "kind": "audit",
+  "notARoutePackage": true,
+  "notProduction": true,
+  "gate5APass": false,
+  "firstRouteFrozen": false,
+  "subject": "incoming/route_test_01_white_wall.dxf",
+  "auditedAt": "2026-08-27",
+  "purpose": "Gate 5A provenance re-audit of route_test_01. Not a second Gate 5A start. Not authorization to create routes.json. Not Gate 5A PASS. Not first-route freeze.",
+  "historicalNotInput": [
+    "incoming/wall_jiulongfeng_01/test routes.dxf",
+    "validation/gate5a/gate5a_provenance_audit.json"
+  ],
+  "status": {
+    "STAGE_5_OPEN": true,
+    "STAGE_5_PASS": false,
+    "GATE_5A_STARTED": true,
+    "GATE_5A_PASS": false,
+    "GATE_5A_INPUT_READY": "YES",
+    "DXF_TO_BLOCKR_RELATION": "IDENTITY_SUPPORTED",
+    "WallMetricMeters": "SUPPORTED",
+    "ROUTE_PACKAGE_CREATED": false,
+    "ROUTE_RENDERING_STARTED": false,
+    "FIRST_ROUTE_FROZEN": false,
+    "note": "GATE_5A_INPUT_READY = YES with IDENTITY_SUPPORTED does not authorize a canonical/production route package, does not mean WallMetricMeters = PROVEN, and is not Gate 5A PASS."
+  },
+  "sourceDxfAutomated": {
+    "path": "incoming/route_test_01_white_wall.dxf",
+    "gitignored": true,
+    "sizeBytes": 6042,
+    "sha256": "33700b0907e44bca387297a72b7736b119dfd28f65c6f13e5c2123df85f76c40",
+    "creatorComments": [
+      "Created by CloudCompare v2.14.beta (Jun 29 2026)",
+      "Created 2026-08-27T18:45:59",
+      "dxflib 3.17.0.0"
+    ],
+    "header": {
+      "$ACADVER": "AC1009",
+      "$INSUNITS": "missing",
+      "$INSBASE": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "$EXTMIN": [
+        -18.18885555267334,
+        25.473366355895998,
+        -47.472165489196776
+      ],
+      "$EXTMAX": [
+        -15.885046577453613,
+        25.735953712463377,
+        -38.99283847808838
+      ]
+    },
+    "entityTypeCounts": {
+      "POLYLINE": 1,
+      "VERTEX": 11,
+      "SEQEND": 1
+    },
+    "polylineCount": 1
+  },
+  "zeroZeroZero": {
+    "vertexAtOrigin": false,
+    "polylineDummyOriginCount": 1,
+    "dummyOrigin": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "dummyOriginClassification": "DXF POLYLINE entity location (group 10/20/30), not a VERTEX. Excluded from route vertex_count, length, route bbox, and BlockR NN.",
+    "dummyOriginEvidenceLevel": "SUPPORTED"
+  },
+  "polyline": {
+    "dxfLayer": "POLYLINE_001",
+    "dxfFlags70": 8,
+    "dxfFlags70Meaning": "bit 8 = 3D polyline (DXF POLYLINE flag)",
+    "vertexCount": 11,
+    "numericLength": 9.806868806296066,
+    "numericLengthNote": "numeric length; units unproven from DXF header ($INSUNITS missing). Operator log records metres; that is OPERATOR_RECORDED, not DXF-header proof.",
+    "uniqueVertexCount": 11,
+    "vertices": [
+      [
+        -16.777332305908203,
+        25.605234146118164,
+        -47.36744689941406
+      ],
+      [
+        -16.912446975708008,
+        25.594392776489258,
+        -46.47579574584961
+      ],
+      [
+        -17.138164520263672,
+        25.582088470458984,
+        -45.32247543334961
+      ],
+      [
+        -17.22393798828125,
+        25.57929229736328,
+        -44.62041473388672
+      ],
+      [
+        -16.65515899658203,
+        25.604154586791992,
+        -44.05005645751953
+      ],
+      [
+        -16.53187370300293,
+        25.608875274658203,
+        -43.41041946411133
+      ],
+      [
+        -16.517581939697266,
+        25.608205795288086,
+        -42.634525299072266
+      ],
+      [
+        -16.508649826049805,
+        25.612014770507812,
+        -41.64543151855469
+      ],
+      [
+        -15.989765167236328,
+        25.631235122680664,
+        -40.49665832519531
+      ],
+      [
+        -16.98672103881836,
+        25.57808494567871,
+        -39.6428337097168
+      ],
+      [
+        -18.084136962890625,
+        25.599119186401367,
+        -39.097557067871094
+      ]
+    ]
+  },
+  "coordinateRanges": {
+    "includingDummyOriginsBBox": {
+      "xmin": -18.084136962890625,
+      "xmax": 0.0,
+      "ymin": 0.0,
+      "ymax": 25.631235122680664,
+      "zmin": -47.36744689941406,
+      "zmax": 0.0
+    },
+    "excludingDummyOriginsRouteBBox": {
+      "xmin": -18.084136962890625,
+      "xmax": -15.989765167236328,
+      "ymin": 25.57808494567871,
+      "ymax": 25.631235122680664,
+      "zmin": -47.36744689941406,
+      "zmax": -39.097557067871094,
+      "note": "This bbox is used for NN / INPUT_READY geometry. Dummy origin excluded."
+    }
+  },
+  "drawingLog": {
+    "path": "incoming/route_test_01_white_wall_drawing_log.txt",
+    "modifiedThisRound": false,
+    "fieldByField": [
+      {
+        "field": "date",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "2026-08-27; DXF comment Created 2026-08-27T18:45:59"
+      },
+      {
+        "field": "operator",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "Zheng Zhang; not a DXF entity field; no DXF conflict"
+      },
+      {
+        "field": "wall_id",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "wall_jiulongfeng_01; same wall as Gate 4B BlockR / W01-W04"
+      },
+      {
+        "field": "route_id",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "route_test_01; filename identity"
+      },
+      {
+        "field": "route_name",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "white-wall test line 01; not a DXF entity name; no DXF conflict"
+      },
+      {
+        "field": "dxf_file",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "incoming/route_test_01_white_wall.dxf exists at that path"
+      },
+      {
+        "field": "dxf_size_bytes",
+        "kind": "ASSISTANT_DERIVED",
+        "result": "MATCH",
+        "logValue": 6042,
+        "automatedValue": 6042
+      },
+      {
+        "field": "dxf_sha256",
+        "kind": "ASSISTANT_DERIVED",
+        "result": "MATCH",
+        "logValue": "33700b0907e44bca387297a72b7736b119dfd28f65c6f13e5c2123df85f76c40",
+        "automatedValue": "33700b0907e44bca387297a72b7736b119dfd28f65c6f13e5c2123df85f76c40"
+      },
+      {
+        "field": "dxf_created",
+        "kind": "ASSISTANT_DERIVED",
+        "result": "MATCH",
+        "note": "2026-08-27T18:45:59 matches DXF comment"
+      },
+      {
+        "field": "dxf_creator",
+        "kind": "ASSISTANT_DERIVED",
+        "result": "MATCH"
+      },
+      {
+        "field": "source_ply",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "BlockR.ply path exists and was used for NN; not itself IDENTITY_PROVEN"
+      },
+      {
+        "field": "loaded_W_markers",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "CloudCompare session claim; not encoded in DXF; no conflict"
+      },
+      {
+        "field": "global_shift",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "logValue": "none",
+        "note": "Not encoded in DXF; no conflict. Not used as IDENTITY_PROVEN."
+      },
+      {
+        "field": "extra_T_R_S",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "logValue": "none",
+        "note": "Not encoded in DXF; no conflict. Not used as IDENTITY_PROVEN."
+      },
+      {
+        "field": "units",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "logValue": "metres (same as BlockR.ply / WallLocal)",
+        "note": "$INSUNITS missing; absence is not CONFLICT. Not used as WallMetricMeters PROVEN."
+      },
+      {
+        "field": "tool",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "CloudCompare Trace/Draw polyline; DXF creator string is CloudCompare"
+      },
+      {
+        "field": "cc_object_name",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "logValue": "Polyline",
+        "note": "DXF group 8 layer is POLYLINE_001. Log already records that CC object name stayed Polyline. Identity is filename. Not a material CONFLICT."
+      },
+      {
+        "field": "cc_rename_attempted",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "Session claim; not encoded in DXF"
+      },
+      {
+        "field": "cc_rename_succeeded",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "logValue": "no",
+        "note": "Rename failure is not a defect and not BLOCKED."
+      },
+      {
+        "field": "identity_for_this_test",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "filename incoming/route_test_01_white_wall.dxf"
+      },
+      {
+        "field": "dxf_group8_layer_in_file",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "logValue": "POLYLINE_001",
+        "automatedValue": "POLYLINE_001"
+      },
+      {
+        "field": "vertex_count",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "logValue": 11,
+        "automatedValue": 11,
+        "note": "VERTEX count; dummy origin excluded"
+      },
+      {
+        "field": "vertex_at_0_0_0",
+        "kind": "ASSISTANT_DERIVED",
+        "result": "MATCH",
+        "logValue": "none",
+        "note": "No VERTEX at origin. One POLYLINE dummy origin (0,0,0) exists and is not a VERTEX."
+      },
+      {
+        "field": "numeric_length",
+        "kind": "ASSISTANT_DERIVED",
+        "result": "MATCH",
+        "logValue": 9.806868806296066,
+        "automatedValue": 9.806868806296066
+      },
+      {
+        "field": "vertex_bbox",
+        "kind": "ASSISTANT_DERIVED",
+        "result": "MATCH",
+        "note": "Matches excluding-dummy route bbox"
+      },
+      {
+        "field": "box_center_from_cc_properties",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "logValue": [
+          -17.036951,
+          25.60466,
+          -43.232502
+        ],
+        "routeBboxCenter": [
+          -17.036951065063477,
+          25.604660034179688,
+          -43.23250198364258
+        ]
+      },
+      {
+        "field": "$INSUNITS",
+        "kind": "ASSISTANT_DERIVED",
+        "result": "MATCH",
+        "logValue": "missing",
+        "automatedValue": "missing"
+      },
+      {
+        "field": "viewing_convention",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "Not encoded in DXF; no conflict. Not coordinate-frame proof."
+      },
+      {
+        "field": "physical_feature",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "Recorded without rewrite. Not encoded in DXF. Not coordinate-frame proof."
+      },
+      {
+        "field": "physical_path_sequence",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "Not encoded in DXF; no conflict."
+      },
+      {
+        "field": "export",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "note": "One 3D polyline (flag 70=8); this polyline only"
+      },
+      {
+        "field": "cloudcompare_bin_session",
+        "kind": "OPERATOR_RECORDED",
+        "result": "MATCH",
+        "logValue": "not found next to this DXF",
+        "note": "No .bin / .ccprj beside the DXF this round"
+      }
+    ],
+    "materialOperatorRecordedConflict": false,
+    "assistantDerivedMatchNote": "ASSISTANT_DERIVED sha256 / size / bbox / length MATCH this round's re-parse. That only indicates the file is consistent with the prior parse recorded in the log. It is not a second independent provenance source."
+  },
+  "UPSTREAM_FRAME_PROVENANCE": {
+    "result": "ESTABLISHED_BY_EXISTING_GATE4B_EVIDENCE",
+    "citations": [
+      {
+        "artifact": "validation/gate4b/gate4b_landmarks_frozen.json",
+        "fields": {
+          "coordinateFrame": "WallMetricMeters",
+          "coordinateConvention.source": "WallLocal metres from Terra PLY / SRSOrigin",
+          "coordinateConvention.sourceToWallTransform": "identity",
+          "coordinateConvention.S_wall_colmapApplied": false,
+          "sourcePackage.path": "incoming/wall_jiulongfeng_01/Gate4B_4points_white_wall.zip"
+        }
+      },
+      {
+        "artifact": "incoming/wall_jiulongfeng_01/Gate4B_4points_white_wall.zip Gate4B_4points_white_wall/README.txt",
+        "statement": "\u5750\u6807\u4e0e BlockR.ply \u76f8\u540c\uff08WallLocal \u7c73\uff09\uff0c\u4e0d\u8981\u5e73\u79fb/\u7f29\u653e/\u7ffb\u8f74\u3002 CloudCompare: \u5148\u6253\u5f00 BlockR.ply"
+      },
+      {
+        "artifact": "incoming/wall_jiulongfeng_01/Gate4B_4points_white_wall.zip Gate4B_4points_white_wall/points.json",
+        "fields": {
+          "sourceFile": "incoming/wall_jiulongfeng_01/\u4e5d\u9f99\u5cf0\u68ee\u6797\u7ad9\u5927\u697c/models/pc/0/terra_ply/BlockR/BlockR.ply",
+          "sourceFrame": "WallLocal metres (Terra BlockR.ply relative to metadata.xml SRSOrigin). Same as the mesh; do not transform."
+        }
+      },
+      {
+        "artifact": "validation/gate4b/gate4b_ar_physical_measurement.json",
+        "fields": {
+          "status": "PASS",
+          "coordinateFrame": "WallMetricMeters",
+          "frozenLandmarksManifest": "validation/gate4b/gate4b_landmarks_frozen.json"
+        }
+      }
+    ],
+    "statement": "Existing Gate 4B frozen/validated evidence records WallMetricMeters as WallLocal metres from the Terra PLY / SRSOrigin with identity transform and S_wall_colmapApplied=false. The Gate 4B source package names BlockR.ply as that mesh and states coordinates are the same as BlockR.ply (WallLocal metres). This round does not re-infer BlockR's frame from DXF proximity.",
+    "circularityAvoided": true
+  },
+  "DXF_TO_BLOCKR_RELATION": {
+    "result": "IDENTITY_SUPPORTED",
+    "notIdentityProvenBecause": "This round has no independent identity-transform evidence beyond operator-recorded session notes and automated spatial NN. Protocol forbids inventing an IDENTITY_PROVEN criterion here.",
+    "automatedGeometryCheckCeiling": "IDENTITY_SUPPORTED",
+    "operatorSessionNotesNotUsedAsProven": [
+      "global_shift: none",
+      "extra_T_R_S: none",
+      "units: metres"
+    ],
+    "empiricalTransformApplied": false
+  },
+  "WallMetricMetersEvidence": {
+    "level": "SUPPORTED",
+    "notProvenBecause": "WallMetricMeters = PROVEN requires DXF_TO_BLOCKR_RELATION = IDENTITY_PROVEN and established UPSTREAM_FRAME_PROVENANCE. Upstream is cited; relation this round is IDENTITY_SUPPORTED only."
+  },
+  "whiteFacadeRegion": {
+    "source": "Gate4B_4points_white_wall.zip points.json whiteWallCropApprox (read-only)",
+    "X": [
+      -28.4,
+      -9.2
+    ],
+    "Y_skin": [
+      24.75,
+      26.15
+    ],
+    "Z": [
+      -48.4,
+      -36.6
+    ],
+    "allRouteVerticesInside": true,
+    "allNearestNeighborsInside": true
+  },
+  "perVertexNearestNeighbor": {
+    "ply": "incoming/wall_jiulongfeng_01/\u4e5d\u9f99\u5cf0\u68ee\u6797\u7ad9\u5927\u697c/models/pc/0/terra_ply/BlockR/BlockR.ply",
+    "method": "nearest PLY vertex (not triangle-surface distance)",
+    "dummyOriginsExcluded": true,
+    "noTransformAppliedToDxf": true,
+    "stats": {
+      "min": 0.003177089803321366,
+      "median": 0.03585467164394912,
+      "p90": 0.07915495741510892,
+      "max": 0.09427124773872352,
+      "note": "No numeric PASS threshold this round. Distances left for human review."
+    },
+    "vertices": [
+      {
+        "i": 0,
+        "dxf": [
+          -16.777332305908203,
+          25.605234146118164,
+          -47.36744689941406
+        ],
+        "nn": [
+          -16.701576232910156,
+          25.6126766204834,
+          -47.38915252685547
+        ],
+        "distance": 0.07915495741510892,
+        "dxfInWhiteFacade": true,
+        "nnInWhiteFacade": true
+      },
+      {
+        "i": 1,
+        "dxf": [
+          -16.912446975708008,
+          25.594392776489258,
+          -46.47579574584961
+        ],
+        "nn": [
+          -16.94972038269043,
+          25.59170913696289,
+          -46.40988540649414
+        ],
+        "distance": 0.0757672859691951,
+        "dxfInWhiteFacade": true,
+        "nnInWhiteFacade": true
+      },
+      {
+        "i": 2,
+        "dxf": [
+          -17.138164520263672,
+          25.582088470458984,
+          -45.32247543334961
+        ],
+        "nn": [
+          -17.17053985595703,
+          25.58112335205078,
+          -45.29502868652344
+        ],
+        "distance": 0.042454890485544045,
+        "dxfInWhiteFacade": true,
+        "nnInWhiteFacade": true
+      },
+      {
+        "i": 3,
+        "dxf": [
+          -17.22393798828125,
+          25.57929229736328,
+          -44.62041473388672
+        ],
+        "nn": [
+          -17.259716033935547,
+          25.577306747436523,
+          -44.62165832519531
+        ],
+        "distance": 0.03585467164394912,
+        "dxfInWhiteFacade": true,
+        "nnInWhiteFacade": true
+      },
+      {
+        "i": 4,
+        "dxf": [
+          -16.65515899658203,
+          25.604154586791992,
+          -44.05005645751953
+        ],
+        "nn": [
+          -16.622102737426758,
+          25.604970932006836,
+          -44.00091552734375
+        ],
+        "distance": 0.059230175648831276,
+        "dxfInWhiteFacade": true,
+        "nnInWhiteFacade": true
+      },
+      {
+        "i": 5,
+        "dxf": [
+          -16.53187370300293,
+          25.608875274658203,
+          -43.41041946411133
+        ],
+        "nn": [
+          -16.50962257385254,
+          25.609458923339844,
+          -43.41598892211914
+        ],
+        "distance": 0.022944983258911544,
+        "dxfInWhiteFacade": true,
+        "nnInWhiteFacade": true
+      },
+      {
+        "i": 6,
+        "dxf": [
+          -16.517581939697266,
+          25.608205795288086,
+          -42.634525299072266
+        ],
+        "nn": [
+          -16.508756637573242,
+          25.608306884765625,
+          -42.62434005737305
+        ],
+        "distance": 0.013477215036284988,
+        "dxfInWhiteFacade": true,
+        "nnInWhiteFacade": true
+      },
+      {
+        "i": 7,
+        "dxf": [
+          -16.508649826049805,
+          25.612014770507812,
+          -41.64543151855469
+        ],
+        "nn": [
+          -16.506290435791016,
+          25.612226486206055,
+          -41.64754867553711
+        ],
+        "distance": 0.003177089803321366,
+        "dxfInWhiteFacade": true,
+        "nnInWhiteFacade": true
+      },
+      {
+        "i": 8,
+        "dxf": [
+          -15.989765167236328,
+          25.631235122680664,
+          -40.49665832519531
+        ],
+        "nn": [
+          -16.002517700195312,
+          25.631784439086914,
+          -40.510498046875
+        ],
+        "distance": 0.018827287153367858,
+        "dxfInWhiteFacade": true,
+        "nnInWhiteFacade": true
+      },
+      {
+        "i": 9,
+        "dxf": [
+          -16.98672103881836,
+          25.57808494567871,
+          -39.6428337097168
+        ],
+        "nn": [
+          -17.078792572021484,
+          25.5734920501709,
+          -39.66255187988281
+        ],
+        "distance": 0.09427124773872352,
+        "dxfInWhiteFacade": true,
+        "nnInWhiteFacade": true,
+        "largestNnThisRound": true
+      },
+      {
+        "i": 10,
+        "dxf": [
+          -18.084136962890625,
+          25.599119186401367,
+          -39.097557067871094
+        ],
+        "nn": [
+          -18.07918930053711,
+          25.596954345703125,
+          -39.10626220703125
+        ],
+        "distance": 0.010244283567475441,
+        "dxfInWhiteFacade": true,
+        "nnInWhiteFacade": true
+      }
+    ],
+    "outliers": [],
+    "largestNnVertex": {
+      "i": 9,
+      "distance": 0.09427124773872352,
+      "materialContradiction": false,
+      "note": "Largest NN this round; still inside white-facade region; NN also inside. Not treated as identity-frame negation. No numeric PASS threshold."
+    },
+    "materialContradiction": false
+  },
+  "routeIdentity": {
+    "route_id": "route_test_01",
+    "route_name": "white-wall test line 01",
+    "source": "incoming/route_test_01_white_wall.dxf",
+    "filenameIdentity": true,
+    "cloudCompareObjectName": "Polyline",
+    "dxfLayer": "POLYLINE_001",
+    "gradeInvented": false,
+    "boltCountInvented": false,
+    "officialClimbingNameInvented": false,
+    "firstRouteFrozen": false,
+    "unfrozenCandidate": "route_test_01",
+    "physicalPathOperatorDeclaration20260827": {
+      "source": "operator statement 2026-08-27; recorded without rewrite",
+      "facingWhiteFacade": {
+        "left": "W02 (leftmost / first window column from the left)",
+        "right": "W04 (rightmost / first window column from the right)"
+      },
+      "pathVerbatimFromDrawingLog": [
+        "Starts at the wall corner below the 1st-floor window of column 2 (column 1 from the left = W02 window column).",
+        "Climbs up the white wall along that second column.",
+        "Continues up the right edge of the 2nd-floor window of column 2.",
+        "Reaches the lower edge of the 3rd-floor window, then goes up and to the right.",
+        "Ends at the upper-middle of the building."
+      ],
+      "notCoordinateFrameProof": true
+    }
+  },
+  "inputReadyConditions": {
+    "1_dxfSuccessfullyParsed": "YES",
+    "2_exactlyOneIntendedRoutePolyline": "YES",
+    "3_routeGeometryNonDegenerateDummyExcluded": "YES",
+    "4_filenameIdentityRouteTest01": "YES",
+    "5_physicalPathRecordedWithoutContradiction": "YES",
+    "6_upstreamFrameProvenanceCitesGate4B": "YES",
+    "7_dxfToBlockRRelationIdentitySupportedOrProvenNoMaterialContradiction": "YES",
+    "7_relationValue": "IDENTITY_SUPPORTED",
+    "8_automatedGeometryCheckNoMaterialContradiction": "YES",
+    "9_drawingLogNoMaterialOperatorRecordedConflict": "YES",
+    "10_noEmpiricalTRSRequiredOrApplied": "YES",
+    "GATE_5A_INPUT_READY": "YES",
+    "doesNotMeanGate5APass": true,
+    "doesNotMeanFirstRouteFrozen": true,
+    "doesNotMeanWallMetricMetersProven": true,
+    "doesNotAuthorizeRoutePackage": true
+  }
+}

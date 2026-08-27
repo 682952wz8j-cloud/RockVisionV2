@@ -72,8 +72,14 @@ visual identity 2026-08-27). Stage 5 is **OPEN / IN PROGRESS**
 (provenance-first, started 2026-08-27). Gate 5A is **NOT PASS**. The
 route package is **NOT CREATED / NOT AUTHORIZED**. Route rendering is
 **NOT STARTED / NOT AUTHORIZED**. First route is **NOT FROZEN**. Stage 5
-is **NOT PASS**. This Gate 5A start protocol is not authorization to
-create a route package and not Gate 5A PASS closure.
+is **NOT PASS**. Gate 5A provenance re-audit of `route_test_01` is
+recorded in
+[`validation/gate5a/gate5a_provenance_reaudit_route_test_01.json`](../validation/gate5a/gate5a_provenance_reaudit_route_test_01.json).
+This-round `GATE_5A_INPUT_READY = YES` with
+`DXF_TO_BLOCKR_RELATION = IDENTITY_SUPPORTED`. That is **not** Gate 5A
+PASS, **not** first-route freeze, **not** WallMetricMeters **PROVEN**,
+and **not** route-package authorization. Gate 5A remains **IN PROGRESS**.
+This round is a provenance re-audit of `route_test_01`.
 
 ---
 

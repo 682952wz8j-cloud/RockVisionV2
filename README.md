@@ -97,7 +97,9 @@ Stage 4 sub-gates:
 
 **Gate 4B — PASS / CLOSED** (landmarks FROZEN W01–W04; AR physical measurement PASS, visual identity 2026-08-27).
 
-**Stage 5 — OPEN / IN PROGRESS** (explicitly opened 2026-08-27). Gate 5A **IN PROGRESS** (provenance-first; this round is the Gate 5A start protocol). Gate 5A **NOT PASS**. Route package **NOT CREATED / NOT AUTHORIZED**. Route rendering **NOT STARTED / NOT AUTHORIZED**. First route **NOT FROZEN**. Stage 5 **NOT PASS**.
+**Stage 5 — OPEN / IN PROGRESS** (explicitly opened 2026-08-27). Gate 5A **IN PROGRESS** (provenance-first, started 2026-08-27). Gate 5A **NOT PASS**. Route package **NOT CREATED / NOT AUTHORIZED**. Route rendering **NOT STARTED / NOT AUTHORIZED**. First route **NOT FROZEN**. Stage 5 **NOT PASS**.
+
+Gate 5A provenance re-audit of `route_test_01` is recorded in `validation/gate5a/gate5a_provenance_reaudit_route_test_01.json` (audit only; not a route package; not PASS). This-round `GATE_5A_INPUT_READY = YES` with `DXF_TO_BLOCKR_RELATION = IDENTITY_SUPPORTED`. That is **not** Gate 5A PASS, **not** first-route freeze, **not** WallMetricMeters **PROVEN**, and **not** route-package authorization. Historical start audit of the old DXF remains `validation/gate5a/gate5a_provenance_audit.json` (not this round’s input).
 
 Formal provenance:
 
@@ -106,7 +108,8 @@ Formal provenance:
   `qualifiedCount=19`)
 - Gate 4A field session (same-frame / lifetime): `gate4a_20260825_104607`
 - Gate 4B AR physical measurement: `validation/gate4b/gate4b_ar_physical_measurement.json` (2026-08-27 visual identity; supporting Field Test `gate4b_20260827_121932`)
-- Gate 5A provenance audit (audit only; not a route package; not PASS): `validation/gate5a/gate5a_provenance_audit.json`
+- Gate 5A provenance audit of old `test routes.dxf` (historical start checkpoint; not this round’s input): `validation/gate5a/gate5a_provenance_audit.json`
+- Gate 5A provenance re-audit of `route_test_01` (audit only; not a route package; not PASS): `validation/gate5a/gate5a_provenance_reaudit_route_test_01.json`
 
 Production output (when Localization = localized):
 
@@ -241,15 +244,20 @@ is **NOT PASS**.
 
 Allowed now:
 
-- Human review of this Gate 5A provenance audit
-- Human confirmation of DXF source model / units / export procedure
-- Human selection / naming of the first test route
-- Human review of `GATE_5A_INPUT_READY`
+- Human review of the `route_test_01` provenance re-audit
+- Human review of this-round `GATE_5A_INPUT_READY`
+- Human confirmation that the recorded physical path matches the site
+- Human review of per-vertex BlockR nearest-neighbor distances (no numeric PASS threshold this round)
 - Explicit instruction to push for GitHub review (not implied)
 
-Route package creation and Gate 5A PASS closure await subsequent
-explicit authorization / execution protocol. They are **not** started
-by this Gate 5A start protocol.
+Gate 5A remains **IN PROGRESS**. This round is a provenance re-audit of
+`route_test_01`. It is not route-package authorization and not Gate 5A
+PASS closure.
+
+Provenance closure, route package / `routes.json` creation, and Gate 5A
+PASS closure await a subsequent explicit authorization / execution
+protocol. `GATE_5A_INPUT_READY = YES` with `IDENTITY_SUPPORTED` does
+**not** authorize a canonical / production route package.
 
 **Not allowed now**
 
