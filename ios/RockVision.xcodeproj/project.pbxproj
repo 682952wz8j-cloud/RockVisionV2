@@ -75,6 +75,9 @@
 		A10000000000000100000047 /* RuntimeRouteBinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000047 /* RuntimeRouteBinding.swift */; };
 		A10000000000000100000048 /* Gate5CRouteFixture.json in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000048 /* Gate5CRouteFixture.json */; };
 		A10000000000000100000049 /* Gate5CRuntimeRouteBindingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000049 /* Gate5CRuntimeRouteBindingTests.swift */; };
+		A1000000000000010000004A /* RouteRenderPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000004A /* RouteRenderPlan.swift */; };
+		A1000000000000010000004B /* RouteOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000004B /* RouteOverlay.swift */; };
+		A1000000000000010000004C /* Gate5DARendererCorrectnessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000004C /* Gate5DARendererCorrectnessTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -150,6 +153,9 @@
 		A20000000000000100000047 /* RuntimeRouteBinding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeRouteBinding.swift; sourceTree = "<group>"; };
 		A20000000000000100000048 /* Gate5CRouteFixture.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Gate5CRouteFixture.json; sourceTree = "<group>"; };
 		A20000000000000100000049 /* Gate5CRuntimeRouteBindingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate5CRuntimeRouteBindingTests.swift; sourceTree = "<group>"; };
+		A2000000000000010000004A /* RouteRenderPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteRenderPlan.swift; sourceTree = "<group>"; };
+		A2000000000000010000004B /* RouteOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOverlay.swift; sourceTree = "<group>"; };
+		A2000000000000010000004C /* Gate5DARendererCorrectnessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate5DARendererCorrectnessTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -219,6 +225,7 @@
 				A4000000000000010000000D /* FieldTest */,
 				A4000000000000010000000E /* Matching */,
 				A40000000000000100000010 /* PnP */,
+				A40000000000000100000011 /* RouteOverlay */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -311,8 +318,17 @@
 				A2000000000000010000003E /* WallAlignmentDebugGeometry.swift */,
 				A20000000000000100000041 /* Gate4BMeasurementFixture.swift */,
 				A20000000000000100000047 /* RuntimeRouteBinding.swift */,
+				A2000000000000010000004A /* RouteRenderPlan.swift */,
 			);
 			path = PnP;
+			sourceTree = "<group>";
+		};
+		A40000000000000100000011 /* RouteOverlay */ = {
+			isa = PBXGroup;
+			children = (
+				A2000000000000010000004B /* RouteOverlay.swift */,
+			);
+			path = RouteOverlay;
 			sourceTree = "<group>";
 		};
 		A4000000000000010000000F /* Resources */ = {
@@ -349,6 +365,7 @@
 				A20000000000000100000045 /* Gate4BPhysicalValidationHUDTests.swift */,
 				A20000000000000100000046 /* Gate5BRouteTransformTests.swift */,
 				A20000000000000100000049 /* Gate5CRuntimeRouteBindingTests.swift */,
+				A2000000000000010000004C /* Gate5DARendererCorrectnessTests.swift */,
 			);
 			path = RockVisionTests;
 			sourceTree = "<group>";
@@ -509,6 +526,8 @@
 				A1000000000000010000003E /* WallAlignmentDebugGeometry.swift in Sources */,
 				A10000000000000100000041 /* Gate4BMeasurementFixture.swift in Sources */,
 				A10000000000000100000047 /* RuntimeRouteBinding.swift in Sources */,
+				A1000000000000010000004A /* RouteRenderPlan.swift in Sources */,
+				A1000000000000010000004B /* RouteOverlay.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -534,6 +553,7 @@
 				A10000000000000100000045 /* Gate4BPhysicalValidationHUDTests.swift in Sources */,
 				A10000000000000100000046 /* Gate5BRouteTransformTests.swift in Sources */,
 				A10000000000000100000049 /* Gate5CRuntimeRouteBindingTests.swift in Sources */,
+				A1000000000000010000004C /* Gate5DARendererCorrectnessTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

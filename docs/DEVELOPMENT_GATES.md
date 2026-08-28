@@ -59,9 +59,14 @@ Stage 5 — Route AR                           OPEN / IN PROGRESS
                                            Frozen route runtime load PASS
                                            Frozen geometry hash gate PASS
                                            Rolling runtime route binding PASS
+                                           Gate 5D OPEN / IN PROGRESS / NOT PASS
+                                           Gate 5D-A PASS / CLOSED
+                                           Route rendering (renderer correctness) PASS
+                                           Physical visual validation NOT PERFORMED
+                                           GATE_5D_PASS = NO
+                                           Gate 5D-B NOT STARTED / NOT AUTHORIZED
                                            Route package NOT CREATED
-                                           Route rendering NOT STARTED
-                                           Gate 5D–5E NOT STARTED
+                                           Gate 5E NOT STARTED
                                            Stage 5 NOT PASS
 ```
 
@@ -79,10 +84,12 @@ visual identity 2026-08-27). Stage 5 is **OPEN / IN PROGRESS**
 (explicitly opened 2026-08-27). Gate 5A is **PASS / CLOSED**. First
 route is **FROZEN** (`route_test_01`). Gate 5B is **PASS / CLOSED**. Gate 5C
 is **PASS / CLOSED**. Frozen route runtime load **PASS**. Frozen geometry
-hash gate **PASS**. Rolling runtime route binding **PASS**. The
-route package is
-**NOT CREATED / NOT AUTHORIZED**. Route rendering is
-**NOT STARTED / NOT AUTHORIZED**. Gate 5D–5E are **NOT STARTED**. Stage 5
+hash gate **PASS**. Rolling runtime route binding **PASS**. Gate 5D is
+**OPEN / IN PROGRESS / NOT PASS**. Gate 5D-A is **PASS / CLOSED**. Route
+rendering (renderer correctness) is **PASS**. Physical visual validation
+is **NOT PERFORMED**. `GATE_5D_PASS = NO`. Gate 5D-B is **NOT STARTED /
+NOT AUTHORIZED**. The route package is
+**NOT CREATED / NOT AUTHORIZED**. Gate 5E is **NOT STARTED**. Stage 5
 is **NOT PASS**. Canonical ingested polyline:
 [`validation/gate5a/gate5a_ingested_route_test_01.json`](../validation/gate5a/gate5a_ingested_route_test_01.json).
 PASS closure:
@@ -91,10 +98,12 @@ Gate 5B transform correctness:
 [`validation/gate5b/gate5b_route_transform_correctness_route_test_01.json`](../validation/gate5b/gate5b_route_transform_correctness_route_test_01.json).
 Gate 5C runtime route binding:
 [`validation/gate5c/gate5c_runtime_route_binding_route_test_01.json`](../validation/gate5c/gate5c_runtime_route_binding_route_test_01.json).
+Gate 5D-A renderer correctness:
+[`validation/gate5d/gate5da_renderer_correctness_route_test_01.json`](../validation/gate5d/gate5da_renderer_correctness_route_test_01.json).
 `DXF_TO_BLOCKR_RELATION = IDENTITY_PROVEN`. `WallMetricMeters = PROVEN`.
-`GATE_5A_INPUT_READY = YES`. `GATE_5A_PASS = YES`. `GATE_5B_PASS = YES`. `GATE_5C_PASS = YES`. That is **not**
+`GATE_5A_INPUT_READY = YES`. `GATE_5A_PASS = YES`. `GATE_5B_PASS = YES`. `GATE_5C_PASS = YES`. `GATE_5D_A_PASS = YES`. `GATE_5D_PASS = NO`. That is **not**
 production Wall Package `routes.json` authorization and
-**not** route-rendering authorization. Prior Gate 5A provenance artifacts
+**not** physical visual validation / Gate 5D PASS. Prior Gate 5A provenance artifacts
 remain historical and unoverwritten.
 
 ---
@@ -109,6 +118,9 @@ remain historical and unoverwritten.
   currently **PASS / CLOSED**; first route **FROZEN** (`route_test_01`)
 - Live Gate **5B** is route transform correctness; currently **PASS / CLOSED**
 - Live Gate **5C** is runtime route data binding; currently **PASS / CLOSED**
+- Live Gate **5D** is route rendering; currently **OPEN / IN PROGRESS / NOT PASS**
+- Live Gate **5D-A** is renderer correctness; currently **PASS / CLOSED**
+- Live Gate **5D-B** is on-device physical visual validation; currently **NOT STARTED / NOT AUTHORIZED**
 - The Gate 0–11 chapters below are the **early plan numbering**
 - Live Gate **3C** is reference matching (this document’s historical
   “Gate 4”)
@@ -419,9 +431,11 @@ Thresholds are named and marked uncalibrated.
 PASS / CLOSED. First route = FROZEN (route_test_01). Gate 5B =
 PASS / CLOSED. Gate 5C = PASS / CLOSED. Frozen route runtime load =
 PASS. Frozen geometry hash gate = PASS. Rolling runtime route binding =
-PASS. Route package =
-NOT CREATED / NOT AUTHORIZED. Route rendering = NOT STARTED / NOT
-AUTHORIZED. Gate 5D–5E = NOT STARTED / NOT AUTHORIZED. Stage 5 =
+PASS. Gate 5D = OPEN / IN PROGRESS / NOT PASS. Gate 5D-A = PASS / CLOSED.
+Route rendering (renderer correctness) = PASS. Physical visual validation
+= NOT PERFORMED. GATE_5D_PASS = NO. Gate 5D-B = NOT STARTED / NOT
+AUTHORIZED. Route package =
+NOT CREATED / NOT AUTHORIZED. Gate 5E = NOT STARTED / NOT AUTHORIZED. Stage 5 =
 NOT PASS.**
 
 Stage 3 has produced confirmed `T_opencvCam_colmap`. Gate 4A generates

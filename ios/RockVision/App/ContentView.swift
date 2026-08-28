@@ -11,7 +11,11 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .bottomLeading) {
-                ARCameraPreview(session: sessionHost.session, debugGeometry: openCV.wallDebugGeometry)
+                ARCameraPreview(
+                    session: sessionHost.session,
+                    debugGeometry: openCV.wallDebugGeometry,
+                    routePlan: openCV.routeRenderPlan
+                )
                     .ignoresSafeArea()
                 KeypointOverlayView(points: openCV.siftSnapshot.overlayViewPoints)
                     .ignoresSafeArea()
@@ -27,6 +31,8 @@ struct ContentView: View {
                         ? openCV.wallDebugSnapshot.axisLengths
                         : "hidden",
                     wallMarkers: openCV.wallDebugSnapshot.markers,
+                    routeBinding: openCV.runtimeRouteBinding,
+                    routePlan: openCV.routeRenderPlan,
                     sift: openCV.siftSnapshot,
                     matching: openCV.matchingSnapshot,
                     pnp: openCV.pnpSnapshot

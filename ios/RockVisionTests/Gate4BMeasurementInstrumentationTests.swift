@@ -250,7 +250,7 @@ final class Gate4BMeasurementInstrumentationTests: XCTestCase {
         XCTAssertNil(decoded.markerCount)
         XCTAssertNil(decoded.markers)
         XCTAssertEqual(decoded.validatedLandmarkCount, 0)
-        XCTAssertEqual(FieldTestExportSchema.version, "gate4b.runtime.1")
+        XCTAssertEqual(FieldTestExportSchema.version, "gate5da.runtime.1")
     }
 
     func testExportSummaryHasMarkersAndNoPhysicalError() throws {

@@ -61,6 +61,16 @@ enum FieldTestExport {
                 lines.append("alignmentGenerated: \(alignStats.generatedCount)  cleared: \(alignStats.clearedCount)")
                 lines.append("renderedRoute: \(alignStats.renderedRoute)")
             }
+            if let routeBinding = samples.compactMap(\.routeBinding).last {
+                lines.append("routeBinding.routeId: \(routeBinding.routeId ?? "—")")
+                lines.append("routeBinding.frozenRouteHashVerified: \(routeBinding.frozenRouteHashVerified)")
+                lines.append("routeBinding.routeARWorldPointCount: \(routeBinding.routeARWorldPointCount)")
+                lines.append("routeBinding.hasBoundRoute: \(routeBinding.hasBoundRoute)")
+            }
+            if let routeRendering = samples.compactMap(\.routeRendering).last {
+                lines.append("routeRendering.renderedRoute: \(routeRendering.renderedRoute)")
+                lines.append("routeRendering.visibleSegmentCount: \(routeRendering.visibleSegmentCount)")
+            }
             let lastGeom = samples.compactMap(\.wallDebugGeometry).last
             if let geom = lastGeom, geom.visible,
                let x = geom.axisLengthX, let y = geom.axisLengthY, let z = geom.axisLengthZ {

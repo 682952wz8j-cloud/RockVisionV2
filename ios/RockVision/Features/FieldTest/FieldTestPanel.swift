@@ -40,6 +40,8 @@ struct FieldTestPanel: View {
     var alignment: String = "none"
     var wallAxes: String = "hidden"
     var wallMarkers: String = "0/4"
+    var routeBinding: RuntimeRouteBinding = .unbound
+    var routePlan: RouteRenderPlan = .empty
     var sift: SIFTRuntimeSnapshot = SIFTRuntimeSnapshot()
     var matching: MatchingRuntimeSnapshot = MatchingRuntimeSnapshot()
     var pnp: PnPRuntimeSnapshot = PnPRuntimeSnapshot()
@@ -131,7 +133,12 @@ struct FieldTestPanel: View {
             confirmationWindow: confirmationWindow,
             alignment: alignment,
             wallAxes: wallAxes,
-            wallMarkers: wallMarkers
+            wallMarkers: wallMarkers,
+            routeId: routeBinding.routeId,
+            hashVerified: routeBinding.hashVerified,
+            boundPointCount: routeBinding.routeARWorldPointCount,
+            rendered: routePlan.wouldRender,
+            visibleSegmentCount: routePlan.segmentCount
         )
     }
 

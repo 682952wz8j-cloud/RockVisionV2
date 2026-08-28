@@ -188,7 +188,9 @@ final class FieldTestController: ObservableObject {
         arkitSidecar: ARKitCameraTransformSidecar? = nil,
         alignment: AlignmentFrameResult? = nil,
         alignmentStats: AlignmentStats? = nil,
-        wallDebugGeometry: WallAlignmentDebugGeometry? = nil
+        wallDebugGeometry: WallAlignmentDebugGeometry? = nil,
+        routeBinding: RuntimeRouteBinding? = nil,
+        routeRenderPlan: RouteRenderPlan? = nil
     ) -> Bool {
         guard isSampling else { return false }
         if case let .waitingTracking(scene, preset) = phase {
@@ -275,7 +277,21 @@ final class FieldTestController: ObservableObject {
             arkitSidecar: persistMatching ? arkitSidecar : nil,
             alignment: persistMatching ? alignment : nil,
             alignmentStats: persistMatching ? alignmentStats : nil,
-            wallDebugGeometry: persistMatching ? wallDebugGeometry : nil
+            wallDebugGeometry: persistMatching ? wallDebugGeometry : nil,
+            routeBinding: persistMatching ? routeBinding.map {
+                FieldTestRouteBindingSnapshot(
+                    routeId: $0.routeId,
+                    frozenRouteHashVerified: $0.hashVerified,
+                    routeARWorldPointCount: $0.routeARWorldPointCount,
+                    hasBoundRoute: $0.hasBoundRoute
+                )
+            } : nil,
+            routeRendering: persistMatching ? routeRenderPlan.map {
+                FieldTestRouteRenderingSnapshot(
+                    renderedRoute: $0.wouldRender,
+                    visibleSegmentCount: $0.segmentCount
+                )
+            } : nil
         )
 
         persistQueue.async { [weak self] in
@@ -712,7 +728,9 @@ protocol FieldTestSampleSink: AnyObject {
         arkitSidecar: ARKitCameraTransformSidecar?,
         alignment: AlignmentFrameResult?,
         alignmentStats: AlignmentStats?,
-        wallDebugGeometry: WallAlignmentDebugGeometry?
+        wallDebugGeometry: WallAlignmentDebugGeometry?,
+        routeBinding: RuntimeRouteBinding?,
+        routeRenderPlan: RouteRenderPlan?
     ) -> Bool
 }
 

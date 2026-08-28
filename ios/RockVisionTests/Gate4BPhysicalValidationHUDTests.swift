@@ -10,7 +10,12 @@ final class Gate4BPhysicalValidationHUDTests: XCTestCase {
             confirmationWindow: "3/3",
             alignment: "yes 12",
             wallAxes: "X=1.000 Y=1.000 Z=1.000 m",
-            wallMarkers: "4/4"
+            wallMarkers: "4/4",
+            routeId: "route_test_01",
+            hashVerified: true,
+            boundPointCount: 11,
+            rendered: true,
+            visibleSegmentCount: 10
         )
         XCTAssertEqual(rows.map(\.title), Gate4BPhysicalValidationHUD.visibleTitles)
         XCTAssertEqual(rows.first { $0.title == "Scene" }?.value, "A")
@@ -20,6 +25,11 @@ final class Gate4BPhysicalValidationHUDTests: XCTestCase {
         XCTAssertEqual(rows.first { $0.title == "T_ARWorld_Wall" }?.value, "valid")
         XCTAssertEqual(rows.first { $0.title == "Wall axes" }?.value, "visible")
         XCTAssertEqual(rows.first { $0.title == "Markers" }?.value, "4/4")
+        XCTAssertEqual(rows.first { $0.title == "Route" }?.value, "route_test_01")
+        XCTAssertEqual(rows.first { $0.title == "Hash" }?.value, "OK")
+        XCTAssertEqual(rows.first { $0.title == "Bound" }?.value, "11")
+        XCTAssertEqual(rows.first { $0.title == "Rendered" }?.value, "YES")
+        XCTAssertEqual(rows.first { $0.title == "Segments" }?.value, "10")
     }
 
     func testHiddenDiagnosticTitlesAreNotInVisibleHUD() throws {
@@ -308,8 +318,9 @@ final class Gate4BPhysicalValidationHUDTests: XCTestCase {
         XCTAssertEqual(rows.first { $0.title == "obs-depth sanity" }?.value, "ok")
     }
 
-    func testExportSchemaUnchanged() throws {
-        XCTAssertEqual(FieldTestExportSchema.version, "gate4b.runtime.1")
+    func testExportSchemaIsGate5DARuntime() throws {
+        XCTAssertEqual(FieldTestExportSchema.version, "gate5da.runtime.1")
+        XCTAssertEqual(FieldTestExportSchema.legacyGate4BRuntimeVersion, "gate4b.runtime.1")
         let export = try String(
             contentsOfFile: URL(fileURLWithPath: #filePath)
                 .deletingLastPathComponent()
@@ -322,6 +333,33 @@ final class Gate4BPhysicalValidationHUDTests: XCTestCase {
         XCTAssertTrue(export.contains("validatedLandmarks:"))
         XCTAssertTrue(export.contains("FieldTestExportSchema.version"))
         XCTAssertFalse(export.contains("physicalErrorMeters"))
+    }
+
+    func testHUDHasNoRouteCorrectionControls() throws {
+        let hud = try String(
+            contentsOfFile: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("RockVision/Features/FieldTest/Gate4BPhysicalValidationHUD.swift")
+                .path,
+            encoding: .utf8
+        )
+        let panel = try String(
+            contentsOfFile: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("RockVision/Features/FieldTest/FieldTestPanel.swift")
+                .path,
+            encoding: .utf8
+        )
+        for source in [hud, panel] {
+            XCTAssertFalse(source.contains("Slider"))
+            XCTAssertFalse(source.contains("routeOffset"))
+            XCTAssertFalse(source.contains("routeScale"))
+            XCTAssertFalse(source.contains("routeYaw"))
+            XCTAssertFalse(source.contains("nudge"))
+            XCTAssertFalse(source.contains("correction"))
+        }
     }
 
     private func loadFixture() throws -> Gate4BMeasurementFixture {

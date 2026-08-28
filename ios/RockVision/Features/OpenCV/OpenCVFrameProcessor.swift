@@ -19,6 +19,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
     @Published private(set) var wallDebugSnapshot = WallDebugRuntimeSnapshot()
     @Published private(set) var wallDebugGeometry = WallAlignmentDebugGeometry.hidden
     @Published private(set) var runtimeRouteBinding = RuntimeRouteBinding.unbound
+    @Published private(set) var routeRenderPlan = RouteRenderPlan.empty
 
     private let queue = DispatchQueue(label: "com.rockvision.v2.opencv", qos: .userInitiated)
     private let lock = NSLock()
@@ -183,6 +184,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                 self.wallDebugSnapshot = WallDebugRuntimeSnapshot()
                 self.wallDebugGeometry = .hidden
                 self.runtimeRouteBinding = .unbound
+                self.routeRenderPlan = .empty
                 completion?()
             }
         }
@@ -341,6 +343,11 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                 )
             }
 
+            let routeBindingForSample = RuntimeRouteBinding.evaluate(
+                verifiedRoute: self.verifiedFrozenRoute,
+                alignment: alignmentResult
+            )
+            let routePlanForSample = RouteRenderPlan.evaluate(from: routeBindingForSample)
             // Persistence / field-test bookkeeping is after SIFT timing and must not
             // mutate preprocess/sift/total latency on the result.
             let recorded = self.fieldSink?.ingest(
@@ -363,7 +370,9 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                         measurementFixture: self.measurementFixture,
                         currentWallID: self.referenceDatabase?.wallId
                     )
-                    : nil
+                    : nil,
+                routeBinding: matching.status == "active" ? routeBindingForSample : nil,
+                routeRenderPlan: matching.status == "active" ? routePlanForSample : nil
             ) ?? false
             if matching.status == "active" {
                 self.fieldConfirmationBarrier.noteFieldDecision(
@@ -386,10 +395,10 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                 )
             let routeBinding = confirmationHUDIdle
                 ? RuntimeRouteBinding.unbound
-                : RuntimeRouteBinding.evaluate(
-                    verifiedRoute: self.verifiedFrozenRoute,
-                    alignment: alignmentResult
-                )
+                : routeBindingForSample
+            let routePlan = confirmationHUDIdle
+                ? RouteRenderPlan.empty
+                : routePlanForSample
 
             DispatchQueue.main.async {
                 var next = self.snapshot
@@ -443,6 +452,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                     self.wallDebugSnapshot = WallDebugRuntimeSnapshot()
                     self.wallDebugGeometry = .hidden
                     self.runtimeRouteBinding = .unbound
+                    self.routeRenderPlan = .empty
                 } else {
                     if let confirmationTick {
                         self.confirmationSnapshot = ConfirmationSnapshot.make(confirmationTick)
@@ -451,6 +461,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                     self.wallDebugGeometry = debugGeometry
                     self.wallDebugSnapshot = WallDebugSnapshot.make(debugGeometry)
                     self.runtimeRouteBinding = routeBinding
+                    self.routeRenderPlan = routePlan
                 }
             }
         }

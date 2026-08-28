@@ -32,7 +32,12 @@ enum Gate4BPhysicalValidationHUD {
         "Confirm",
         "T_ARWorld_Wall",
         "Wall axes",
-        "Markers"
+        "Markers",
+        "Route",
+        "Hash",
+        "Bound",
+        "Rendered",
+        "Segments"
     ]
 
     static let hiddenDiagnosticTitles = [
@@ -61,7 +66,12 @@ enum Gate4BPhysicalValidationHUD {
         confirmationWindow: String,
         alignment: String,
         wallAxes: String,
-        wallMarkers: String
+        wallMarkers: String,
+        routeId: String? = nil,
+        hashVerified: Bool = false,
+        boundPointCount: Int = 0,
+        rendered: Bool = false,
+        visibleSegmentCount: Int = 0
     ) -> [StatusRow] {
         [
             StatusRow(title: "Scene", value: scene),
@@ -70,7 +80,12 @@ enum Gate4BPhysicalValidationHUD {
             StatusRow(title: "Confirm", value: confirmationWindow),
             StatusRow(title: "T_ARWorld_Wall", value: wallTransformLabel(alignment)),
             StatusRow(title: "Wall axes", value: axesLabel(wallAxes)),
-            StatusRow(title: "Markers", value: wallMarkers)
+            StatusRow(title: "Markers", value: wallMarkers),
+            StatusRow(title: "Route", value: routeId ?? "—"),
+            StatusRow(title: "Hash", value: hashVerified ? "OK" : "FAIL"),
+            StatusRow(title: "Bound", value: "\(boundPointCount)"),
+            StatusRow(title: "Rendered", value: rendered ? "YES" : "NO"),
+            StatusRow(title: "Segments", value: "\(visibleSegmentCount)")
         ]
     }
 

@@ -155,6 +155,8 @@ struct FieldTestSample: Codable, Equatable, Sendable {
     var alignment: AlignmentFrameResult? = nil
     var alignmentStats: AlignmentStats? = nil
     var wallDebugGeometry: WallAlignmentDebugGeometry? = nil
+    var routeBinding: FieldTestRouteBindingSnapshot? = nil
+    var routeRendering: FieldTestRouteRenderingSnapshot? = nil
 }
 
 struct FieldTestMetricStats: Codable, Equatable, Sendable {
@@ -299,11 +301,27 @@ struct FieldTestSummary: Codable, Equatable, Sendable {
 }
 
 enum FieldTestExportSchema {
-    static let version = "gate4b.runtime.1"
+    static let version = "gate5da.runtime.1"
+    static let legacyGate4BRuntimeVersion = "gate4b.runtime.1"
     static let legacyRuntimeVersion = "gate4a.runtime.1"
     static let legacyOfflineVersion = "gate3d.export.1"
     static let provenanceOfflineBaseline = PnPConfig.offlineBaselineSession
     static let provenanceRuntimeBaseline = "gate4a_20260825_104607"
+}
+
+/// Current-frame Gate 5C binding observability for Field Test / Gate 5D-B.
+struct FieldTestRouteBindingSnapshot: Codable, Equatable, Sendable {
+    var routeId: String?
+    var frozenRouteHashVerified: Bool
+    var routeARWorldPointCount: Int
+    var hasBoundRoute: Bool
+}
+
+/// Deterministic production render intent from current RouteRenderPlan (`wouldRender`).
+/// Not AlignmentFrameResult.renderedRoute and not a RealityKit scene-graph reverse read.
+struct FieldTestRouteRenderingSnapshot: Codable, Equatable, Sendable {
+    var renderedRoute: Bool
+    var visibleSegmentCount: Int
 }
 
 struct FieldTestConfirmationConstants: Codable, Equatable, Sendable {

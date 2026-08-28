@@ -5,9 +5,11 @@ import SwiftUI
 /// Minimal camera preview. Uses the session owned by `ARSessionHost`.
 /// Does not run its own configuration or localization.
 /// Gate 4B debug axes consume already-transformed ARWorld endpoints only.
+/// Gate 5D route overlay consumes current RouteRenderPlan only, on a separate root.
 struct ARCameraPreview: UIViewRepresentable {
     let session: ARSession
     var debugGeometry: WallAlignmentDebugGeometry = .hidden
+    var routePlan: RouteRenderPlan = .empty
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -24,6 +26,7 @@ struct ARCameraPreview: UIViewRepresentable {
         view.renderOptions.insert(.disableCameraGrain)
         context.coordinator.attach(to: view)
         context.coordinator.apply(debugGeometry)
+        context.coordinator.apply(routePlan)
         return view
     }
 
@@ -32,6 +35,7 @@ struct ARCameraPreview: UIViewRepresentable {
             uiView.session = session
         }
         context.coordinator.apply(debugGeometry)
+        context.coordinator.apply(routePlan)
     }
 
     static func dismantleUIView(_ uiView: ARView, coordinator: Coordinator) {
@@ -41,12 +45,16 @@ struct ARCameraPreview: UIViewRepresentable {
 
     final class Coordinator {
         let root = AnchorEntity(world: .zero)
+        let routeRoot = AnchorEntity(world: .zero)
         private weak var view: ARView?
 
         func attach(to view: ARView) {
             self.view = view
             if root.parent == nil {
                 view.scene.addAnchor(root)
+            }
+            if routeRoot.parent == nil {
+                view.scene.addAnchor(routeRoot)
             }
         }
 
@@ -55,8 +63,13 @@ struct ARCameraPreview: UIViewRepresentable {
             WallAlignmentDebugOverlay.apply(to: view, geometry: geometry, root: root)
         }
 
+        func apply(_ plan: RouteRenderPlan) {
+            RouteOverlay.apply(plan: plan, root: routeRoot)
+        }
+
         func detach() {
             root.removeFromParent()
+            routeRoot.removeFromParent()
             view = nil
         }
     }
