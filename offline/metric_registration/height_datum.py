@@ -14,8 +14,37 @@ SFM_GEO_DESC = "九龙峰森林站大楼/AT/sfm_geo_desc.json"
 LEGACY_MRK = "dji_flight_raw_jiulongfeng/rtk_ppk_004/DJI_20260812152955_0002_D.MRK"
 
 
-def verify_height_datum(incoming_wall: Path, origin: list[float]) -> dict:
-    sfm_path = incoming_wall / SFM_GEO_DESC
+def generic_height_contract(origin: list[float]) -> dict:
+    """Ellh − Origin_H translation. Does not require Jiulongfeng 20260812 files."""
+    return {
+        "heightDatumUsed": "ellipsoidal",
+        "srsOrigin": origin,
+        "genericContract": "WallLocal Z = Ellh - Origin_H",
+        "legacyProofRequired": False,
+        "mixedDatumDetected": False,
+        "problems": [],
+        "noGeoidOffsetApplied": True,
+        "originCompatibilityIsProvenanceProof": False,
+        "note": (
+            "Generic new walls use selected capture MRK Ellh and selected model SRSOrigin. "
+            "origin_compatible_with_mrk is a spatial sanity check, not capture/model provenance."
+        ),
+    }
+
+
+def verify_height_datum(
+    incoming_wall: Path,
+    origin: list[float],
+    *,
+    sfm_geo_desc: str | None = None,
+    legacy_mrk: str | None = None,
+    require_legacy_proof: bool = True,
+) -> dict:
+    if not require_legacy_proof:
+        return generic_height_contract(origin)
+    sfm_rel = sfm_geo_desc or SFM_GEO_DESC
+    legacy_rel = legacy_mrk or LEGACY_MRK
+    sfm_path = incoming_wall / sfm_rel
     sfm = json.loads(sfm_path.read_text(encoding="utf-8"))
     gps = sfm["ref_GPS"]
     easting, northing = geographic_to_utm(gps["latitude"], gps["longitude"], 50)
@@ -23,7 +52,7 @@ def verify_height_datum(incoming_wall: Path, origin: list[float]) -> dict:
     d_n = abs(northing - origin[1])
     d_h = abs(float(gps["altitude"]) - origin[2])
 
-    legacy = parse_mrk((incoming_wall / LEGACY_MRK).read_text(encoding="utf-8", errors="replace"))
+    legacy = parse_mrk((incoming_wall / legacy_rel).read_text(encoding="utf-8", errors="replace"))
     match = None
     for rec in legacy.get("records") or []:
         try:
@@ -36,7 +65,7 @@ def verify_height_datum(incoming_wall: Path, origin: list[float]) -> dict:
                     "photoId": rec.get("photoId"),
                     "ellipsoidalHeight": rec.get("ellipsoidalHeight"),
                     "heightDatum": rec.get("heightDatum"),
-                    "sourceFile": LEGACY_MRK,
+                    "sourceFile": legacy_rel,
                 }
                 break
         except (TypeError, ValueError):

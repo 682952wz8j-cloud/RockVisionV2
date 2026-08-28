@@ -99,6 +99,8 @@ def build_manifest(
     incoming_wall: Path,
     camera_model: dict,
     sha256_by_rel: dict[str, str] | None = None,
+    capture_session: str | None = None,
+    source_folder: str | None = None,
 ) -> dict:
     rows = []
     for row in selected:
@@ -109,8 +111,8 @@ def build_manifest(
     return {
         "schemaVersion": "colmap.1",
         "wallId": wall_id,
-        "captureSession": REQUIRED_SESSION,
-        "sourceFolder": DJI_CAPTURE_DIR,
+        "captureSession": capture_session if capture_session is not None else REQUIRED_SESSION,
+        "sourceFolder": source_folder if source_folder is not None else DJI_CAPTURE_DIR,
         "incomingRoot": str(incoming_wall),
         "imageCount": len(rows),
         "excluded": [
@@ -124,6 +126,8 @@ def build_manifest(
         ],
         "cameraModel": camera_model,
         "sWallColmap": "NOT COMPUTED",
+        "outputFrame": "WallLocal",
+        "wallMetricMetersProvenance": "NOT_CLAIMED",
         "images": rows,
     }
 

@@ -130,8 +130,9 @@ def _grid_nearest(queries: np.ndarray, cloud: np.ndarray, *, cell: float, max_ra
     return np.asarray(distances, dtype=float)
 
 
-def load_existing_ply(incoming_wall: Path) -> tuple[np.ndarray, dict]:
-    path = incoming_wall / PLY_RELATIVE
+def load_existing_ply(incoming_wall: Path, relative_path: str | None = None) -> tuple[np.ndarray, dict]:
+    rel = relative_path or PLY_RELATIVE
+    path = incoming_wall / rel
     header = read_ply_header(path)
     points = np.asarray(read_ply_xyz(path, header), dtype=float)
-    return points, {"relativePath": PLY_RELATIVE, "header": header, "count": int(len(points))}
+    return points, {"relativePath": rel, "header": header, "count": int(len(points))}

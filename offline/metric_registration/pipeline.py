@@ -97,14 +97,15 @@ def _judge(
     mixed_datum: bool,
     origin_ok: bool,
     extra_errors: list[str],
+    expected_correspondences: int | None = 47,
 ) -> tuple[str, str, list[str]]:
     problems: list[str] = list(extra_errors)
     if mixed_datum:
         return "NOT VALIDATED", "FAIL", problems + ["Height datum mix or unproven SRSOrigin/Ellh link; STOP"]
     if not origin_ok:
-        return "NOT VALIDATED", "FAIL", problems + ["metadata.xml SRSOrigin incompatible with 2026-08-23 MRK; STOP"]
-    if n_corr != 47:
-        problems.append(f"Expected 47 correspondences, got {n_corr}")
+        return "NOT VALIDATED", "FAIL", problems + ["metadata.xml SRSOrigin incompatible with selected MRK (spatial sanity check); STOP"]
+    if expected_correspondences is not None and n_corr != expected_correspondences:
+        problems.append(f"Expected {expected_correspondences} correspondences, got {n_corr}")
     if not proper:
         return "NOT VALIDATED", "FAIL", problems + ["Sim(3) is not a proper similarity"]
     if landmarks.get("hasNan") or landmarks.get("hasInf") or landmarks.get("kilometerScaleExplosion"):
@@ -142,37 +143,54 @@ def _judge(
     if ply.get("status") == "ok" and ply_med is not None and ply_med > 10:
         problems.append(f"PLY cross-check median {ply_med:.3f} m is coarse (sparse points may be off-surface)")
         review = True
-    if n_corr != 47:
+    if expected_correspondences is not None and n_corr != expected_correspondences:
         review = True
     if review:
         return "NOT VALIDATED", "NEEDS REVIEW", problems
     return "VALIDATED", "PASS", problems
 
 
-def register(wall_id: str, root: Path) -> dict:
+def register(
+    wall_id: str,
+    root: Path,
+    *,
+    sources=None,
+    dest: Path | None = None,
+    colmap_dir: Path | None = None,
+) -> dict:
     incoming = wall_incoming(root, wall_id)
-    dest = output_dir(root, wall_id)
+    dest = dest or output_dir(root, wall_id)
     dest.mkdir(parents=True, exist_ok=True)
     logs = [f"metric registration start {_now()}", f"wall={wall_id}", GPS_RUNTIME_POLICY]
     errors: list[str] = []
 
-    layout_errors = check_incoming_layout(root, wall_id)
-    if layout_errors:
-        payload = {
-            "wallId": wall_id,
-            "gateResult": "FAIL",
-            "validationStatus": "NOT VALIDATED",
-            "errors": layout_errors,
-            "problems": layout_errors,
-            "incomingUnchanged": True,
-        }
-        write_json(dest / "metric_registration_metrics.json", payload)
-        _write_log(dest / "logs" / "register.log", logs + layout_errors)
-        return payload
+    if sources is None:
+        layout_errors = check_incoming_layout(root, wall_id)
+        if layout_errors:
+            payload = {
+                "wallId": wall_id,
+                "gateResult": "FAIL",
+                "validationStatus": "NOT VALIDATED",
+                "errors": layout_errors,
+                "problems": layout_errors,
+                "incomingUnchanged": True,
+            }
+            write_json(dest / "metric_registration_metrics.json", payload)
+            _write_log(dest / "logs" / "register.log", logs + layout_errors)
+            return payload
 
     before = snapshot_hashes(incoming)
     try:
-        payload = _run(wall_id, root, incoming, dest, logs, errors)
+        payload = _run(
+            wall_id,
+            root,
+            incoming,
+            dest,
+            logs,
+            errors,
+            sources=sources,
+            colmap_dir=colmap_dir,
+        )
     except Exception as exc:
         logs.append(traceback.format_exc())
         payload = {
@@ -199,11 +217,47 @@ def register(wall_id: str, root: Path) -> dict:
     return payload
 
 
-def _run(wall_id: str, root: Path, incoming: Path, dest: Path, logs: list[str], errors: list[str]) -> dict:
+def _run(
+    wall_id: str,
+    root: Path,
+    incoming: Path,
+    dest: Path,
+    logs: list[str],
+    errors: list[str],
+    *,
+    sources=None,
+    colmap_dir: Path | None = None,
+) -> dict:
     import pycolmap
 
-    colmap_dir = colmap_output_dir(root, wall_id)
-    manifest = load_json(colmap_dir / "colmap_source_manifest.json")
+    from offline.qualification.associate import dji_filename_parts
+
+    colmap_dir = colmap_dir or colmap_output_dir(root, wall_id)
+    generic = sources is not None
+    if generic:
+        images = []
+        for rel in sources.image_relative_paths:
+            name = Path(rel).name
+            parts = dji_filename_parts(name)
+            images.append(
+                {
+                    "relativePath": rel,
+                    "filename": name,
+                    "mrkPhotoId": parts["sequence"] if parts else None,
+                    "mrkAssociationStatus": "PROVEN",
+                    "mrkMatched": True,
+                }
+            )
+        manifest = {
+            "schemaVersion": "colmap.1",
+            "wallId": wall_id,
+            "imageCount": len(images),
+            "images": images,
+            "outputFrame": "WallLocal",
+            "wallMetricMetersProvenance": "NOT_CLAIMED",
+        }
+    else:
+        manifest = load_json(colmap_dir / "colmap_source_manifest.json")
     sparse_path = colmap_dir / "sparse" / "0"
     if not (sparse_path / "images.bin").is_file():
         sparse_path = colmap_dir / "sparse" / "best"
@@ -211,29 +265,54 @@ def _run(wall_id: str, root: Path, incoming: Path, dest: Path, logs: list[str], 
     reconstruction.read(str(sparse_path))
     logs.append(f"read COLMAP sparse {sparse_path} images={reconstruction.num_reg_images()} points3D={reconstruction.num_points3D()}")
 
+    corr_kwargs = {}
+    if generic:
+        corr_kwargs = {
+            "mrk_relative_path": sources.mrk_relative_path,
+            "metadata_relative_path": sources.metadata_xml_relative_path,
+            "require_legacy_session": False,
+            "association_method": sources.association_method,
+        }
     rows, corr_errors, origin_info = build_correspondences(
         manifest=manifest,
         reconstruction=reconstruction,
         incoming_wall=incoming,
+        **corr_kwargs,
     )
     errors.extend(corr_errors)
+    association_label = (
+        sources.association_method
+        if generic
+        else "filename_sequence==MRK.photoId + captureSession dji_20260823"
+    )
     write_json(
         dest / "camera_correspondences.json",
         {
             "schemaVersion": "camera_correspondences.1",
             "wallId": wall_id,
-            "association": "filename_sequence==MRK.photoId + captureSession dji_20260823",
-            "notUsed": ["nearest_coordinate", "nearest_timestamp", "image_order_guess"],
+            "association": association_label,
+            "notUsed": ["nearest_coordinate", "nearest_timestamp", "image_order_guess", "lexicographic_first"],
             "count": len(rows),
             "errors": corr_errors,
             "correspondences": rows,
+            "outputFrame": "WallLocal",
+            "wallMetricMetersProvenance": "NOT_CLAIMED",
         },
     )
 
     metrics = [np.array([c["projectedMetric"]["easting"], c["projectedMetric"]["northing"], c["projectedMetric"]["ellipsoidalHeight"]]) for c in rows]
     origin = np.array(origin_info["origin"], dtype=float)
-    origin_check = origin_compatible_with_mrk(origin, metrics) if metrics else {"compatible": False, "reason": "no correspondences"}
-    height = verify_height_datum(incoming, origin.tolist())
+    origin_check = origin_compatible_with_mrk(origin, metrics) if metrics else {"compatible": False, "reason": "no correspondences", "semantics": "SPATIAL_SANITY_CHECK", "isCaptureModelProvenanceProof": False}
+    if generic:
+        height = verify_height_datum(
+            incoming,
+            origin.tolist(),
+            sfm_geo_desc=sources.height_sfm_geo_desc,
+            legacy_mrk=sources.height_legacy_mrk,
+            require_legacy_proof=bool(sources.height_sfm_geo_desc and sources.height_legacy_mrk),
+        )
+    else:
+        height = verify_height_datum(incoming, origin.tolist())
     if height["mixedDatumDetected"]:
         errors.extend(height["problems"])
         logs.append("STOP: height datum not proven consistent")
@@ -247,7 +326,8 @@ def _run(wall_id: str, root: Path, incoming: Path, dest: Path, logs: list[str], 
         }
     if not origin_check.get("compatible", False):
         errors.append(
-            f"SRSOrigin is incompatible with 2026-08-23 MRK (max offset {origin_check.get('maxOffsetM')} m)"
+            f"SRSOrigin failed spatial sanity check vs selected MRK (max offset {origin_check.get('maxOffsetM')} m); "
+            "this is not capture/model provenance proof"
         )
         logs.append("STOP: WallLocal origin incompatible with this MRK session")
         return {
@@ -267,7 +347,7 @@ def _run(wall_id: str, root: Path, incoming: Path, dest: Path, logs: list[str], 
     logs.append(f"geometry {conditioning['status']}")
 
     fit_rows, hold_rows = split_fit_holdout(rows)
-    holdout_rule = split_rule_description()
+    holdout_rule = split_rule_description(n_rows=len(rows))
     write_json(
         dest / "fit_set.json",
         {
@@ -368,7 +448,10 @@ def _run(wall_id: str, root: Path, incoming: Path, dest: Path, logs: list[str], 
     write_json(dest / "transformed_sparse_landmarks.json", land)
     logs.append(f"transformed {len(transformed)} landmarks span={land['span']}")
 
-    ply_points, ply_meta = load_existing_ply(incoming)
+    ply_points, ply_meta = load_existing_ply(
+        incoming,
+        sources.ply_relative_path if generic else None,
+    )
     ply_stats = nearest_expanding(transformed, ply_points)
     ply_stats.update({"ply": ply_meta, "usedInFit": False, "icpApplied": False})
     if land.get("kilometerScaleExplosion") or land.get("hasNan"):
@@ -395,6 +478,7 @@ def _run(wall_id: str, root: Path, incoming: Path, dest: Path, logs: list[str], 
         mixed_datum=height["mixedDatumDetected"],
         origin_ok=bool(origin_check.get("compatible")),
         extra_errors=errors,
+        expected_correspondences=None if generic else 47,
     )
 
     sim3 = sim3_payload(
@@ -409,6 +493,16 @@ def _run(wall_id: str, root: Path, incoming: Path, dest: Path, logs: list[str], 
         fit_metrics=fit_stats,
         holdout_metrics=hold_stats,
         solver_meta={"seed": RANSAC_SEED, "iterations": robust["iterations"]},
+        created_from={
+            "mrk": sources.mrk_relative_path if generic else None,
+            "metadataXml": sources.metadata_xml_relative_path if generic else None,
+            "colmapSparse": str(sparse_path),
+            "outputFrame": "WallLocal",
+            "wallMetricMetersProvenance": "NOT_CLAIMED",
+            "gpsRuntimeUse": "offline Sim(3) only; GPS must not enter future visual localization / PnP",
+        }
+        if generic
+        else None,
     )
     sim3["status"] = validation
     sim3["gateResult"] = gate
@@ -448,4 +542,7 @@ def _run(wall_id: str, root: Path, incoming: Path, dest: Path, logs: list[str], 
         "plyUsedInFit": False,
         "dxfUsedInFit": False,
         "iphoneUsedInFit": False,
+        "outputFrame": "WallLocal",
+        "wallMetricMetersProvenance": "NOT_CLAIMED",
+        "originCompatibilitySemantics": "SPATIAL_SANITY_CHECK",
     }

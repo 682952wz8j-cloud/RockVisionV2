@@ -34,6 +34,7 @@ def sim3_payload(
     fit_metrics: dict,
     holdout_metrics: dict,
     solver_meta: dict,
+    created_from: dict | None = None,
 ) -> dict:
     rotation = np.asarray(rotation, dtype=float).reshape(3, 3)
     translation = np.asarray(translation, dtype=float).reshape(3)
@@ -84,7 +85,8 @@ def sim3_payload(
         "holdoutMetrics": holdout_metrics,
         "solver": "Umeyama 1991 similarity",
         "robustMethod": f"RANSAC + Umeyama refit, seed={solver_meta.get('seed')}, iters={solver_meta.get('iterations')}",
-        "createdFrom": {
+        "createdFrom": created_from
+        or {
             "captureSession": "dji_20260823",
             "colmapSparse": "offline/work/wall_jiulongfeng_01/colmap/sparse/0",
             "mrk": "DJI_202608231218_006_九龙峰/DJI_20260823122214_0002_D.MRK",

@@ -41,32 +41,66 @@ def _write_log(path: Path, lines: list[str]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def reconstruct(wall_id: str, root: Path) -> dict:
+def reconstruct(wall_id: str, root: Path, *, sources=None, dest: Path | None = None) -> dict:
     incoming = wall_incoming(root, wall_id)
-    dest = output_dir(root, wall_id)
+    dest = dest or output_dir(root, wall_id)
     dest.mkdir(parents=True, exist_ok=True)
     logs: list[str] = [f"reconstruct start {_now()}", f"wall={wall_id}"]
+    generic = sources is not None
 
-    layout_errors = check_incoming_layout(root, wall_id)
-    if layout_errors:
-        payload = {
-            "wallId": wall_id,
-            "gateResult": "FAIL",
-            "sWallColmap": "NOT COMPUTED",
-            "errors": layout_errors,
-            "problems": layout_errors,
-            "incomingUnchanged": True,
-        }
-        (dest / "layout_error.md").write_text(
-            "# COLMAP Gate STOP\n\n" + "\n".join(f"- {e}" for e in layout_errors) + "\n",
-            encoding="utf-8",
-        )
-        write_json(dest / "reconstruction_metrics.json", payload)
-        _write_log(dest / "logs" / "reconstruct.log", logs + layout_errors)
-        return payload
+    if not generic:
+        layout_errors = check_incoming_layout(root, wall_id)
+        if layout_errors:
+            payload = {
+                "wallId": wall_id,
+                "gateResult": "FAIL",
+                "sWallColmap": "NOT COMPUTED",
+                "errors": layout_errors,
+                "problems": layout_errors,
+                "incomingUnchanged": True,
+            }
+            (dest / "layout_error.md").write_text(
+                "# COLMAP Gate STOP\n\n" + "\n".join(f"- {e}" for e in layout_errors) + "\n",
+                encoding="utf-8",
+            )
+            write_json(dest / "reconstruction_metrics.json", payload)
+            _write_log(dest / "logs" / "reconstruct.log", logs + layout_errors)
+            return payload
 
     before = snapshot_hashes(incoming)
-    selected, select_errors, _source = load_and_select(root, wall_id)
+    if generic:
+        selected = []
+        for rel in sources.image_relative_paths:
+            path = incoming / rel
+            selected.append(
+                {
+                    "relativePath": rel,
+                    "filename": Path(rel).name,
+                    "mrkPhotoId": None,
+                    "mrkAssociationStatus": "PROVEN",
+                    "mrkMatched": True,
+                }
+            )
+            if not path.is_file():
+                select_errors = [f"source image missing under wall incoming: {rel}"]
+                after = snapshot_hashes(incoming)
+                payload = {
+                    "wallId": wall_id,
+                    "gateResult": "FAIL",
+                    "sWallColmap": "NOT COMPUTED",
+                    "errors": select_errors,
+                    "problems": select_errors,
+                    "incomingUnchanged": before == after,
+                    "sourceImages": len(selected),
+                }
+                write_json(dest / "reconstruction_metrics.json", payload)
+                _write_log(dest / "logs" / "reconstruct.log", logs + select_errors)
+                return payload
+        select_errors: list[str] = []
+        image_dir = incoming / sources.image_dir_relative
+    else:
+        selected, select_errors, _source = load_and_select(root, wall_id)
+        image_dir = incoming / DJI_CAPTURE_DIR
     if select_errors:
         after = snapshot_hashes(incoming)
         payload = {
@@ -83,7 +117,6 @@ def reconstruct(wall_id: str, root: Path) -> dict:
         return payload
 
     hashes = {row["relativePath"]: sha256_file(incoming / row["relativePath"]) for row in selected}
-    image_dir = incoming / DJI_CAPTURE_DIR
     image_names = [row["filename"] for row in selected]
 
     inferred = _infer_camera(image_dir / image_names[0])
@@ -102,7 +135,11 @@ def reconstruct(wall_id: str, root: Path) -> dict:
             "extraParams": True,
             "principalPoint": False,
         },
-        "reason": "COLMAP EXIF inference on DJI M4E originals is SIMPLE_RADIAL; all 47 frames share one physical camera.",
+        "reason": (
+            "COLMAP EXIF inference is SIMPLE_RADIAL; CameraMode.SINGLE shares one physical camera."
+            if generic
+            else "COLMAP EXIF inference on DJI M4E originals is SIMPLE_RADIAL; all 47 frames share one physical camera."
+        ),
     }
     manifest = build_manifest(
         wall_id=wall_id,
@@ -110,9 +147,11 @@ def reconstruct(wall_id: str, root: Path) -> dict:
         incoming_wall=incoming,
         camera_model=camera_model,
         sha256_by_rel=hashes,
+        capture_session="selected_primary_capture" if generic else None,
+        source_folder=sources.image_dir_relative if generic else None,
     )
     write_json(dest / "colmap_source_manifest.json", manifest)
-    logs.append(f"source set {len(selected)} images from {DJI_CAPTURE_DIR}")
+    logs.append(f"source set {len(selected)} images from {image_dir}")
 
     errors: list[str] = []
     problems: list[str] = []

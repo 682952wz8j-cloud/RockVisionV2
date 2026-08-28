@@ -39,6 +39,19 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     pnp_cmd.add_argument("--self-test", action="store_true")
     pnp_cmd.add_argument("--session", help="Field Test samples.jsonl (not gate3b_20260824_155143)")
     pnp_cmd.add_argument("--wall-id", default="wall_jiulongfeng_01")
+    stage2_dev_cmd = sub.add_parser(
+        "stage2-dev",
+        help="DEVELOPMENT ONLY: Generic Stage 2 selection/register. Not ordinary production build.",
+    )
+    stage2_dev_cmd.add_argument("stage2_dev_action", choices=["select", "register-selected"])
+    stage2_dev_cmd.add_argument("wall_id")
+    stage2_dev_cmd.add_argument(
+        "--dev-workspace",
+        help="Required in tests; development workspace. Must not be a frozen Jiulongfeng work tree.",
+    )
+    stage2_dev_cmd.add_argument("--colmap-dir", help="Existing COLMAP sparse directory for register-selected")
+    stage2_dev_cmd.add_argument("--height-sfm-geo-desc", dest="height_sfm_geo_desc", default=None)
+    stage2_dev_cmd.add_argument("--height-legacy-mrk", dest="height_legacy_mrk", default=None)
     args = parser.parse_args(argv)
     repo = root or repo_root_from(Path(__file__))
     if args.command == "build":
@@ -69,6 +82,10 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
         from offline.pnp.cli import run_pnp
 
         return run_pnp(args, repo)
+    if args.command == "stage2-dev":
+        from offline.stage2_dev.cli import run_stage2_dev
+
+        return run_stage2_dev(args, repo)
     parser.error(f"unknown command {args.command}")
     return 2
 

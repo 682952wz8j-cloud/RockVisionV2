@@ -59,24 +59,35 @@ def build_correspondences(
     manifest: dict,
     reconstruction,
     incoming_wall: Path,
+    mrk_relative_path: str | None = None,
+    metadata_relative_path: str | None = None,
+    require_legacy_session: bool = True,
+    association_method: str | None = None,
 ) -> tuple[list[dict], list[str], dict]:
     errors: list[str] = []
-    if manifest.get("captureSession") != REQUIRED_SESSION:
+    if require_legacy_session and manifest.get("captureSession") != REQUIRED_SESSION:
         errors.append(f"manifest session is {manifest.get('captureSession')}, expected {REQUIRED_SESSION}")
-    origin_info = read_srs_origin(incoming_wall / METADATA_XML)
+    meta_rel = metadata_relative_path or METADATA_XML
+    origin_info = read_srs_origin(incoming_wall / meta_rel, relative_path=meta_rel)
     origin = np.array(origin_info["origin"], dtype=float)
     if origin_info["srs"] != UTM_EPSG:
         errors.append(f"metadata.xml SRS is {origin_info['srs']}, expected {UTM_EPSG}")
 
     centers = colmap_camera_centers(reconstruction)
-    mrk_path = incoming_wall / DJI_CAPTURE_DIR / "DJI_20260823122214_0002_D.MRK"
+    mrk_rel = mrk_relative_path or str(Path(DJI_CAPTURE_DIR) / "DJI_20260823122214_0002_D.MRK")
+    mrk_path = incoming_wall / mrk_rel
     if not mrk_path.is_file():
-        return [], [f"missing 2026-08-23 MRK {mrk_path}"], origin_info
+        return [], [f"missing MRK {mrk_path}"], origin_info
     mrk_by_id = load_mrk_by_photo_id(mrk_path)
+    method = association_method or (
+        "filename_sequence==MRK.photoId + captureSession dji_20260823"
+        if require_legacy_session
+        else "filename_sequence==MRK.photoId + same_parent_directory"
+    )
 
     rows = []
     for image in manifest.get("images") or []:
-        if image.get("captureSession") != REQUIRED_SESSION:
+        if require_legacy_session and image.get("captureSession") != REQUIRED_SESSION:
             errors.append(f"{image.get('filename')} is not {REQUIRED_SESSION}")
             continue
         name = image["filename"]
@@ -104,9 +115,9 @@ def build_correspondences(
             {
                 "filename": name,
                 "relativePath": image["relativePath"],
-                "captureSession": REQUIRED_SESSION,
+                "captureSession": image.get("captureSession"),
                 "mrkPhotoId": photo_id,
-                "associationMethod": "filename_sequence==MRK.photoId + captureSession dji_20260823",
+                "associationMethod": method,
                 "colmapImageId": centers[name]["colmapImageId"],
                 "colmapCenter": centers[name]["center"],
                 "mrk": {
@@ -114,7 +125,7 @@ def build_correspondences(
                     "longitude": rec["longitude"],
                     "ellipsoidalHeight": rec["ellipsoidalHeight"],
                     "heightDatum": "ellipsoidal",
-                    "sourceFile": str(Path(DJI_CAPTURE_DIR) / mrk_path.name),
+                    "sourceFile": mrk_rel,
                 },
                 "projectedMetric": {
                     "easting": float(metric[0]),

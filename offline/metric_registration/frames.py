@@ -65,7 +65,7 @@ def from_wall_local(local: np.ndarray, origin: np.ndarray) -> np.ndarray:
     return np.asarray(local, dtype=float).reshape(3) + np.asarray(origin, dtype=float).reshape(3)
 
 
-def read_srs_origin(metadata_xml: Path) -> dict:
+def read_srs_origin(metadata_xml: Path, *, relative_path: str | None = None) -> dict:
     tree = ET.parse(metadata_xml)
     root = tree.getroot()
     srs = (root.findtext("SRS") or "").strip()
@@ -77,12 +77,13 @@ def read_srs_origin(metadata_xml: Path) -> dict:
         "srs": srs,
         "srsOriginText": text,
         "origin": parts,
-        "relativePath": METADATA_XML,
+        "relativePath": relative_path if relative_path is not None else METADATA_XML,
         "source": str(metadata_xml),
     }
 
 
 def origin_compatible_with_mrk(origin: np.ndarray, metrics: list[np.ndarray], max_offset_m: float = 250.0) -> dict:
+    """Spatial sanity check only. Passing does not prove capture↔model provenance."""
     arr = np.asarray(metrics, dtype=float).reshape(-1, 3)
     deltas = arr - np.asarray(origin, dtype=float).reshape(3)
     offset = np.linalg.norm(deltas, axis=1)
@@ -92,6 +93,9 @@ def origin_compatible_with_mrk(origin: np.ndarray, metrics: list[np.ndarray], ma
         "maxOffsetM": float(offset.max()),
         "medianOffsetM": float(np.median(offset)),
         "maxAllowedM": max_offset_m,
+        "semantics": "SPATIAL_SANITY_CHECK",
+        "isCaptureModelProvenanceProof": False,
+        "doesNotProveSameReconstruction": True,
     }
 
 
