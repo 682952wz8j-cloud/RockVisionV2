@@ -36,14 +36,18 @@ enum FieldTestCellStatus: String, Codable, Sendable {
 enum FieldTestRunPlan: Equatable, Sendable {
     case full
     case single(SIFTSceneLabel)
+    /// Test-only Gate 5D-B physical-validation harness. Not a product feature.
+    case gate5DBPhysicalValidation
 
     static let fullModeName = "full"
     static let singleModeName = "singleScene"
+    static let gate5DBModeName = "gate5dbPhysicalValidation"
 
     var testMode: String {
         switch self {
         case .full: return Self.fullModeName
         case .single: return Self.singleModeName
+        case .gate5DBPhysicalValidation: return Self.gate5DBModeName
         }
     }
 
@@ -51,6 +55,7 @@ enum FieldTestRunPlan: Equatable, Sendable {
         switch self {
         case .full: return nil
         case .single(let scene): return scene.rawValue
+        case .gate5DBPhysicalValidation: return SIFTSceneLabel.A.rawValue
         }
     }
 
@@ -58,15 +63,24 @@ enum FieldTestRunPlan: Equatable, Sendable {
         switch self {
         case .full: return FieldTestPolicy.officialScenes
         case .single(let scene): return [scene]
+        case .gate5DBPhysicalValidation: return [.A]
         }
     }
 
     var firstScene: SIFTSceneLabel { scenes[0] }
 
+    var isGate5DBPhysicalValidation: Bool {
+        if case .gate5DBPhysicalValidation = self { return true }
+        return false
+    }
+
+    var developmentValidationOnly: Bool { isGate5DBPhysicalValidation }
+
     var modeLabel: String {
         switch self {
         case .full: return "Full A/B/C"
         case .single(let scene): return "Scene \(scene.rawValue) only"
+        case .gate5DBPhysicalValidation: return "Gate 5D-B (test-only)"
         }
     }
 
@@ -75,6 +89,9 @@ enum FieldTestRunPlan: Equatable, Sendable {
     }
 
     static func from(testMode: String?, requestedScene: String?) -> FieldTestRunPlan {
+        if testMode == gate5DBModeName {
+            return .gate5DBPhysicalValidation
+        }
         if testMode == singleModeName,
            let name = requestedScene,
            let scene = SIFTSceneLabel(rawValue: name),
@@ -85,6 +102,9 @@ enum FieldTestRunPlan: Equatable, Sendable {
     }
 
     func startInstruction() -> String {
+        if isGate5DBPhysicalValidation {
+            return "Gate 5D-B test-only. 走到测试建筑，拿稳，点 Start Measurement"
+        }
         switch firstScene {
         case .A:
             return "走到目标建筑，拿稳，点 START A"
@@ -104,6 +124,8 @@ enum FieldTestPhase: Equatable, Sendable {
     case waitingTracking(scene: SIFTSceneLabel, preset: SIFTProcessingPreset)
     case sampling(scene: SIFTSceneLabel, preset: SIFTProcessingPreset)
     case readyToStartNext(finished: SIFTSceneLabel, next: SIFTSceneLabel)
+    /// Scene A official sampling finished; production runtime continues. Test-only.
+    case physicalValidationReady
     case complete
 }
 

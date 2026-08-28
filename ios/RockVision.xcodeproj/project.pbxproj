@@ -78,6 +78,7 @@
 		A1000000000000010000004A /* RouteRenderPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000004A /* RouteRenderPlan.swift */; };
 		A1000000000000010000004B /* RouteOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000004B /* RouteOverlay.swift */; };
 		A1000000000000010000004C /* Gate5DARendererCorrectnessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000004C /* Gate5DARendererCorrectnessTests.swift */; };
+		A1000000000000010000004D /* Gate5DBFieldTestHarnessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000004D /* Gate5DBFieldTestHarnessTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -156,6 +157,7 @@
 		A2000000000000010000004A /* RouteRenderPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteRenderPlan.swift; sourceTree = "<group>"; };
 		A2000000000000010000004B /* RouteOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOverlay.swift; sourceTree = "<group>"; };
 		A2000000000000010000004C /* Gate5DARendererCorrectnessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate5DARendererCorrectnessTests.swift; sourceTree = "<group>"; };
+		A2000000000000010000004D /* Gate5DBFieldTestHarnessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate5DBFieldTestHarnessTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -366,6 +368,7 @@
 				A20000000000000100000046 /* Gate5BRouteTransformTests.swift */,
 				A20000000000000100000049 /* Gate5CRuntimeRouteBindingTests.swift */,
 				A2000000000000010000004C /* Gate5DARendererCorrectnessTests.swift */,
+				A2000000000000010000004D /* Gate5DBFieldTestHarnessTests.swift */,
 			);
 			path = RockVisionTests;
 			sourceTree = "<group>";
@@ -554,6 +557,7 @@
 				A10000000000000100000046 /* Gate5BRouteTransformTests.swift in Sources */,
 				A10000000000000100000049 /* Gate5CRuntimeRouteBindingTests.swift in Sources */,
 				A1000000000000010000004C /* Gate5DARendererCorrectnessTests.swift in Sources */,
+				A1000000000000010000004D /* Gate5DBFieldTestHarnessTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

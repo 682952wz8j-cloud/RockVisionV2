@@ -54,8 +54,25 @@ struct FieldTestPanel: View {
         )
         let _ = retainedDiagnosticRows
         VStack(alignment: .leading, spacing: 3) {
-            Text(Gate4BPhysicalValidationHUD.title)
+            Text(Gate4BPhysicalValidationHUD.title(for: controller.plan))
                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
+
+            if controller.canChangeMode {
+                HStack(spacing: 6) {
+                    fieldButton(
+                        "Gate 4B A/B/C",
+                        emphasized: !controller.plan.isGate5DBPhysicalValidation,
+                        enabled: true,
+                        action: { controller.selectPlan(.full) }
+                    )
+                    fieldButton(
+                        "Gate 5D-B test-only",
+                        emphasized: controller.plan.isGate5DBPhysicalValidation,
+                        enabled: true,
+                        action: { controller.selectPlan(.gate5DBPhysicalValidation) }
+                    )
+                }
+            }
 
             if actions.showUnfinishedBanner {
                 Text(Gate4BPhysicalValidationHUD.unfinishedMessage)
@@ -63,6 +80,10 @@ struct FieldTestPanel: View {
             } else {
                 if controller.phase == .complete {
                     Text("Measurement session complete")
+                        .font(.system(size: 11, weight: .regular, design: .monospaced))
+                }
+                if controller.phase == .physicalValidationReady {
+                    Text("Scene A: 20/20 COMPLETE")
                         .font(.system(size: 11, weight: .regular, design: .monospaced))
                 }
                 ForEach(visibleRows, id: \.title) { row in
@@ -138,7 +159,8 @@ struct FieldTestPanel: View {
             hashVerified: routeBinding.hashVerified,
             boundPointCount: routeBinding.routeARWorldPointCount,
             rendered: routePlan.wouldRender,
-            visibleSegmentCount: routePlan.segmentCount
+            visibleSegmentCount: routePlan.segmentCount,
+            physicalValidationReady: controller.phase == .physicalValidationReady
         )
     }
 
@@ -157,6 +179,8 @@ struct FieldTestPanel: View {
         switch controller.phase {
         case .readyToStart(let scene), .waitingTracking(let scene, _), .sampling(let scene, _), .readyToStartNext(_, let scene):
             return scene.rawValue
+        case .physicalValidationReady:
+            return "A 20/20 COMPLETE"
         case .complete:
             return "done"
         case .idle:

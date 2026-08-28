@@ -207,6 +207,26 @@ final class Gate4BPhysicalValidationHUDTests: XCTestCase {
         XCTAssertFalse(actions.showCopySummary)
     }
 
+    func testGate5DBPhysicalValidationReadyHidesStartMeasurementAndAllowsShare() {
+        let actions = Gate4BPhysicalValidationHUD.actions(
+            hasResumableSession: false,
+            phase: .physicalValidationReady,
+            canExport: true
+        )
+        XCTAssertFalse(actions.showStartMeasurement)
+        XCTAssertTrue(actions.showShareResults)
+        XCTAssertTrue(actions.showNewSession)
+        XCTAssertFalse(actions.showAbort)
+        XCTAssertEqual(
+            Gate4BPhysicalValidationHUD.title(for: .gate5DBPhysicalValidation),
+            Gate4BPhysicalValidationHUD.gate5DBTitle
+        )
+        XCTAssertEqual(
+            Gate4BPhysicalValidationHUD.title(for: .full),
+            Gate4BPhysicalValidationHUD.title
+        )
+    }
+
     func testABCChipsRemainHidden() {
         let phases: [FieldTestPhase] = [
             .readyToStart(.A),
@@ -222,6 +242,12 @@ final class Gate4BPhysicalValidationHUDTests: XCTestCase {
         }
         let unfinished = Gate4BPhysicalValidationHUD.actions(hasResumableSession: true, phase: .readyToStart(.A))
         XCTAssertFalse(unfinished.showSceneChips)
+        XCTAssertFalse(
+            Gate4BPhysicalValidationHUD.actions(
+                hasResumableSession: false,
+                phase: .physicalValidationReady
+            ).showSceneChips
+        )
     }
 
     func testCopySummaryRemainsHidden() {

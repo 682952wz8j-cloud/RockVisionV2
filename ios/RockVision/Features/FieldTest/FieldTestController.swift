@@ -128,6 +128,11 @@ final class FieldTestController: ObservableObject {
         }
         guard let record else { return }
         hasResumableSession = false
+        if plan.isGate5DBPhysicalValidation, record.status == "physicalValidationReady" {
+            enterPhysicalValidationReady(persist: false)
+            refreshExportAvailability()
+            return
+        }
         if let sceneName = record.currentScene,
            let scene = SIFTSceneLabel(rawValue: sceneName),
            plan.includes(scene),
@@ -395,7 +400,7 @@ final class FieldTestController: ObservableObject {
     private func restoreInterruptedSessionIfNeeded() throws {
         guard let existing = try store.latestSession() else { return }
         let session = try existing.loadSession()
-        guard session.status == "running" else { return }
+        guard session.status == "running" || session.status == "physicalValidationReady" else { return }
         hasResumableSession = true
         handle = existing
         record = session
@@ -504,12 +509,15 @@ final class FieldTestController: ObservableObject {
         cellStatuses[Self.cellKey(scene: scene, preset: preset)] = status
         refreshSummary(phaseName: status.rawValue)
         persistMeta(phaseName: status.rawValue)
+        isSampling = false
+        if plan.isGate5DBPhysicalValidation {
+            enterPhysicalValidationReady()
+            return
+        }
         if let nextPreset = nextPreset(after: preset) {
-            isSampling = false
             beginCellAfterConfirmationReset(scene: scene, preset: nextPreset)
             return
         }
-        isSampling = false
         if let nextScene = nextScene(after: scene) {
             phase = .readyToStartNext(finished: scene, next: nextScene)
             instruction = instructionAfter(finished: scene, next: nextScene)
@@ -587,8 +595,26 @@ final class FieldTestController: ObservableObject {
         case .waitingTracking: return "waitingTracking"
         case .sampling: return "sampling"
         case .readyToStartNext: return "readyToStartNext"
+        case .physicalValidationReady: return "physicalValidationReady"
         case .complete: return "complete"
         }
+    }
+
+    private func enterPhysicalValidationReady(persist: Bool = true) {
+        isSampling = false
+        stopTimer()
+        record?.status = "physicalValidationReady"
+        record?.updatedAt = Date()
+        phase = .physicalValidationReady
+        instruction = "Scene A 20/20 COMPLETE. Physical Validation READY. Runtime continues. Share after CENTER/LEFT/RIGHT/loss/reloc."
+        progressLabel = "\(FieldTestPolicy.targetValidSamples)/\(FieldTestPolicy.targetValidSamples)"
+        onSetLocked?(false)
+        if persist {
+            persistMeta(phaseName: "physicalValidationReady")
+        } else {
+            refreshSummary(phaseName: "physicalValidationReady")
+        }
+        refreshExportAvailability()
     }
 
     private func makeSummary(phaseName: String) -> FieldTestSummary {

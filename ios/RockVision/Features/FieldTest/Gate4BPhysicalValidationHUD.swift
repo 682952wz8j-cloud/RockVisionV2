@@ -4,7 +4,12 @@ import Foundation
 /// Does not own localization, alignment, session, or export state.
 enum Gate4BPhysicalValidationHUD {
     static let title = "Gate 4B — Physical Validation"
+    static let gate5DBTitle = "Gate 5D-B — Physical Validation (test-only)"
     static let unfinishedMessage = "Unfinished session detected"
+
+    static func title(for plan: FieldTestRunPlan) -> String {
+        plan.isGate5DBPhysicalValidation ? gate5DBTitle : title
+    }
 
     struct StatusRow: Equatable {
         var title: String
@@ -71,9 +76,10 @@ enum Gate4BPhysicalValidationHUD {
         hashVerified: Bool = false,
         boundPointCount: Int = 0,
         rendered: Bool = false,
-        visibleSegmentCount: Int = 0
+        visibleSegmentCount: Int = 0,
+        physicalValidationReady: Bool = false
     ) -> [StatusRow] {
-        [
+        var rows = [
             StatusRow(title: "Scene", value: scene),
             StatusRow(title: "Tracking", value: tracking),
             StatusRow(title: "Localization", value: localization),
@@ -87,6 +93,10 @@ enum Gate4BPhysicalValidationHUD {
             StatusRow(title: "Rendered", value: rendered ? "YES" : "NO"),
             StatusRow(title: "Segments", value: "\(visibleSegmentCount)")
         ]
+        if physicalValidationReady {
+            rows.append(StatusRow(title: "Physical Validation", value: "READY"))
+        }
+        return rows
     }
 
     /// Stage 3 diagnostic rows remain mapped from live snapshots but are not shown.
@@ -154,6 +164,17 @@ enum Gate4BPhysicalValidationHUD {
                 showStartMeasurement: false,
                 showAbort: true,
                 showShareResults: false,
+                showCopySummary: false,
+                showSceneChips: false
+            )
+        case .physicalValidationReady:
+            return Actions(
+                showUnfinishedBanner: false,
+                showResume: false,
+                showNewSession: true,
+                showStartMeasurement: false,
+                showAbort: false,
+                showShareResults: canExport,
                 showCopySummary: false,
                 showSceneChips: false
             )
