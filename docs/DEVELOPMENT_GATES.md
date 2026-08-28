@@ -56,7 +56,9 @@ Stage 5 — Route AR                           OPEN / IN PROGRESS
                                            GATE_5B_PASS = YES
                                            Gate 5C PASS / CLOSED
                                            GATE_5C_PASS = YES
-                                           Route runtime data binding PASS
+                                           Frozen route runtime load PASS
+                                           Frozen geometry hash gate PASS
+                                           Rolling runtime route binding PASS
                                            Route package NOT CREATED
                                            Route rendering NOT STARTED
                                            Gate 5D–5E NOT STARTED
@@ -76,7 +78,8 @@ AR physical measurement is **PASS / CLOSED**
 visual identity 2026-08-27). Stage 5 is **OPEN / IN PROGRESS**
 (explicitly opened 2026-08-27). Gate 5A is **PASS / CLOSED**. First
 route is **FROZEN** (`route_test_01`). Gate 5B is **PASS / CLOSED**. Gate 5C
-is **PASS / CLOSED**. The
+is **PASS / CLOSED**. Frozen route runtime load **PASS**. Frozen geometry
+hash gate **PASS**. Rolling runtime route binding **PASS**. The
 route package is
 **NOT CREATED / NOT AUTHORIZED**. Route rendering is
 **NOT STARTED / NOT AUTHORIZED**. Gate 5D–5E are **NOT STARTED**. Stage 5
@@ -414,9 +417,11 @@ Thresholds are named and marked uncalibrated.
 (landmarks FROZEN W01–W04; AR physical measurement PASS, visual identity
 2026-08-27). Stage 4 = PASS. Stage 5 = OPEN / IN PROGRESS. Gate 5A =
 PASS / CLOSED. First route = FROZEN (route_test_01). Gate 5B =
-PASS / CLOSED. Route package =
+PASS / CLOSED. Gate 5C = PASS / CLOSED. Frozen route runtime load =
+PASS. Frozen geometry hash gate = PASS. Rolling runtime route binding =
+PASS. Route package =
 NOT CREATED / NOT AUTHORIZED. Route rendering = NOT STARTED / NOT
-AUTHORIZED. Gate 5C = PASS / CLOSED. Gate 5D–5E = NOT STARTED / NOT AUTHORIZED. Stage 5 =
+AUTHORIZED. Gate 5D–5E = NOT STARTED / NOT AUTHORIZED. Stage 5 =
 NOT PASS.**
 
 Stage 3 has produced confirmed `T_opencvCam_colmap`. Gate 4A generates

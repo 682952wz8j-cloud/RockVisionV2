@@ -1,3 +1,4 @@
+import CryptoKit
 import XCTest
 @testable import RockVision
 
@@ -399,6 +400,44 @@ final class Gate5CRuntimeRouteBindingTests: XCTestCase {
         XCTAssertTrue(source.contains("frozenRouteHashVerified && currentAlignment.hasT_ARWorld_Wall"))
         XCTAssertFalse(source.contains("localizationState =="))
         XCTAssertFalse(source.contains("localizationLocalized"))
+    }
+
+    func testAuthoritativeAlignmentIsAlignmentFrameResultNotConfirmationTick() throws {
+        let binding = try readHostSource("RockVision/Features/PnP/RuntimeRouteBinding.swift")
+        XCTAssertTrue(binding.contains("static func evaluate("))
+        XCTAssertTrue(binding.contains("alignment: AlignmentFrameResult"))
+        XCTAssertFalse(binding.contains("ConfirmationTick"))
+        XCTAssertFalse(binding.contains("tick.hasT_ARWorld_Wall"))
+
+        let processor = try readHostSource("RockVision/Features/OpenCV/OpenCVFrameProcessor.swift")
+        XCTAssertTrue(processor.contains("RuntimeRouteBinding.evaluate("))
+        XCTAssertTrue(processor.contains("alignment: alignmentResult"))
+        XCTAssertFalse(processor.contains("alignment: confirmationTick"))
+        XCTAssertFalse(processor.contains("evaluate(verifiedRoute: self.verifiedFrozenRoute, alignment: tick"))
+    }
+
+    func testRouteBindingIsSiblingResultNotStoredInAlignmentFrameResult() throws {
+        let alignment = try readHostSource("RockVision/Features/PnP/ProductionAlignment.swift")
+        XCTAssertTrue(alignment.contains("struct AlignmentFrameResult"))
+        XCTAssertFalse(alignment.contains("var routeARWorldPoints"))
+        XCTAssertFalse(alignment.contains("var hasBoundRoute"))
+        XCTAssertFalse(alignment.contains("var routePolyline"))
+        XCTAssertFalse(alignment.contains("VerifiedFrozenRoute"))
+
+        let processor = try readHostSource("RockVision/Features/OpenCV/OpenCVFrameProcessor.swift")
+        XCTAssertTrue(processor.contains("runtimeRouteBinding = routeBinding"))
+        XCTAssertTrue(processor.contains("@Published private(set) var runtimeRouteBinding"))
+    }
+
+    func testFixtureFileHashIsNotRouteIdentity() throws {
+        let fixtureData = try Data(contentsOf: fixtureURL())
+        let fileSha = SHA256.hash(data: fixtureData).map { String(format: "%02x", $0) }.joined()
+        XCTAssertNotEqual(fileSha, expectedHash)
+        let route = try XCTUnwrap(VerifiedFrozenRoute.load(from: fixtureURL()))
+        XCTAssertEqual(FrozenRoutePolylineHash.sha256Hex(route.wallMetricMeters), expectedHash)
+        let source = try readHostSource("RockVision/Features/PnP/RuntimeRouteBinding.swift")
+        XCTAssertFalse(source.contains("SHA256.hash(data: try Data(contentsOf"))
+        XCTAssertTrue(source.contains("FrozenRoutePolylineHash.verify(payload.polyline"))
     }
 
     // MARK: - Helpers
