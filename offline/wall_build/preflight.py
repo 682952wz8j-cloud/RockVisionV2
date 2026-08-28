@@ -63,7 +63,9 @@ def run_preflight(
     images = [r for r in records if r.detected_type == RawAssetType.IMAGE]
     readable = [r for r in images if is_readable_image(r)]
     zero_byte = [r for r in recognized if r.file_size == 0]
-    if zero_byte:
+    zero_byte_route = [r for r in zero_byte if r.detected_type == RawAssetType.ROUTE_GEOMETRY]
+    zero_byte_other = [r for r in zero_byte if r.detected_type != RawAssetType.ROUTE_GEOMETRY]
+    if zero_byte_other:
         warnings.append(ReasonCode.ZERO_BYTE_RECOGNIZED_INPUT.value)
         reason_codes.append(ReasonCode.ZERO_BYTE_RECOGNIZED_INPUT.value)
 
@@ -85,43 +87,70 @@ def run_preflight(
         for item in discovery.get("dxfParseResults") or []
         if item.get("parseStatus") == StageStatus.AUTO_FAIL.value
     ]
-    # Per-file only. Do not fail the run (H4).
-    if dxf_parse_failures:
-        warnings.append(ReasonCode.CORRUPT_DXF.value)
+    corrupt_names: list[str] = []
+    seen: set[str] = set()
+    for item in dxf_parse_failures:
+        name = item.get("sourceFilename") or item.get("relativePath") or "unknown.dxf"
+        if name not in seen:
+            seen.add(name)
+            corrupt_names.append(name)
+    for record in zero_byte_route:
+        name = record.filename
+        if name not in seen:
+            seen.add(name)
+            corrupt_names.append(name)
+
+    checks = {
+        "wallDirectoryExists": True,
+        "wallPathIsDirectory": True,
+        "recognizedFileCount": len(recognized),
+        "imageCount": len(images),
+        "imagesReadable": len(readable),
+        "imagesWithExif": sum(
+            1
+            for r in readable
+            if (r.extra.get("image") or {}).get("hasExif") is True
+        ),
+        "zeroByteRecognizedInputs": [r.relative_path for r in zero_byte],
+        "zeroByteRouteGeometry": [r.relative_path for r in zero_byte_route],
+        "mrkCandidateCount": len(discovery.get("mrkCandidates") or []),
+        "metadataCandidateCount": len(discovery.get("metadataCandidates") or []),
+        "dxfCandidateCount": len(discovery.get("dxfFiles") or []),
+        "modelCandidateCount": len(discovery.get("modelCandidates") or []),
+        "captureCandidateCount": len(discovery.get("captureCandidates") or []),
+        "duplicateContentGroups": len(duplicates.get("contentNonZero") or []),
+        "dxfParseFailures": len(dxf_parse_failures),
+        "corruptRouteGeometryFiles": corrupt_names,
+    }
+
+    if corrupt_names:
+        return _fail(
+            [ReasonCode.CORRUPT_DXF.value],
+            errors=[f"corrupt DXF: {name}" for name in corrupt_names],
+            warnings=warnings,
+            checks=checks,
+        )
 
     return {
         "status": StageStatus.AUTO_PASS.value,
         "reasonCodes": reason_codes,
         "errors": errors,
         "warnings": warnings,
-        "checks": {
-            "wallDirectoryExists": True,
-            "wallPathIsDirectory": True,
-            "recognizedFileCount": len(recognized),
-            "imageCount": len(images),
-            "imagesReadable": len(readable),
-            "imagesWithExif": sum(
-                1
-                for r in readable
-                if (r.extra.get("image") or {}).get("hasExif") is True
-            ),
-            "zeroByteRecognizedInputs": [r.relative_path for r in zero_byte],
-            "mrkCandidateCount": len(discovery.get("mrkCandidates") or []),
-            "metadataCandidateCount": len(discovery.get("metadataCandidates") or []),
-            "dxfCandidateCount": len(discovery.get("dxfFiles") or []),
-            "modelCandidateCount": len(discovery.get("modelCandidates") or []),
-            "captureCandidateCount": len(discovery.get("captureCandidates") or []),
-            "duplicateContentGroups": len(duplicates.get("contentNonZero") or []),
-            "dxfParseFailures": len(dxf_parse_failures),
-        },
+        "checks": checks,
     }
 
 
-def _fail(reason_codes: list[str], *, errors: list[str], warnings: list[str]) -> dict:
+def _fail(
+    reason_codes: list[str],
+    *,
+    errors: list[str],
+    warnings: list[str],
+    checks: dict | None = None,
+) -> dict:
     return {
         "status": StageStatus.AUTO_FAIL.value,
         "reasonCodes": reason_codes,
         "errors": errors,
         "warnings": warnings,
-        "checks": {},
+        "checks": checks or {},
     }

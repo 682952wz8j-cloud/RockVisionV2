@@ -202,7 +202,7 @@ class WallBuildPhase1Tests(unittest.TestCase):
         self.assertEqual(report["stageStatuses"]["PREFLIGHT"]["status"], StageStatus.AUTO_PASS.value)
         self.assertNotEqual(report["runTerminalStatus"], RunTerminalStatus.AUTO_FAIL.value)
 
-    def test_dxf_parse_failure_is_per_file_not_run_fail(self) -> None:
+    def test_corrupt_dxf_fails_preflight_and_run(self) -> None:
         wall = self._wall("wall_test_phase1_dxf")
         write_jpeg(wall / "cam.jpg")
         _write(wall / "飞翔的石头.dxf", DXF_OK)
@@ -212,9 +212,28 @@ class WallBuildPhase1Tests(unittest.TestCase):
         self.assertEqual(by_name["飞翔的石头.dxf"]["parseStatus"], StageStatus.AUTO_PASS.value)
         self.assertEqual(by_name["broken.dxf"]["parseStatus"], StageStatus.AUTO_FAIL.value)
         self.assertEqual(by_name["broken.dxf"]["reasonCode"], ReasonCode.CORRUPT_DXF.value)
-        self.assertEqual(report["stageStatuses"]["PREFLIGHT"]["status"], StageStatus.AUTO_PASS.value)
-        self.assertEqual(report["stageStatuses"]["INGEST"]["status"], StageStatus.AUTO_PASS.value)
-        self.assertEqual(report["runTerminalStatus"], RunTerminalStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED.value)
+        self.assertEqual(report["stageStatuses"]["PREFLIGHT"]["status"], StageStatus.AUTO_FAIL.value)
+        self.assertEqual(report["stageStatuses"]["PREFLIGHT"]["reasonCode"], ReasonCode.CORRUPT_DXF.value)
+        self.assertEqual(report["stageStatuses"]["INGEST"]["status"], StageStatus.BLOCKED.value)
+        self.assertEqual(report["stageStatuses"]["QUALIFY"]["status"], StageStatus.BLOCKED.value)
+        self.assertEqual(report["runTerminalStatus"], RunTerminalStatus.AUTO_FAIL.value)
+        self.assertNotIn("ingest", INVOKED)
+        self.assertNotIn("qualify", INVOKED)
+        self.assertTrue(
+            any("broken.dxf" in err for err in report["stageStatuses"]["PREFLIGHT"].get("checks", {}).get("corruptRouteGeometryFiles", []))
+            or any("broken.dxf" in item for item in report.get("blockingEvidence") or [])
+        )
+
+    def test_zero_byte_dxf_fails_preflight(self) -> None:
+        wall = self._wall("wall_test_phase1_zerobyte_dxf")
+        write_jpeg(wall / "cam.jpg")
+        _write(wall / "empty.dxf", b"")
+        report = self._build("wall_test_phase1_zerobyte_dxf")
+        self.assertEqual(report["stageStatuses"]["PREFLIGHT"]["status"], StageStatus.AUTO_FAIL.value)
+        self.assertEqual(report["stageStatuses"]["PREFLIGHT"]["reasonCode"], ReasonCode.CORRUPT_DXF.value)
+        self.assertEqual(report["runTerminalStatus"], RunTerminalStatus.AUTO_FAIL.value)
+        self.assertEqual(report["stageStatuses"]["INGEST"]["status"], StageStatus.BLOCKED.value)
+        self.assertNotIn("ingest", INVOKED)
 
     def test_input_manifest_sha256_and_run_id(self) -> None:
         wall = self._wall("wall_test_phase1_manifest")
