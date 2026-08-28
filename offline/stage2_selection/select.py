@@ -10,7 +10,7 @@ from offline.ingestion.pipeline import incoming_dir
 
 from .capture import group_compatible_captures
 from .discovery import discover_candidates
-from .model import select_model_spatial_metadata, select_ply
+from .model import apply_frozen_identity_regression, select_model_spatial_metadata, select_ply
 from .mrk import associate_group_to_mrk
 from .states import (
     OUTPUT_FRAME,
@@ -37,6 +37,7 @@ def select_stage2_inputs(
     incoming: Path | None = None,
     run_id: str | None = None,
     inventory_source: str = "incoming_scan",
+    frozen_identity_regression_evidence: dict | None = None,
 ) -> dict:
     incoming_wall = incoming or incoming_dir(root, wall_id)
     discovered = discover_candidates(incoming_wall)
@@ -94,6 +95,11 @@ def select_stage2_inputs(
 
     meta_result = select_model_spatial_metadata(discovered["modelSpatialMetadataCandidates"])
     ply_result = select_ply(discovered["modelCandidates"])
+    meta_result, ply_result, regression_applied = apply_frozen_identity_regression(
+        meta_result,
+        ply_result,
+        frozen_identity_regression_evidence,
+    )
     statuses.append(_status(meta_result["status"]))
     statuses.append(_status(ply_result["status"]))
     if meta_result.get("reasonCode"):
@@ -109,6 +115,8 @@ def select_stage2_inputs(
     selected_srs = selected_meta.get("srs") if selected_meta else None
     selected_origin = selected_meta.get("srsOrigin") if selected_meta else None
     selected_model = ply_result.get("selected")
+    unique_unproven_meta = meta_result.get("uniqueUnprovenCandidate")
+    unique_unproven_ply = ply_result.get("uniqueUnprovenCandidate")
 
     if selected_capture and len({Path(p).parent.as_posix() for p in selected_capture["memberRelativePaths"]}) != 1:
         statuses.append(SelectionStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED)
@@ -130,6 +138,8 @@ def select_stage2_inputs(
         + ([selected_mrk["relativePath"]] if selected_mrk else [])
         + ([selected_meta["relativePath"]] if selected_meta else [])
         + ([selected_model["relativePath"]] if selected_model else [])
+        + ([unique_unproven_meta["relativePath"]] if unique_unproven_meta and not selected_meta else [])
+        + ([unique_unproven_ply["relativePath"]] if unique_unproven_ply and not selected_model else [])
     ):
         path = incoming_wall / rel
         if path.is_file():
@@ -189,12 +199,21 @@ def select_stage2_inputs(
         "selectedModelSpatialMetadata": selected_meta,
         "selectedSRS": selected_srs,
         "selectedSRSOrigin": selected_origin,
+        "uniqueUnprovenModelSpatialMetadata": unique_unproven_meta if not selected_meta else None,
+        "uniqueUnprovenModelGeometry": unique_unproven_ply if not selected_model else None,
         "selectionStatus": overall.value,
         "selectionReasonCodes": unique_reasons,
         "selectionEvidence": {
             "compatiblePrimaryCapture": "DJI originalCameraImage + readable + DJI filename + EXIF make; excludes iPhone/HEIC/texture/tile/report",
             "mrk": "GENERIC_MRK_ASSOCIATION_RULE: photoId identifier + same-parent strong source-group evidence",
-            "modelSpatialMetadata": "unique parseable Terra metadata.xml with SRS+SRSOrigin; terra_ply adjacency is proposed only",
+            "modelSpatialMetadata": (
+                "Uniqueness of metadata.xml or PLY inside incoming/ is not model provenance. "
+                "terra_ply adjacency is PROPOSED_GENERIC_RULE_REQUIRING_VALIDATION. "
+                "origin_compatible_with_mrk is a spatial sanity check, not provenance."
+            ),
+            "uniquenessIsNotModelProvenance": True,
+            "originCompatibilityIsNotModelProvenance": True,
+            "frozenIdentityRegressionEvidenceApplied": regression_applied,
             "crs": "approved math is EPSG:32650 / UTM zone 50 only",
             "outputFrame": OUTPUT_FRAME,
             "originCompatibility": "SPATIAL_SANITY_CHECK later; not used as provenance proof",

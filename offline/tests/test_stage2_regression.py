@@ -25,11 +25,16 @@ from offline.wall_build.states import PHASE1_EXECUTABLE_STAGES, ReasonCode, Stag
 EXPECTED_SCALE = 3.19764417024824
 EXPECTED_MRK = "DJI_202608231218_006_九龙峰/DJI_20260823122214_0002_D.MRK"
 EXPECTED_META = "九龙峰森林站大楼/models/pc/0/terra_ply/metadata.xml"
+EXPECTED_PLY = "九龙峰森林站大楼/models/pc/0/terra_ply/BlockR/BlockR.ply"
 EXPECTED_CAPTURE_DIR = "DJI_202608231218_006_九龙峰"
 EXPECTED_SRS = "EPSG:32650"
 EXPECTED_ORIGIN = [597786.85842445458, 3333597.1281958264, 352.50399999973473]
 HEIGHT_SFM = "九龙峰森林站大楼/AT/sfm_geo_desc.json"
 HEIGHT_LEGACY_MRK = "dji_flight_raw_jiulongfeng/rtk_ppk_004/DJI_20260812152955_0002_D.MRK"
+FROZEN_IDENTITY_REGRESSION_EVIDENCE = {
+    "metadata_xml_relative_path": EXPECTED_META,
+    "ply_relative_path": EXPECTED_PLY,
+}
 
 
 def _fingerprint(path: Path) -> str:
@@ -80,8 +85,18 @@ class Stage2RegressionTests(unittest.TestCase):
     def test_a1_selection_regression(self) -> None:
         incoming = ROOT / "incoming" / "wall_jiulongfeng_01"
         self.assertTrue(incoming.is_dir())
-        artifact = select_stage2_inputs("wall_jiulongfeng_01", ROOT)
+        artifact = select_stage2_inputs(
+            "wall_jiulongfeng_01",
+            ROOT,
+            frozen_identity_regression_evidence=FROZEN_IDENTITY_REGRESSION_EVIDENCE,
+        )
         self.assertEqual(artifact["selectionStatus"], "AUTO_PASS", artifact.get("selectionReasonCodes"))
+        self.assertTrue(artifact["selectionEvidence"]["frozenIdentityRegressionEvidenceApplied"])
+        self.assertTrue(artifact["selectionEvidence"]["uniquenessIsNotModelProvenance"])
+        self.assertEqual(
+            artifact["selectedModelSpatialMetadata"]["associationRule"],
+            "FROZEN_IDENTITY_REGRESSION_EVIDENCE",
+        )
         selected = artifact["selectedCapture"]["memberRelativePaths"]
         expected_images = sorted(
             p.relative_to(incoming).as_posix()
@@ -91,6 +106,8 @@ class Stage2RegressionTests(unittest.TestCase):
         self.assertEqual(len(selected), 47)
         self.assertEqual(artifact["selectedMRKSource"]["relativePath"], EXPECTED_MRK)
         self.assertEqual(artifact["selectedModelSpatialMetadata"]["relativePath"], EXPECTED_META)
+        self.assertEqual(artifact["selectedModelSource"]["relativePath"], EXPECTED_PLY)
+        self.assertEqual(artifact["sourceChecksums"][EXPECTED_PLY], sha256_file(incoming / EXPECTED_PLY))
         self.assertEqual(artifact["selectedSRS"], EXPECTED_SRS)
         origin = artifact["selectedSRSOrigin"]
         self.assertAlmostEqual(origin[0], EXPECTED_ORIGIN[0], places=6)
@@ -103,12 +120,28 @@ class Stage2RegressionTests(unittest.TestCase):
         self.assertNotIn("WallMetricMeters", artifact["outputFrame"])
         self.assertFalse(any("dji_20260823" == g.get("requiredSession") for g in artifact["captureGroups"]))
 
+    def test_unique_jiulongfeng_candidates_are_not_generic_provenance(self) -> None:
+        artifact = select_stage2_inputs("wall_jiulongfeng_01", ROOT)
+        self.assertEqual(artifact["selectionStatus"], "DEVELOPMENT_GATE_REVIEW_REQUIRED")
+        self.assertIn("MODEL_GEOMETRY_METADATA_ASSOCIATION_UNPROVEN", artifact["selectionReasonCodes"])
+        self.assertEqual(
+            artifact["uniqueUnprovenModelSpatialMetadata"]["relativePath"],
+            EXPECTED_META,
+        )
+        self.assertEqual(artifact["uniqueUnprovenModelGeometry"]["relativePath"], EXPECTED_PLY)
+        self.assertIsNone(artifact["selectedModelSpatialMetadata"])
+        self.assertFalse(artifact["selectionEvidence"]["frozenIdentityRegressionEvidenceApplied"])
+
     def test_a2_metric_regression(self) -> None:
         try:
             import pycolmap  # noqa: F401
         except ImportError:
             self.fail("pycolmap is required for A2 metric regression")
-        artifact = select_stage2_inputs("wall_jiulongfeng_01", ROOT)
+        artifact = select_stage2_inputs(
+            "wall_jiulongfeng_01",
+            ROOT,
+            frozen_identity_regression_evidence=FROZEN_IDENTITY_REGRESSION_EVIDENCE,
+        )
         self.assertEqual(artifact["selectionStatus"], "AUTO_PASS")
         sources = sources_from_selection(artifact)
         self.assertIsNotNone(sources)
@@ -167,12 +200,38 @@ class Stage2RegressionTests(unittest.TestCase):
         self.assertTrue(hasattr(cli, "main"))
         source = (ROOT / "tools" / "rockvision.py").read_text(encoding="utf-8")
         self.assertIn("stage2-dev", source)
+        self.assertIn("reconstruct-selected", source)
         self.assertIn("DEVELOPMENT ONLY", source)
         capability = (ROOT / "offline" / "wall_build" / "capability.py").read_text(encoding="utf-8")
         self.assertIn("GENERIC_STAGE2_NOT_APPROVED", capability)
         states = (ROOT / "offline" / "wall_build" / "states.py").read_text(encoding="utf-8")
         self.assertIn("PHASE1_EXECUTABLE_STAGES", states)
         self.assertNotIn("Stage.RECONSTRUCTION", states.split("PHASE1_EXECUTABLE_STAGES")[1].split(")")[0])
+
+    def test_reconstruct_selected_is_exposed_and_requires_dev_workspace(self) -> None:
+        cli = _load_cli()
+        missing = cli.main(
+            ["stage2-dev", "reconstruct-selected", "wall_test_stage2_cli"],
+            root=ROOT,
+        )
+        self.assertEqual(missing, 2)
+        tmp = Path(tempfile.mkdtemp(prefix="rv_s2_recon_cli_"))
+        try:
+            code = cli.main(
+                [
+                    "stage2-dev",
+                    "reconstruct-selected",
+                    "wall_test_stage2_cli",
+                    "--dev-workspace",
+                    str(tmp / "ws"),
+                ],
+                root=ROOT,
+            )
+            self.assertIn(code, {0, 1, 2})
+            frozen_colmap = ROOT / "offline" / "work" / "wall_jiulongfeng_01" / "colmap"
+            self.assertFalse((tmp / "ws" / "colmap").exists() and (tmp / "ws" / "colmap").resolve() == frozen_colmap.resolve())
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 if __name__ == "__main__":

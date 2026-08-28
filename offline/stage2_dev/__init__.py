@@ -4,6 +4,7 @@ from .runner import (
     DEVELOPMENT_ONLY,
     NOT_PRODUCTION_BUILD,
     run_register_selected,
+    run_reconstruct_selected,
     run_select,
 )
 
@@ -12,4 +13,5 @@ __all__ = [
     "NOT_PRODUCTION_BUILD",
     "run_select",
     "run_register_selected",
+    "run_reconstruct_selected",
 ]

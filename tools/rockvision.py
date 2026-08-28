@@ -41,9 +41,12 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     pnp_cmd.add_argument("--wall-id", default="wall_jiulongfeng_01")
     stage2_dev_cmd = sub.add_parser(
         "stage2-dev",
-        help="DEVELOPMENT ONLY: Generic Stage 2 selection/register. Not ordinary production build.",
+        help="DEVELOPMENT ONLY: Generic Stage 2 select/register-selected/reconstruct-selected. Not ordinary production build.",
     )
-    stage2_dev_cmd.add_argument("stage2_dev_action", choices=["select", "register-selected"])
+    stage2_dev_cmd.add_argument(
+        "stage2_dev_action",
+        choices=["select", "register-selected", "reconstruct-selected"],
+    )
     stage2_dev_cmd.add_argument("wall_id")
     stage2_dev_cmd.add_argument(
         "--dev-workspace",

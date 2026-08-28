@@ -105,19 +105,39 @@ class Stage2SelectionTests(unittest.TestCase):
     def test_unique_valid_capture_selection(self) -> None:
         self._complete_unique()
         artifact = _select(self.tmp)
-        self.assertEqual(artifact["selectionStatus"], "AUTO_PASS")
+        self.assertEqual(artifact["selectionStatus"], "DEVELOPMENT_GATE_REVIEW_REQUIRED")
+        self.assertIn("MODEL_GEOMETRY_METADATA_ASSOCIATION_UNPROVEN", artifact["selectionReasonCodes"])
         self.assertEqual(artifact["outputFrame"], "WallLocal")
         self.assertEqual(artifact["wallMetricMetersProvenance"], "NOT_CLAIMED")
         self.assertEqual(len(artifact["selectedCapture"]["memberRelativePaths"]), 3)
         self.assertTrue(artifact["selectedMRKSource"]["relativePath"].endswith(".MRK"))
-        self.assertEqual(artifact["selectedSRS"], "EPSG:32650")
-        self.assertEqual(len(artifact["selectedSRSOrigin"]), 3)
+        self.assertIsNone(artifact["selectedModelSpatialMetadata"])
+        self.assertIsNone(artifact["selectedModelSource"])
+        self.assertIsNone(artifact["selectedSRS"])
+        unproven = artifact["uniqueUnprovenModelSpatialMetadata"]
+        self.assertEqual(unproven["srs"], "EPSG:32650")
+        self.assertEqual(len(unproven["srsOrigin"]), 3)
+        self.assertTrue(unproven["uniquenessIsNotProvenance"])
+        self.assertTrue(artifact["selectionEvidence"]["uniquenessIsNotModelProvenance"])
+        self.assertTrue(artifact["selectionEvidence"]["originCompatibilityIsNotModelProvenance"])
+        self.assertFalse(artifact["selectionEvidence"]["frozenIdentityRegressionEvidenceApplied"])
         self.assertFalse(artifact["selectionEvidence"]["nearestGpsAuthoritative"])
         self.assertTrue(artifact["selectionEvidence"]["colmapReadinessNotRequired"])
         self.assertTrue(artifact["selectionEvidence"]["sessionDji20260823NotRequired"])
         self.assertTrue(artifact["selectionEvidence"]["expectedImageCountNotRequired"])
         self.assertFalse(artifact["originCompatibilityIsProvenanceProof"])
         self.assertNotEqual(artifact["selectedCapture"]["memberCount"], 47)
+
+    def test_one_metadata_plus_one_ply_without_approved_association(self) -> None:
+        self._complete_unique()
+        artifact = _select(self.tmp)
+        self.assertEqual(artifact["selectionStatus"], "DEVELOPMENT_GATE_REVIEW_REQUIRED")
+        self.assertIn("MODEL_GEOMETRY_METADATA_ASSOCIATION_UNPROVEN", artifact["selectionReasonCodes"])
+        self.assertEqual(len(artifact["modelSpatialMetadataCandidates"]), 1)
+        self.assertEqual(len(artifact["modelCandidates"]), 1)
+        self.assertIsNone(artifact["selectedModelSpatialMetadata"])
+        self.assertIsNone(artifact["selectedModelSource"])
+        self.assertFalse(artifact["selectionEvidence"]["frozenIdentityRegressionEvidenceApplied"])
 
     def test_zero_compatible_capture(self) -> None:
         write_jpeg(self.wall / "IMG_0001.JPG", make="Apple", model="iPhone")
@@ -134,8 +154,12 @@ class Stage2SelectionTests(unittest.TestCase):
         _metadata(self.wall / "export" / "terra_ply")
         _ply(self.wall / "export" / "terra_ply")
         artifact = _select(self.tmp)
-        self.assertEqual(artifact["selectionStatus"], "HUMAN_REVIEW_REQUIRED")
         self.assertIn("MULTIPLE_SELECTABLE_CAPTURE_GROUPS", artifact["selectionReasonCodes"])
+        self.assertIn(artifact["selectionStatus"], {
+            "HUMAN_REVIEW_REQUIRED",
+            "DEVELOPMENT_GATE_REVIEW_REQUIRED",
+        })
+        self.assertIn("MODEL_GEOMETRY_METADATA_ASSOCIATION_UNPROVEN", artifact["selectionReasonCodes"])
 
     def test_mrk_missing(self) -> None:
         cap = self.wall / "flight"
@@ -207,8 +231,11 @@ class Stage2SelectionTests(unittest.TestCase):
         _metadata(self.wall / "export" / "terra_ply")
         _ply(self.wall / "export" / "terra_ply")
         artifact = _select(self.tmp)
-        self.assertEqual(artifact["selectionStatus"], "HUMAN_REVIEW_REQUIRED")
         self.assertIn("MRK_AMBIGUOUS", artifact["selectionReasonCodes"])
+        self.assertIn(artifact["selectionStatus"], {
+            "HUMAN_REVIEW_REQUIRED",
+            "DEVELOPMENT_GATE_REVIEW_REQUIRED",
+        })
 
     def test_metadata_missing(self) -> None:
         cap = self.wall / "flight"

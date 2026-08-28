@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .runner import default_dev_workspace, run_register_selected, run_select
+from .runner import run_register_selected, run_reconstruct_selected, run_select
 
 
 def run_stage2_dev(args, root: Path) -> int:
@@ -41,6 +41,13 @@ def run_stage2_dev(args, root: Path) -> int:
         print(f"Gate result: {payload.get('gateResult')}")
         print(f"scale: {payload.get('scale')}")
         print(f"Wrote {workspace / 'metric_registration'}")
+        return 0 if payload.get("gateResult") != "FAIL" else 1
+    if action == "reconstruct-selected":
+        payload = run_reconstruct_selected(wall_id, root, workspace=workspace)
+        print(f"Wall ID: {wall_id}")
+        print(f"Gate result: {payload.get('gateResult')}")
+        print(f"Wrote {workspace / 'colmap'}")
+        print("productionBuildStage2Enabled: False")
         return 0 if payload.get("gateResult") != "FAIL" else 1
     print(f"unknown stage2-dev action {action}")
     return 2

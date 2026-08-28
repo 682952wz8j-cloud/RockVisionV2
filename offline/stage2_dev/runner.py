@@ -28,6 +28,17 @@ def default_dev_workspace(root: Path, wall_id: str) -> Path:
     return root / "offline" / "work" / wall_id / "stage2_dev" / _now_slug()
 
 
+def _refuse_production_work_tree(root: Path, wall_id: str, workspace: Path, leaf: str) -> str | None:
+    production = (root / "offline" / "work" / wall_id / leaf).resolve()
+    dest = (workspace / leaf).resolve()
+    if dest == production:
+        return (
+            f"stage2-dev must not write production {leaf} work tree {production}. "
+            "Pass a separate --dev-workspace."
+        )
+    return None
+
+
 def run_select(wall_id: str, root: Path, *, workspace: Path) -> dict:
     workspace.mkdir(parents=True, exist_ok=True)
     artifact = select_stage2_inputs(wall_id, root, run_id=workspace.name)
@@ -73,6 +84,15 @@ def run_register_selected(
                 "height_legacy_mrk": height_legacy_mrk,
             }
         )
+    blocked = _refuse_production_work_tree(root, wall_id, workspace, "metric_registration")
+    if blocked:
+        return {
+            "wallId": wall_id,
+            "gateResult": "FAIL",
+            "errors": [blocked],
+            "developmentOnly": True,
+            "productionBuildStage2Enabled": False,
+        }
     dest = workspace / "metric_registration"
     payload = register(
         wall_id,
@@ -106,6 +126,15 @@ def run_reconstruct_selected(
             "gateResult": "FAIL",
             "errors": ["stage2 input selection is not AUTO_PASS"],
             "developmentOnly": True,
+        }
+    blocked = _refuse_production_work_tree(root, wall_id, workspace, "colmap")
+    if blocked:
+        return {
+            "wallId": wall_id,
+            "gateResult": "FAIL",
+            "errors": [blocked],
+            "developmentOnly": True,
+            "productionBuildStage2Enabled": False,
         }
     dest = workspace / "colmap"
     payload = reconstruct(wall_id, root, sources=sources, dest=dest)
