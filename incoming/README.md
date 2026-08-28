@@ -41,6 +41,12 @@ edit them, or delete them.
    python3 tools/rockvision.py ingest wall_jiulongfeng_01
    ```
 
+   To run the Phase 1 gate-aware wall build (discovery, preflight, ingest, qualify, then stop before unapproved stages):
+
+   ```text
+   ./rockvision build wall_<id>
+   ```
+
 The command only reads `incoming/`. It writes a file list and a report
 under `offline/work/wall_<id>/ingestion/`.
 
@@ -67,5 +73,7 @@ Folder names are yours. The tool looks at the files, not the folder names.
 5. 不需要改文件名
 6. 不要删除看不懂的 RTK / GNSS / 辅助文件
 7. 运行：`./rockvision ingest wall_<墙ID>`
+
+   或 Phase 1 编排：`./rockvision build wall_<墙ID>`
 
 不要改动 `incoming/` 里的原文件。
