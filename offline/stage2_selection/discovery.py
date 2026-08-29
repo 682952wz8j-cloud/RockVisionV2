@@ -11,6 +11,7 @@ from offline.qualification.associate import dji_filename_parts
 from offline.qualification.images import classify_image, collect_ply_texture_names
 from offline.qualification.metadata_scan import parse_model_metadata_xml
 from offline.qualification.rtk import parse_mrk
+from offline.stage2_selection.terra import has_exact_temp_component
 
 _SKIP_NAMES = {".ds_store"}
 _IMAGE_EXT = {".jpg", ".jpeg", ".png", ".heic", ".heif"}
@@ -112,6 +113,8 @@ def discover_candidates(incoming: Path) -> dict:
             continue
 
         if name.lower() == "metadata.xml":
+            if has_exact_temp_component(rel):
+                continue
             parsed_xml = parse_model_metadata_xml(path)
             origin = (parsed_xml or {}).get("srsOrigin")
             origin_ok = isinstance(origin, list) and len(origin) == 3
@@ -138,6 +141,8 @@ def discover_candidates(incoming: Path) -> dict:
             continue
 
         if ext == ".ply":
+            if has_exact_temp_component(rel):
+                continue
             model_geometry.append(
                 {
                     "relativePath": rel,

@@ -95,8 +95,13 @@ class Stage2RegressionTests(unittest.TestCase):
         self.assertTrue(artifact["selectionEvidence"]["uniquenessIsNotModelProvenance"])
         self.assertEqual(
             artifact["selectedModelSpatialMetadata"]["associationRule"],
-            "FROZEN_IDENTITY_REGRESSION_EVIDENCE",
+            "APPROVED_METHOD_RULE:agreeing_ModelMetadata_SRS_SRSOrigin",
         )
+        self.assertEqual(
+            artifact["selectedModelSource"]["associationRule"],
+            "APPROVED_METHOD_RULE:unique_crosscheck_capable_deliverable",
+        )
+        self.assertFalse(artifact["selectedModelSource"]["usedInFit"])
         selected = artifact["selectedCapture"]["memberRelativePaths"]
         expected_images = sorted(
             p.relative_to(incoming).as_posix()
@@ -122,15 +127,20 @@ class Stage2RegressionTests(unittest.TestCase):
 
     def test_unique_jiulongfeng_candidates_are_not_generic_provenance(self) -> None:
         artifact = select_stage2_inputs("wall_jiulongfeng_01", ROOT)
-        self.assertEqual(artifact["selectionStatus"], "DEVELOPMENT_GATE_REVIEW_REQUIRED")
-        self.assertIn("MODEL_GEOMETRY_METADATA_ASSOCIATION_UNPROVEN", artifact["selectionReasonCodes"])
+        self.assertEqual(artifact["selectionStatus"], "AUTO_PASS")
+        self.assertTrue(artifact["selectionEvidence"]["uniquenessIsNotModelProvenance"])
+        self.assertTrue(artifact["selectionEvidence"]["geometryIsNotFrameProvenance"])
         self.assertEqual(
-            artifact["uniqueUnprovenModelSpatialMetadata"]["relativePath"],
+            artifact["selectedModelSpatialMetadata"]["relativePath"],
             EXPECTED_META,
         )
-        self.assertEqual(artifact["uniqueUnprovenModelGeometry"]["relativePath"], EXPECTED_PLY)
-        self.assertIsNone(artifact["selectedModelSpatialMetadata"])
+        self.assertEqual(artifact["selectedModelSource"]["relativePath"], EXPECTED_PLY)
+        self.assertEqual(artifact["selectedCrosscheckProduct"]["productToken"], "terra_ply")
         self.assertFalse(artifact["selectionEvidence"]["frozenIdentityRegressionEvidenceApplied"])
+        self.assertNotEqual(
+            artifact["selectedModelSpatialMetadata"]["associationRule"],
+            "FROZEN_IDENTITY_REGRESSION_EVIDENCE",
+        )
 
     def test_a2_metric_regression(self) -> None:
         try:

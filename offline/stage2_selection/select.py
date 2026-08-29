@@ -10,9 +10,10 @@ from offline.ingestion.pipeline import incoming_dir
 
 from .capture import group_compatible_captures
 from .discovery import discover_candidates
-from .model import apply_frozen_identity_regression, select_model_spatial_metadata, select_ply
+from .model import apply_frozen_identity_regression
 from .mrk import associate_group_to_mrk
 from .states import (
+    HEIGHT_VERTICAL_DATUM_PROVENANCE,
     OUTPUT_FRAME,
     SCHEMA_VERSION,
     WALLMETRICMETERS_PROVENANCE,
@@ -20,6 +21,7 @@ from .states import (
     SelectionStatus,
     worst_status,
 )
+from .terra import select_terra_model
 
 
 def _now() -> str:
@@ -93,30 +95,25 @@ def select_stage2_inputs(
             if group["mrkAssociation"].get("ambiguous"):
                 ambiguous.extend(group["mrkAssociation"]["ambiguous"])
 
-    meta_result = select_model_spatial_metadata(discovered["modelSpatialMetadataCandidates"])
-    ply_result = select_ply(discovered["modelCandidates"])
-    meta_result, ply_result, regression_applied = apply_frozen_identity_regression(
-        meta_result,
-        ply_result,
+    terra_result = select_terra_model(incoming_wall)
+    terra_result, regression_applied = apply_frozen_identity_regression(
+        terra_result,
         frozen_identity_regression_evidence,
     )
-    statuses.append(_status(meta_result["status"]))
-    statuses.append(_status(ply_result["status"]))
-    if meta_result.get("reasonCode"):
-        reason_codes.append(meta_result["reasonCode"])
-    if ply_result.get("reasonCode"):
-        reason_codes.append(ply_result["reasonCode"])
-    if meta_result.get("ambiguous"):
-        ambiguous.extend({"kind": "modelSpatialMetadata", **item} for item in meta_result["ambiguous"])
-    if ply_result.get("ambiguous"):
-        ambiguous.extend({"kind": "modelGeometry", **item} for item in ply_result["ambiguous"])
+    statuses.append(_status(terra_result["status"]))
+    for code in terra_result.get("reasonCodes") or []:
+        reason_codes.append(code)
+    if terra_result.get("ambiguous"):
+        ambiguous.extend(terra_result["ambiguous"])
 
-    selected_meta = meta_result.get("selected")
+    selected_meta = terra_result.get("selectedModelSpatialMetadata")
     selected_srs = selected_meta.get("srs") if selected_meta else None
     selected_origin = selected_meta.get("srsOrigin") if selected_meta else None
-    selected_model = ply_result.get("selected")
-    unique_unproven_meta = meta_result.get("uniqueUnprovenCandidate")
-    unique_unproven_ply = ply_result.get("uniqueUnprovenCandidate")
+    selected_model = terra_result.get("selectedModelSource")
+    frame = terra_result.get("terraSpatialFrame")
+    if selected_srs is None and frame:
+        selected_srs = frame.get("srs")
+        selected_origin = frame.get("srsOrigin")
 
     if selected_capture and len({Path(p).parent.as_posix() for p in selected_capture["memberRelativePaths"]}) != 1:
         statuses.append(SelectionStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED)
@@ -138,8 +135,11 @@ def select_stage2_inputs(
         + ([selected_mrk["relativePath"]] if selected_mrk else [])
         + ([selected_meta["relativePath"]] if selected_meta else [])
         + ([selected_model["relativePath"]] if selected_model else [])
-        + ([unique_unproven_meta["relativePath"]] if unique_unproven_meta and not selected_meta else [])
-        + ([unique_unproven_ply["relativePath"]] if unique_unproven_ply and not selected_model else [])
+        + [
+            item["relativePath"]
+            for item in terra_result.get("terraMetadataCopies") or []
+            if item.get("relativePath")
+        ]
     ):
         path = incoming_wall / rel
         if path.is_file():
@@ -149,6 +149,10 @@ def select_stage2_inputs(
     for code in reason_codes:
         if code not in unique_reasons:
             unique_reasons.append(code)
+    if overall != SelectionStatus.AUTO_PASS:
+        unique_reasons = [
+            code for code in unique_reasons if code != ReasonCode.UNIQUE_LEGAL_SOURCE_SET.value
+        ]
 
     return {
         "schemaVersion": SCHEMA_VERSION,
@@ -190,29 +194,44 @@ def select_stage2_inputs(
             for item in mrk_candidates
         ],
         "captureMetadataCandidates": discovered["captureMetadataCandidates"],
-        "modelCandidates": discovered["modelCandidates"],
-        "modelSpatialMetadataCandidates": discovered["modelSpatialMetadataCandidates"],
+        "modelCandidates": terra_result.get("modelCandidates") or [],
+        "modelSpatialMetadataCandidates": terra_result.get("modelSpatialMetadataCandidates") or [],
         "atReconstructionMetadataCandidates": discovered["atReconstructionMetadataCandidates"],
+        "terraExportRoot": terra_result.get("terraExportRoot"),
+        "terraExportRootEvidence": terra_result.get("terraExportRootEvidence"),
+        "terraSpatialFrame": terra_result.get("terraSpatialFrame"),
+        "terraMetadataCopies": terra_result.get("terraMetadataCopies") or [],
+        "terraProducts": terra_result.get("terraProducts") or [],
+        "intermediateCandidates": terra_result.get("intermediateCandidates") or [],
         "selectedCapture": selected_capture,
         "selectedMRKSource": selected_mrk,
-        "selectedModelSource": selected_model,
-        "selectedModelSpatialMetadata": selected_meta,
-        "selectedSRS": selected_srs,
-        "selectedSRSOrigin": selected_origin,
-        "uniqueUnprovenModelSpatialMetadata": unique_unproven_meta if not selected_meta else None,
-        "uniqueUnprovenModelGeometry": unique_unproven_ply if not selected_model else None,
+        "selectedModelSource": selected_model if overall == SelectionStatus.AUTO_PASS else None,
+        "selectedModelSpatialMetadata": selected_meta if overall == SelectionStatus.AUTO_PASS else None,
+        "selectedCrosscheckProduct": terra_result.get("selectedCrosscheckProduct")
+        if overall == SelectionStatus.AUTO_PASS
+        else None,
+        "selectedCrosscheckGeometry": terra_result.get("selectedCrosscheckGeometry")
+        if overall == SelectionStatus.AUTO_PASS
+        else None,
+        "selectedSRS": selected_srs if overall == SelectionStatus.AUTO_PASS else None,
+        "selectedSRSOrigin": selected_origin if overall == SelectionStatus.AUTO_PASS else None,
+        "uniqueUnprovenModelSpatialMetadata": terra_result.get("uniqueUnprovenModelSpatialMetadata"),
+        "uniqueUnprovenModelGeometry": terra_result.get("uniqueUnprovenModelGeometry"),
         "selectionStatus": overall.value,
         "selectionReasonCodes": unique_reasons,
         "selectionEvidence": {
             "compatiblePrimaryCapture": "DJI originalCameraImage + readable + DJI filename + EXIF make; excludes iPhone/HEIC/texture/tile/report",
             "mrk": "GENERIC_MRK_ASSOCIATION_RULE: photoId identifier + same-parent strong source-group evidence",
+            "terraExportRoot": "APPROVED_METHOD_RULE: directory with a direct child named terra_*, not under .temp; name 0 is not required",
+            "terraSpatialFrame": "APPROVED_METHOD_RULE: agreeing ModelMetadata SRS + parsed SRSOrigin; copies are frame copies, not geometry pointers",
             "modelSpatialMetadata": (
-                "Uniqueness of metadata.xml or PLY inside incoming/ is not model provenance. "
-                "terra_ply adjacency is PROPOSED_GENERIC_RULE_REQUIRING_VALIDATION. "
+                "Uniqueness of metadata.xml or PLY is not model provenance. "
+                "Geometry is not spatial-frame provenance. "
                 "origin_compatible_with_mrk is a spatial sanity check, not provenance."
             ),
             "uniquenessIsNotModelProvenance": True,
             "originCompatibilityIsNotModelProvenance": True,
+            "geometryIsNotFrameProvenance": True,
             "frozenIdentityRegressionEvidenceApplied": regression_applied,
             "crs": "approved math is EPSG:32650 / UTM zone 50 only",
             "outputFrame": OUTPUT_FRAME,
@@ -221,6 +240,8 @@ def select_stage2_inputs(
             "colmapReadinessNotRequired": True,
             "sessionDji20260823NotRequired": True,
             "expectedImageCountNotRequired": True,
+            "heightVerticalDatumProvenance": HEIGHT_VERTICAL_DATUM_PROVENANCE,
+            "plyUsedInFit": False,
         },
         "rejectedCandidates": {
             "images": rejected_images,
@@ -232,9 +253,12 @@ def select_stage2_inputs(
             "incomingImmutable": True,
             "qualificationSessionAuthorizationNotUsed": True,
             "jiulongfengHardcodedPathsNotUsed": True,
+            "wallIdNotUsedForTerraProvenance": True,
+            "humanFolderNamesNotUsedForTerraProvenance": True,
         },
         "outputFrame": OUTPUT_FRAME,
         "wallMetricMetersProvenance": WALLMETRICMETERS_PROVENANCE,
+        "heightVerticalDatumProvenance": HEIGHT_VERTICAL_DATUM_PROVENANCE,
         "originCompatibilitySemantics": "SPATIAL_SANITY_CHECK",
         "originCompatibilityIsProvenanceProof": False,
     }

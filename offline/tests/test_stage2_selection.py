@@ -105,21 +105,21 @@ class Stage2SelectionTests(unittest.TestCase):
     def test_unique_valid_capture_selection(self) -> None:
         self._complete_unique()
         artifact = _select(self.tmp)
-        self.assertEqual(artifact["selectionStatus"], "DEVELOPMENT_GATE_REVIEW_REQUIRED")
-        self.assertIn("MODEL_GEOMETRY_METADATA_ASSOCIATION_UNPROVEN", artifact["selectionReasonCodes"])
+        self.assertEqual(artifact["selectionStatus"], "AUTO_PASS")
+        self.assertEqual(artifact["selectionReasonCodes"], ["UNIQUE_LEGAL_SOURCE_SET"])
         self.assertEqual(artifact["outputFrame"], "WallLocal")
         self.assertEqual(artifact["wallMetricMetersProvenance"], "NOT_CLAIMED")
+        self.assertEqual(artifact["heightVerticalDatumProvenance"], "SEPARATE_DEVELOPMENT_GATE")
         self.assertEqual(len(artifact["selectedCapture"]["memberRelativePaths"]), 3)
         self.assertTrue(artifact["selectedMRKSource"]["relativePath"].endswith(".MRK"))
-        self.assertIsNone(artifact["selectedModelSpatialMetadata"])
-        self.assertIsNone(artifact["selectedModelSource"])
-        self.assertIsNone(artifact["selectedSRS"])
-        unproven = artifact["uniqueUnprovenModelSpatialMetadata"]
-        self.assertEqual(unproven["srs"], "EPSG:32650")
-        self.assertEqual(len(unproven["srsOrigin"]), 3)
-        self.assertTrue(unproven["uniquenessIsNotProvenance"])
+        self.assertIsNotNone(artifact["selectedModelSpatialMetadata"])
+        self.assertIsNotNone(artifact["selectedModelSource"])
+        self.assertEqual(artifact["selectedSRS"], "EPSG:32650")
+        self.assertEqual(len(artifact["selectedSRSOrigin"]), 3)
+        self.assertFalse(artifact["selectedModelSource"]["usedInFit"])
         self.assertTrue(artifact["selectionEvidence"]["uniquenessIsNotModelProvenance"])
         self.assertTrue(artifact["selectionEvidence"]["originCompatibilityIsNotModelProvenance"])
+        self.assertTrue(artifact["selectionEvidence"]["geometryIsNotFrameProvenance"])
         self.assertFalse(artifact["selectionEvidence"]["frozenIdentityRegressionEvidenceApplied"])
         self.assertFalse(artifact["selectionEvidence"]["nearestGpsAuthoritative"])
         self.assertTrue(artifact["selectionEvidence"]["colmapReadinessNotRequired"])
@@ -127,17 +127,32 @@ class Stage2SelectionTests(unittest.TestCase):
         self.assertTrue(artifact["selectionEvidence"]["expectedImageCountNotRequired"])
         self.assertFalse(artifact["originCompatibilityIsProvenanceProof"])
         self.assertNotEqual(artifact["selectedCapture"]["memberCount"], 47)
+        self.assertEqual(artifact["terraExportRoot"]["relativePath"], "export")
+        self.assertEqual(artifact["selectedCrosscheckProduct"]["productToken"], "terra_ply")
 
     def test_one_metadata_plus_one_ply_without_approved_association(self) -> None:
         self._complete_unique()
         artifact = _select(self.tmp)
-        self.assertEqual(artifact["selectionStatus"], "DEVELOPMENT_GATE_REVIEW_REQUIRED")
-        self.assertIn("MODEL_GEOMETRY_METADATA_ASSOCIATION_UNPROVEN", artifact["selectionReasonCodes"])
-        self.assertEqual(len(artifact["modelSpatialMetadataCandidates"]), 1)
-        self.assertEqual(len(artifact["modelCandidates"]), 1)
-        self.assertIsNone(artifact["selectedModelSpatialMetadata"])
-        self.assertIsNone(artifact["selectedModelSource"])
+        self.assertEqual(artifact["selectionStatus"], "AUTO_PASS")
+        self.assertTrue(artifact["selectionEvidence"]["uniquenessIsNotModelProvenance"])
+        self.assertTrue(artifact["selectionEvidence"]["geometryIsNotFrameProvenance"])
+        self.assertEqual(artifact["selectedModelSpatialMetadata"]["associationRule"], "APPROVED_METHOD_RULE:agreeing_ModelMetadata_SRS_SRSOrigin")
         self.assertFalse(artifact["selectionEvidence"]["frozenIdentityRegressionEvidenceApplied"])
+        self.assertNotEqual(
+            artifact["selectedModelSpatialMetadata"]["associationRule"],
+            "FROZEN_IDENTITY_REGRESSION_EVIDENCE",
+        )
+
+    def test_metadata_and_ply_without_terra_export_root(self) -> None:
+        cap = self.wall / "flight"
+        _dji(cap, 1)
+        _mrk(cap, [1])
+        _metadata(self.wall / "export" / "models")
+        _ply(self.wall / "export" / "models")
+        artifact = _select(self.tmp)
+        self.assertEqual(artifact["selectionStatus"], "AUTO_FAIL")
+        self.assertIn("NO_TERRA_EXPORT_ROOT", artifact["selectionReasonCodes"])
+        self.assertIsNone(artifact["selectedModelSpatialMetadata"])
 
     def test_zero_compatible_capture(self) -> None:
         write_jpeg(self.wall / "IMG_0001.JPG", make="Apple", model="iPhone")
@@ -155,11 +170,8 @@ class Stage2SelectionTests(unittest.TestCase):
         _ply(self.wall / "export" / "terra_ply")
         artifact = _select(self.tmp)
         self.assertIn("MULTIPLE_SELECTABLE_CAPTURE_GROUPS", artifact["selectionReasonCodes"])
-        self.assertIn(artifact["selectionStatus"], {
-            "HUMAN_REVIEW_REQUIRED",
-            "DEVELOPMENT_GATE_REVIEW_REQUIRED",
-        })
-        self.assertIn("MODEL_GEOMETRY_METADATA_ASSOCIATION_UNPROVEN", artifact["selectionReasonCodes"])
+        self.assertEqual(artifact["selectionStatus"], "HUMAN_REVIEW_REQUIRED")
+        self.assertNotIn("UNIQUE_LEGAL_SOURCE_SET", artifact["selectionReasonCodes"])
 
     def test_mrk_missing(self) -> None:
         cap = self.wall / "flight"
@@ -244,7 +256,7 @@ class Stage2SelectionTests(unittest.TestCase):
         _ply(self.wall / "export" / "terra_ply")
         artifact = _select(self.tmp)
         self.assertEqual(artifact["selectionStatus"], "AUTO_FAIL")
-        self.assertIn("MODEL_SPATIAL_METADATA_MISSING", artifact["selectionReasonCodes"])
+        self.assertIn("NO_VALID_TERRA_METADATA", artifact["selectionReasonCodes"])
 
     def test_metadata_malformed(self) -> None:
         cap = self.wall / "flight"
@@ -254,7 +266,7 @@ class Stage2SelectionTests(unittest.TestCase):
         _ply(self.wall / "export" / "terra_ply")
         artifact = _select(self.tmp)
         self.assertEqual(artifact["selectionStatus"], "AUTO_FAIL")
-        self.assertIn("SRSORIGIN_MALFORMED", artifact["selectionReasonCodes"])
+        self.assertIn("NO_VALID_TERRA_METADATA", artifact["selectionReasonCodes"])
 
     def test_does_not_choose_first_metadata_xml(self) -> None:
         cap = self.wall / "flight"
@@ -264,8 +276,8 @@ class Stage2SelectionTests(unittest.TestCase):
         _metadata(self.wall / "zzz" / "terra_ply")
         _ply(self.wall / "export")
         artifact = _select(self.tmp)
-        self.assertEqual(artifact["selectionStatus"], "DEVELOPMENT_GATE_REVIEW_REQUIRED")
-        self.assertIn("MODEL_METADATA_ASSOCIATION_RULE_INSUFFICIENT", artifact["selectionReasonCodes"])
+        self.assertEqual(artifact["selectionStatus"], "HUMAN_REVIEW_REQUIRED")
+        self.assertIn("MULTIPLE_TERRA_EXPORT_ROOTS", artifact["selectionReasonCodes"])
         self.assertIsNone(artifact["selectedModelSpatialMetadata"])
 
     def test_srs_not_epsg_32650(self) -> None:
@@ -276,7 +288,7 @@ class Stage2SelectionTests(unittest.TestCase):
         _ply(self.wall / "export" / "terra_ply")
         artifact = _select(self.tmp)
         self.assertEqual(artifact["selectionStatus"], "DEVELOPMENT_GATE_REVIEW_REQUIRED")
-        self.assertIn("SRS_NOT_EPSG_32650", artifact["selectionReasonCodes"])
+        self.assertIn("UNSUPPORTED_TERRA_SRS", artifact["selectionReasonCodes"])
 
     def test_origin_compatibility_is_sanity_not_provenance(self) -> None:
         origin = np.array([0.0, 0.0, 0.0])
@@ -324,8 +336,8 @@ class Stage2SelectionTests(unittest.TestCase):
         _mrk(cap, [1])
         _metadata(self.wall / "export" / "terra_ply")
         artifact = _select(self.tmp)
-        self.assertEqual(artifact["selectionStatus"], "AUTO_FAIL")
-        self.assertIn("PLY_MISSING", artifact["selectionReasonCodes"])
+        self.assertEqual(artifact["selectionStatus"], "DEVELOPMENT_GATE_REVIEW_REQUIRED")
+        self.assertIn("GEOMETRY_CROSSCHECK_NOT_AVAILABLE", artifact["selectionReasonCodes"])
 
     def test_ply_ambiguous_not_lexicographic(self) -> None:
         cap = self.wall / "flight"
@@ -336,13 +348,22 @@ class Stage2SelectionTests(unittest.TestCase):
         _ply(self.wall / "zzz")
         artifact = _select(self.tmp)
         self.assertEqual(artifact["selectionStatus"], "DEVELOPMENT_GATE_REVIEW_REQUIRED")
-        self.assertIn("PLY_AMBIGUOUS_NO_APPROVED_RULE", artifact["selectionReasonCodes"])
+        self.assertIn("GEOMETRY_CROSSCHECK_NOT_AVAILABLE", artifact["selectionReasonCodes"])
         self.assertIsNone(artifact["selectedModelSource"])
 
     def test_no_wall_id_production_branch_in_selection_layer(self) -> None:
-        text = (ROOT / "offline" / "stage2_selection" / "select.py").read_text(encoding="utf-8")
-        self.assertNotIn("wall_jiulongfeng_01", text)
-        self.assertNotIn("dji_20260823", text)
+        for rel in (
+            "offline/stage2_selection/select.py",
+            "offline/stage2_selection/terra.py",
+            "offline/stage2_selection/model.py",
+            "offline/stage2_selection/discovery.py",
+        ):
+            text = (ROOT / rel).read_text(encoding="utf-8")
+            self.assertNotIn("wall_jiulongfeng_01", text)
+            self.assertNotIn("wall_jinshidong_01", text)
+            self.assertNotIn("dji_20260823", text)
+            self.assertNotIn("cloudR.ply", text)
+            self.assertNotIn("BlockR.ply", text)
 
 
 if __name__ == "__main__":
