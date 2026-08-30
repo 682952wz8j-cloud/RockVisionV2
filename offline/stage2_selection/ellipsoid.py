@@ -22,6 +22,7 @@ from .states import (
 FIELD_NOT_PRESENT = "FIELD_NOT_PRESENT"
 FIELD_PRESENT_EMPTY = "FIELD_PRESENT_EMPTY"
 FIELD_PRESENT_POPULATED = "FIELD_PRESENT_POPULATED"
+EVIDENCE_NOT_AVAILABLE = "EVIDENCE_NOT_AVAILABLE"
 
 # Closed Rule C v1 field tables. Not extensible search lists.
 # Only these names are read for family / Network RTK / explicit reference-system evidence.
@@ -124,6 +125,7 @@ def _evidence(
     raw_value,
     evidence_class: str,
     note: str | None = None,
+    field_state: str | None = None,
 ) -> dict:
     row = {
         "path": path,
@@ -133,6 +135,8 @@ def _evidence(
     }
     if note:
         row["note"] = note
+    if field_state:
+        row["fieldState"] = field_state
     return row
 
 
@@ -148,12 +152,25 @@ def _ellh_valid(records: list[dict] | None) -> tuple[bool, int]:
     return count > 0, count
 
 
+def _override_vertical_cs_evidence(*, path: str | None, field_state: str, raw_value=None) -> dict:
+    return _evidence(
+        path=path,
+        field="override_vertical_cs",
+        raw_value=raw_value,
+        evidence_class=EVIDENCE_CONTRACT,
+        note=field_state,
+        field_state=field_state,
+    )
+
+
 def collect_terra_vertical_evidence(incoming: Path, export_root_rel: str | None) -> dict:
     if not export_root_rel:
         return {
             "terraVerticalMode": "UNKNOWN",
             "geoidConversionConfigured": "UNKNOWN",
-            "evidence": [],
+            "evidence": [
+                _override_vertical_cs_evidence(path=None, field_state=EVIDENCE_NOT_AVAILABLE),
+            ],
         }
     root = incoming / export_root_rel
     evidence: list[dict] = []
@@ -200,29 +217,46 @@ def collect_terra_vertical_evidence(incoming: Path, export_root_rel: str | None)
                 )
 
     sdk = root / "SDK_Log.txt"
-    if sdk.is_file():
+    expected_rel = f"{str(export_root_rel).rstrip('/')}/SDK_Log.txt"
+    if not sdk.is_file():
+        evidence.append(
+            _override_vertical_cs_evidence(path=expected_rel, field_state=EVIDENCE_NOT_AVAILABLE)
+        )
+    else:
         rel = sdk.relative_to(incoming).as_posix()
-        override = None
-        for line in sdk.read_text(encoding="utf-8", errors="replace").splitlines():
-            if line.startswith("<TerraLog>"):
-                continue
-            match = re.search(r'"override_vertical_cs"\s*:\s*"([^"]*)"', line)
-            if match:
-                override = match.group(1)
-                break
-        if override is not None:
-            presence = FIELD_PRESENT_EMPTY if override.strip() == "" else FIELD_PRESENT_POPULATED
+        try:
+            text = sdk.read_text(encoding="utf-8", errors="replace")
+        except OSError:
             evidence.append(
-                _evidence(
-                    path=rel,
-                    field="override_vertical_cs",
-                    raw_value=override,
-                    evidence_class=EVIDENCE_CONTRACT,
-                    note=presence,
-                )
+                _override_vertical_cs_evidence(path=rel, field_state=EVIDENCE_NOT_AVAILABLE)
             )
-            if override.strip():
-                geoid = "YES"
+        else:
+            override = None
+            for line in text.splitlines():
+                if line.startswith("<TerraLog>"):
+                    continue
+                match = re.search(r'"override_vertical_cs"\s*:\s*"([^"]*)"', line)
+                if match:
+                    override = match.group(1)
+                    break
+            if override is None:
+                evidence.append(
+                    _override_vertical_cs_evidence(
+                        path=rel,
+                        field_state=FIELD_NOT_PRESENT,
+                    )
+                )
+            else:
+                presence = FIELD_PRESENT_EMPTY if override.strip() == "" else FIELD_PRESENT_POPULATED
+                evidence.append(
+                    _override_vertical_cs_evidence(
+                        path=rel,
+                        field_state=presence,
+                        raw_value=override,
+                    )
+                )
+                if override.strip():
+                    geoid = "YES"
 
     return {
         "terraVerticalMode": vertical_mode,

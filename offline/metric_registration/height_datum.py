@@ -23,6 +23,23 @@ SFM_GEO_DESC = "九龙峰森林站大楼/AT/sfm_geo_desc.json"
 LEGACY_MRK = "dji_flight_raw_jiulongfeng/rtk_ppk_004/DJI_20260812152955_0002_D.MRK"
 
 HEIGHT_VERTICAL_DATUM_ENFORCEMENT_IMPLEMENTED = True
+VERTICAL_OVERRIDE_ABSENCE_CORRECTION_IMPLEMENTED = True
+
+# Same tokens as offline.stage2_selection.ellipsoid. Not a second vocabulary.
+FIELD_NOT_PRESENT = "FIELD_NOT_PRESENT"
+FIELD_PRESENT_EMPTY = "FIELD_PRESENT_EMPTY"
+FIELD_PRESENT_POPULATED = "FIELD_PRESENT_POPULATED"
+EVIDENCE_NOT_AVAILABLE = "EVIDENCE_NOT_AVAILABLE"
+
+_OVERRIDE_ABSENCE_STATES = frozenset({FIELD_NOT_PRESENT, FIELD_PRESENT_EMPTY})
+_OVERRIDE_KNOWN_STATES = frozenset(
+    {
+        FIELD_NOT_PRESENT,
+        FIELD_PRESENT_EMPTY,
+        FIELD_PRESENT_POPULATED,
+        EVIDENCE_NOT_AVAILABLE,
+    }
+)
 
 APPROVED_ELLIPSOID_STATUSES = frozenset(
     {
@@ -86,16 +103,29 @@ def generic_height_contract(origin: list[float]) -> dict:
 
 
 def vertical_override_state_from_terra_evidence(terra_evidence: list | None) -> str:
-    """NO / YES / UNKNOWN from already-collected Rule C Terra evidence. No rescan."""
+    """NO / YES / UNKNOWN from explicit fieldState. No rawValue-only inference."""
     rows = [item for item in (terra_evidence or []) if item.get("field") == "override_vertical_cs"]
     if not rows:
         return "UNKNOWN"
-    raw = rows[0].get("rawValue")
-    if raw is None:
+    states = []
+    for row in rows:
+        state = row.get("fieldState")
+        if state not in _OVERRIDE_KNOWN_STATES:
+            states.append(EVIDENCE_NOT_AVAILABLE)
+        else:
+            states.append(state)
+    has_populated = any(state == FIELD_PRESENT_POPULATED for state in states)
+    has_absence = any(state in _OVERRIDE_ABSENCE_STATES for state in states)
+    has_unavailable = any(state == EVIDENCE_NOT_AVAILABLE for state in states)
+    if has_populated and (has_absence or has_unavailable):
         return "UNKNOWN"
-    if str(raw).strip() == "":
+    if has_populated:
+        return "YES"
+    if has_unavailable:
+        return "UNKNOWN"
+    if has_absence:
         return "NO"
-    return "YES"
+    return "UNKNOWN"
 
 
 def height_evidence_from_rule_c_payload(
