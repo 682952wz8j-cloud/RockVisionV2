@@ -15,7 +15,15 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from offline.qualification.rtk import parse_mrk
-from offline.stage2_selection.ellipsoid import evaluate_rule_c
+from offline.stage2_selection import ellipsoid as ellipsoid_mod
+from offline.stage2_selection.ellipsoid import (
+    APPROVED_CAPTURE_FAMILY_FIELDS,
+    APPROVED_EXPLICIT_REFERENCE_SYSTEM_FIELDS,
+    APPROVED_NETWORK_RTK_OVERRIDE_FIELDS,
+    evaluate_rule_c,
+    evaluate_rule_c_session,
+    identify_capture_family,
+)
 from offline.stage2_selection.select import select_stage2_inputs
 from offline.testdata.ingestion.jpeg_exif import write_jpeg
 
@@ -211,7 +219,7 @@ class RuleCReferenceEllipsoidTests(unittest.TestCase):
     def test_i_conflicting_explicit_evidence(self) -> None:
         result = _eval(
             self.wall,
-            extra_xmp={"RtkCoordinateSystem": "WGS84", "Datum": "CGCS2000"},
+            extra_xmp={"RtkCoordinateSystem": "WGS84", "RtkDatum": "CGCS2000"},
         )
         self.assertEqual(result["referenceEllipsoidProvenanceStatus"], "CONFLICTING_EVIDENCE")
         self.assertFalse(result["specDefaultInvoked"])
@@ -250,6 +258,160 @@ class RuleCReferenceEllipsoidTests(unittest.TestCase):
         self.assertEqual(result["networkRtk"]["fieldsInspected"]["NTRIPHost"]["presence"], "FIELD_PRESENT_EMPTY")
         self.assertFalse(result["networkRtk"]["detected"])
         self.assertEqual(result["referenceEllipsoidProvenanceStatus"], "DEFAULT_WGS84_BY_APPROVED_DJI_SPEC")
+
+    def test_closed_field_tables_are_exact(self) -> None:
+        self.assertEqual(
+            APPROVED_CAPTURE_FAMILY_FIELDS,
+            ("drone-dji:ProductName", "drone-dji:DroneModel", "EXIF:Model"),
+        )
+        self.assertEqual(
+            APPROVED_NETWORK_RTK_OVERRIDE_FIELDS,
+            ("NTRIPHost", "NTRIPPort", "NTRIPMountPoint"),
+        )
+        self.assertEqual(
+            APPROVED_EXPLICIT_REFERENCE_SYSTEM_FIELDS,
+            ("RtkCoordinateSystem", "RtkDatum"),
+        )
+        source = Path(ellipsoid_mod.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("OVERRIDE_TOKEN_RE", source)
+        self.assertNotIn("wall_jinshidong", source)
+        self.assertNotIn("wall_jiulongfeng", source)
+        self.assertNotIn("rglob", source)
+        result = evaluate_rule_c(self.wall)
+        self.assertFalse(result["recursiveStringSearchAuthorized"])
+        self.assertEqual(
+            result["closedFieldTables"]["APPROVED_NETWORK_RTK_OVERRIDE_FIELDS"],
+            list(APPROVED_NETWORK_RTK_OVERRIDE_FIELDS),
+        )
+
+    def test_a11_1_rtk_diff_age_alone_is_not_network_rtk(self) -> None:
+        result = _eval(self.wall, extra_xmp={"RtkDiffAge": "2.40000"})
+        self.assertEqual(result["rtkSource"], "UNKNOWN")
+        self.assertFalse(result["networkRtk"]["detected"])
+
+    def test_a11_2_rtk_flag_50_alone_is_not_network_rtk(self) -> None:
+        result = _eval(self.wall, extra_xmp={"RtkFlag": "50"})
+        self.assertEqual(result["rtkSource"], "UNKNOWN")
+        self.assertFalse(result["networkRtk"]["detected"])
+
+    def test_a11_3_mrk_q_50_alone_is_not_network_rtk(self) -> None:
+        result = _eval(self.wall)
+        self.assertEqual(result["rtkSource"], "UNKNOWN")
+        self.assertFalse(result["networkRtk"]["detected"])
+
+    def test_a11_4_filename_cors_is_not_network_rtk(self) -> None:
+        cap = self.wall / "flight"
+        dest = cap / "DJI_20260823122200_0001_V.JPG"
+        write_jpeg(dest, make="DJI", model="M4E")
+        cors = cap / "note_CORS.txt"
+        cors.write_text("CORS", encoding="utf-8")
+        renamed = cap / "DJI_20260823122200_CORS_0001_V.JPG"
+        dest.rename(renamed)
+        result = evaluate_rule_c(
+            self.wall,
+            capture_relative_paths=[renamed.relative_to(self.wall).as_posix()],
+            camera_models=["M4E"],
+        )
+        self.assertEqual(result["rtkSource"], "UNKNOWN")
+        self.assertFalse(result["networkRtk"]["detected"])
+
+    def test_a11_5_folder_cgcs2000_is_not_proven_non_wgs84(self) -> None:
+        cap = self.wall / "CGCS2000_flight"
+        jpg = _dji(cap, 1)
+        result = evaluate_rule_c(
+            self.wall,
+            capture_relative_paths=[jpg.relative_to(self.wall).as_posix()],
+            camera_models=["M4E"],
+        )
+        self.assertNotEqual(result["referenceEllipsoidProvenanceStatus"], "PROVEN_NON_WGS84")
+        self.assertNotEqual(result["referenceEllipsoid"], "CGCS2000")
+
+    def test_a11_6_unrelated_ntrip_text_is_not_network_rtk(self) -> None:
+        cap = self.wall / "flight"
+        jpg = _dji(cap, 1)
+        (cap / "readme.txt").write_text("This note mentions NTRIP and CORS.\n", encoding="utf-8")
+        result = evaluate_rule_c(
+            self.wall,
+            capture_relative_paths=[jpg.relative_to(self.wall).as_posix()],
+            camera_models=["M4E"],
+        )
+        self.assertEqual(result["rtkSource"], "UNKNOWN")
+        self.assertFalse(result["networkRtk"]["detected"])
+
+    def test_a11_7_populated_ntrip_host_is_network_rtk(self) -> None:
+        result = _eval(self.wall, extra_xmp={"NTRIPHost": "203.0.113.10"})
+        self.assertEqual(result["rtkSource"], "NETWORK_RTK")
+
+    def test_a11_8_ntrip_not_present_is_not_network_rtk(self) -> None:
+        result = _eval(self.wall)
+        self.assertEqual(result["networkRtk"]["fieldsInspected"]["NTRIPHost"]["presence"], "FIELD_NOT_PRESENT")
+        self.assertFalse(result["networkRtk"]["detected"])
+
+    def test_a11_9_ntrip_present_empty_is_not_network_rtk(self) -> None:
+        result = _eval(self.wall, extra_xmp={"NTRIPHost": ""})
+        self.assertEqual(result["networkRtk"]["fieldsInspected"]["NTRIPHost"]["presence"], "FIELD_PRESENT_EMPTY")
+        self.assertFalse(result["networkRtk"]["detected"])
+
+    def test_a11_10_product_name_identifies_matrice_4(self) -> None:
+        self.assertEqual(
+            identify_capture_family(product_name="DJI Matrice 4E"),
+            "DJI_MATRICE_4_SERIES",
+        )
+        result = _eval(self.wall, model="FC6540", extra_xmp={"ProductName": "DJI Matrice 4E"})
+        self.assertEqual(result["captureFamily"], "DJI_MATRICE_4_SERIES")
+
+    def test_a11_11_drone_model_identifies_matrice_4(self) -> None:
+        self.assertEqual(identify_capture_family(drone_model="M4E"), "DJI_MATRICE_4_SERIES")
+        result = _eval(self.wall, model="FC6540", extra_xmp={"DroneModel": "M4E"})
+        self.assertEqual(result["captureFamily"], "DJI_MATRICE_4_SERIES")
+
+    def test_a11_12_exif_model_identifies_matrice_4(self) -> None:
+        self.assertEqual(identify_capture_family(exif_model="M4E"), "DJI_MATRICE_4_SERIES")
+        result = _eval(self.wall, model="M4E")
+        self.assertEqual(result["captureFamily"], "DJI_MATRICE_4_SERIES")
+
+    def test_a11_13_wall_id_without_camera_metadata_is_not_matrice_4(self) -> None:
+        named = self.tmp / "incoming" / "wall_jinshidong_01"
+        named.mkdir(parents=True)
+        result = evaluate_rule_c(named)
+        self.assertEqual(result["captureFamily"], "UNKNOWN")
+        source = Path(ellipsoid_mod.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("wall_jinshidong_01", source)
+
+    def test_a11_14_jiulongfeng_m4e_metadata_is_eligible_without_wall_case(self) -> None:
+        result = evaluate_rule_c_session(
+            self.wall,
+            session_id="synthetic-20260823",
+            capture_relative_paths=[],
+            camera_models=[],
+        )
+        # Family comes from session metadata, not wall identity.
+        result = _eval(
+            self.wall,
+            extra_xmp={"ProductName": "DJI Matrice 4E", "DroneModel": "M4E"},
+        )
+        self.assertEqual(result["captureFamily"], "DJI_MATRICE_4_SERIES")
+        source = Path(ellipsoid_mod.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("wall_jiulongfeng_01", source)
+        self.assertFalse(result.get("crossSessionFamilyInheritance", False))
+
+    def test_a11_15_gnss_only_session_cannot_borrow_family(self) -> None:
+        jpg_session = self.wall / "DJI_202608231218_006"
+        _dji(jpg_session, 1, xmp={"ProductName": "DJI Matrice 4E", "DroneModel": "M4E"})
+        gnss = self.wall / "rtk_ppk_004"
+        mrk = _mrk(gnss, [1])
+        parsed = parse_mrk(mrk.read_text(encoding="utf-8"))
+        result = evaluate_rule_c_session(
+            self.wall,
+            session_id="20260812-gnss-only",
+            capture_relative_paths=[],
+            camera_models=[],
+            mrk_relative_path=mrk.relative_to(self.wall).as_posix(),
+            mrk_records=parsed["records"],
+        )
+        self.assertEqual(result["captureFamily"], "UNKNOWN")
+        self.assertFalse(result["crossSessionFamilyInheritance"])
+        self.assertTrue(result["mrkEllh"]["valid"])
 
 
 if __name__ == "__main__":

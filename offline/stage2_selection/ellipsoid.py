@@ -23,28 +23,29 @@ FIELD_NOT_PRESENT = "FIELD_NOT_PRESENT"
 FIELD_PRESENT_EMPTY = "FIELD_PRESENT_EMPTY"
 FIELD_PRESENT_POPULATED = "FIELD_PRESENT_POPULATED"
 
+# Closed Rule C v1 field tables. Not extensible search lists.
+# Only these names are read for family / Network RTK / explicit reference-system evidence.
+APPROVED_CAPTURE_FAMILY_FIELDS = (
+    "drone-dji:ProductName",
+    "drone-dji:DroneModel",
+    "EXIF:Model",
+)
+APPROVED_NETWORK_RTK_OVERRIDE_FIELDS = (
+    "NTRIPHost",
+    "NTRIPPort",
+    "NTRIPMountPoint",
+)
+APPROVED_EXPLICIT_REFERENCE_SYSTEM_FIELDS = (
+    "RtkCoordinateSystem",
+    "RtkDatum",
+)
+
 EVIDENCE_AUTHORITATIVE_ELLIPSOID = "AUTHORITATIVE_REFERENCE_ELLIPSOID_EVIDENCE"
 EVIDENCE_AUTHORITATIVE_SOURCE = "AUTHORITATIVE_CAPTURE_SOURCE_EVIDENCE"
 EVIDENCE_SUPPORTING = "SUPPORTING_SOURCE_EVIDENCE"
 EVIDENCE_CONTRACT = "POSITIVE_CONTRACT_APPLICABILITY"
-EVIDENCE_OVERRIDE = "OVERRIDE_DETECTION"
 EVIDENCE_NOT_AUTHORITATIVE = "NOT_AUTHORITATIVE_REFERENCE_ELLIPSOID_EVIDENCE"
 
-NTRIP_FIELDS = ("NTRIPHost", "NTRIPPort", "NTRIPMountPoint")
-EXPLICIT_DATUM_FIELDS = (
-    "RtkCoordinateSystem",
-    "GpsCoordinateSystem",
-    "CoordinateSystem",
-    "ReferenceEllipsoid",
-    "Ellipsoid",
-    "Datum",
-    "RtkDatum",
-    "VerticalDatum",
-)
-OVERRIDE_TOKEN_RE = re.compile(
-    r"CGCS2000|CGCS|NTRIP|CORS|CUSTOM[\s_-]?NETWORK|CUSTOM[\s_-]?BENCHMARK|BENCHMARK",
-    re.I,
-)
 _M4_MODEL_RE = re.compile(r"^(M4E|M4T|M4D|M4TD|M4ET)$", re.I)
 _M4_PRODUCT_RE = re.compile(r"\bMATRICE\s*4([ETD]|TD)?\b", re.I)
 _WGS_RE = re.compile(r"^WGS[\s_-]?84$", re.I)
@@ -92,16 +93,26 @@ def _normalize_ellipsoid_name(raw: str) -> str | None:
     return "OTHER_NAMED"
 
 
-def _matrice_4_family(*labels: str | None) -> bool:
-    for label in labels:
-        if not label or str(label).strip() in {"", "missing"}:
+def identify_capture_family(
+    *,
+    product_name: str | None = None,
+    drone_model: str | None = None,
+    exif_model: str | None = None,
+) -> str:
+    """Normalize approved camera-family fields only. Wall ID / folder / path are ignored."""
+    values = {
+        "drone-dji:ProductName": product_name,
+        "drone-dji:DroneModel": drone_model,
+        "EXIF:Model": exif_model,
+    }
+    for field in APPROVED_CAPTURE_FAMILY_FIELDS:
+        token = values.get(field)
+        if not token or str(token).strip() in {"", "missing"}:
             continue
-        token = str(label).strip()
-        if _M4_MODEL_RE.match(token):
-            return True
-        if _M4_PRODUCT_RE.search(token):
-            return True
-    return False
+        text = str(token).strip()
+        if _M4_MODEL_RE.match(text) or _M4_PRODUCT_RE.search(text):
+            return APPROVED_CAPTURE_FAMILY_MATRICE_4
+    return "UNKNOWN"
 
 
 def _evidence(
@@ -218,6 +229,19 @@ def collect_terra_vertical_evidence(incoming: Path, export_root_rel: str | None)
     }
 
 
+def _exif_model(path: Path) -> str | None:
+    try:
+        from PIL import Image
+    except ImportError:
+        return None
+    with Image.open(path) as image:
+        value = image.getexif().get(0x0110)
+    if value is None:
+        return None
+    text = value.decode("ascii", errors="replace") if isinstance(value, bytes) else str(value)
+    return text.strip("\x00").strip() or None
+
+
 def _exif_gps_map_datum(path: Path) -> str | None:
     try:
         from PIL import ExifTags, Image
@@ -240,11 +264,11 @@ def _inspect_capture_images(
 ) -> dict:
     family_hits: list[dict] = []
     ntrip_fields: dict[str, dict] = {
-        name: {"presence": FIELD_NOT_PRESENT, "values": [], "paths": []} for name in NTRIP_FIELDS
+        name: {"presence": FIELD_NOT_PRESENT, "values": [], "paths": []}
+        for name in APPROVED_NETWORK_RTK_OVERRIDE_FIELDS
     }
     explicit: list[dict] = []
     gps_map_datum: list[dict] = []
-    alternate: list[dict] = []
     xmp_evidence: list[dict] = []
     models_seen: list[str] = []
 
@@ -258,9 +282,13 @@ def _inspect_capture_images(
         attrs: dict[str, str] = {}
         if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg"}:
             attrs = parse_xmp_attrs(extract_jpeg_xmp_text(path))
+        if model is None and path.is_file() and path.suffix.lower() in {".jpg", ".jpeg"}:
+            model = _exif_model(path)
+        if model and model not in models_seen:
+            models_seen.append(model)
         product = attrs.get("ProductName")
         drone = attrs.get("DroneModel")
-        if _matrice_4_family(model, product, drone):
+        if identify_capture_family(product_name=product, drone_model=drone, exif_model=model) == APPROVED_CAPTURE_FAMILY_MATRICE_4:
             family_hits.append(
                 {
                     "relativePath": rel,
@@ -269,7 +297,7 @@ def _inspect_capture_images(
                     "DroneModel": drone,
                 }
             )
-        for name in NTRIP_FIELDS:
+        for name in APPROVED_NETWORK_RTK_OVERRIDE_FIELDS:
             presence, raw = classify_field_presence(attrs, name)
             if presence == FIELD_NOT_PRESENT:
                 continue
@@ -285,7 +313,7 @@ def _inspect_capture_images(
                         evidence_class=EVIDENCE_AUTHORITATIVE_SOURCE,
                     )
                 )
-        for name in EXPLICIT_DATUM_FIELDS:
+        for name in APPROVED_EXPLICIT_REFERENCE_SYSTEM_FIELDS:
             presence, raw = classify_field_presence(attrs, name)
             if presence != FIELD_PRESENT_POPULATED:
                 continue
@@ -297,17 +325,6 @@ def _inspect_capture_images(
                     raw_value=raw,
                     evidence_class=EVIDENCE_AUTHORITATIVE_ELLIPSOID,
                     note=named,
-                )
-            )
-        self_data_presence, self_data = classify_field_presence(attrs, "SelfData")
-        if self_data_presence == FIELD_PRESENT_POPULATED and self_data and OVERRIDE_TOKEN_RE.search(self_data):
-            alternate.append(
-                _evidence(
-                    path=rel,
-                    field="SelfData",
-                    raw_value=self_data,
-                    evidence_class=EVIDENCE_OVERRIDE,
-                    note="Operator customized data names an alternate CORS / datum token.",
                 )
             )
         datum = _exif_gps_map_datum(path) if path.is_file() else None
@@ -339,7 +356,9 @@ def _inspect_capture_images(
         "networkRtkDetected": bool(populated_ntrip),
         "populatedNtripFields": populated_ntrip,
         "explicitDatumEvidence": explicit,
-        "alternateReferenceEvidence": alternate,
+        "alternateReferenceEvidence": [
+            item for item in explicit if item.get("note") in {"CGCS2000", "OTHER_NAMED"}
+        ],
         "gpsMapDatumEvidence": gps_map_datum,
         "xmpEvidence": xmp_evidence,
     }
@@ -524,7 +543,8 @@ def evaluate_rule_c(
         "terraVerticalDefault": terra["terraVerticalMode"] == "DEFAULT",
         "geoidConversionConfiguredNo": terra["geoidConversionConfigured"] == "NO",
         "noNetworkRtk": not network,
-        "noAlternateCorsOrBenchmark": not alternate,
+        "noApprovedNetworkRtkOverride": not network,
+        "noApprovedExplicitNonWgs84": "CGCS2000" not in named and "OTHER_NAMED" not in named,
         "noExplicitNonWgs84": "CGCS2000" not in named and "OTHER_NAMED" not in named,
         "noConflictingReferenceEvidence": not conflict,
         "gpsMapDatumNotUsedAsProof": True,
@@ -579,6 +599,12 @@ def evaluate_rule_c(
             else [reason.value]
         ),
         "outputCrsMustNotBeCopiedToCapture": True,
+        "closedFieldTables": {
+            "APPROVED_CAPTURE_FAMILY_FIELDS": list(APPROVED_CAPTURE_FAMILY_FIELDS),
+            "APPROVED_NETWORK_RTK_OVERRIDE_FIELDS": list(APPROVED_NETWORK_RTK_OVERRIDE_FIELDS),
+            "APPROVED_EXPLICIT_REFERENCE_SYSTEM_FIELDS": list(APPROVED_EXPLICIT_REFERENCE_SYSTEM_FIELDS),
+        },
+        "recursiveStringSearchAuthorized": False,
     }
 
 
@@ -628,3 +654,27 @@ def evaluate_rule_c_from_selection(
         terra_export_root_relative=export_root,
         gps_map_datum_values=gps_map,
     )
+
+
+def evaluate_rule_c_session(
+    incoming: Path,
+    *,
+    session_id: str,
+    capture_relative_paths: list[str] | None = None,
+    camera_models: list[str] | None = None,
+    mrk_relative_path: str | None = None,
+    mrk_records: list[dict] | None = None,
+    terra_export_root_relative: str | None = None,
+) -> dict:
+    """Evaluate one capture session. Family is never inherited from another session."""
+    result = evaluate_rule_c(
+        incoming,
+        capture_relative_paths=capture_relative_paths,
+        camera_models=camera_models,
+        mrk_relative_path=mrk_relative_path,
+        mrk_records=mrk_records,
+        terra_export_root_relative=terra_export_root_relative,
+    )
+    result["sessionId"] = session_id
+    result["crossSessionFamilyInheritance"] = False
+    return result
