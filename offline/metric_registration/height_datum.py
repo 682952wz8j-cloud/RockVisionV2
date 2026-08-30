@@ -24,11 +24,13 @@ LEGACY_MRK = "dji_flight_raw_jiulongfeng/rtk_ppk_004/DJI_20260812152955_0002_D.M
 
 HEIGHT_VERTICAL_DATUM_ENFORCEMENT_IMPLEMENTED = True
 VERTICAL_OVERRIDE_ABSENCE_CORRECTION_IMPLEMENTED = True
+MULTIPLE_OVERRIDE_DESCRIPTOR_CORRECTION_IMPLEMENTED = True
 
 # Same tokens as offline.stage2_selection.ellipsoid. Not a second vocabulary.
 FIELD_NOT_PRESENT = "FIELD_NOT_PRESENT"
 FIELD_PRESENT_EMPTY = "FIELD_PRESENT_EMPTY"
 FIELD_PRESENT_POPULATED = "FIELD_PRESENT_POPULATED"
+FIELD_CONFLICT = "FIELD_CONFLICT"
 EVIDENCE_NOT_AVAILABLE = "EVIDENCE_NOT_AVAILABLE"
 
 _OVERRIDE_ABSENCE_STATES = frozenset({FIELD_NOT_PRESENT, FIELD_PRESENT_EMPTY})
@@ -37,6 +39,7 @@ _OVERRIDE_KNOWN_STATES = frozenset(
         FIELD_NOT_PRESENT,
         FIELD_PRESENT_EMPTY,
         FIELD_PRESENT_POPULATED,
+        FIELD_CONFLICT,
         EVIDENCE_NOT_AVAILABLE,
     }
 )
@@ -77,6 +80,7 @@ REASON_GEOID_UNSUPPORTED = "GEOID_CONVERSION_NOT_SUPPORTED"
 REASON_GEOID_NOT_PROVEN = "GEOID_CONFIGURATION_NOT_PROVEN"
 REASON_OVERRIDE_UNSUPPORTED = "VERTICAL_OVERRIDE_NOT_SUPPORTED"
 REASON_OVERRIDE_NOT_PROVEN = "VERTICAL_OVERRIDE_STATE_NOT_PROVEN"
+REASON_OVERRIDE_CONFLICT = "VERTICAL_OVERRIDE_CONFLICT"
 REASON_INVALID_ORIGIN = "INVALID_SRS_ORIGIN"
 REASON_ORIGIN_MISMATCH = "SRSORIGIN_PROVENANCE_MISMATCH"
 REASON_EVIDENCE_NOT_PROVIDED = "HEIGHT_PROVENANCE_EVIDENCE_NOT_PROVIDED"
@@ -102,6 +106,23 @@ def generic_height_contract(origin: list[float]) -> dict:
     }
 
 
+def vertical_override_field_state_from_terra_evidence(terra_evidence: list | None) -> str | None:
+    rows = [item for item in (terra_evidence or []) if item.get("field") == "override_vertical_cs"]
+    if not rows:
+        return None
+    states = [item.get("fieldState") for item in rows]
+    if any(state == FIELD_CONFLICT for state in states):
+        return FIELD_CONFLICT
+    if any(state not in _OVERRIDE_KNOWN_STATES for state in states):
+        return EVIDENCE_NOT_AVAILABLE
+    unique = set(states)
+    if len(unique) == 1:
+        return states[0]
+    if FIELD_PRESENT_POPULATED in unique and (unique & _OVERRIDE_ABSENCE_STATES):
+        return FIELD_CONFLICT
+    return EVIDENCE_NOT_AVAILABLE
+
+
 def vertical_override_state_from_terra_evidence(terra_evidence: list | None) -> str:
     """NO / YES / UNKNOWN from explicit fieldState. No rawValue-only inference."""
     rows = [item for item in (terra_evidence or []) if item.get("field") == "override_vertical_cs"]
@@ -114,6 +135,8 @@ def vertical_override_state_from_terra_evidence(terra_evidence: list | None) -> 
             states.append(EVIDENCE_NOT_AVAILABLE)
         else:
             states.append(state)
+    if any(state == FIELD_CONFLICT for state in states):
+        return "UNKNOWN"
     has_populated = any(state == FIELD_PRESENT_POPULATED for state in states)
     has_absence = any(state in _OVERRIDE_ABSENCE_STATES for state in states)
     has_unavailable = any(state == EVIDENCE_NOT_AVAILABLE for state in states)
@@ -147,6 +170,9 @@ def height_evidence_from_rule_c_payload(
         "terraVerticalMode": payload.get("terraVerticalMode"),
         "geoidConversionConfigured": payload.get("geoidConversionConfigured"),
         "verticalOverrideConfigured": vertical_override_state_from_terra_evidence(
+            payload.get("terraVerticalEvidence")
+        ),
+        "verticalOverrideFieldState": vertical_override_field_state_from_terra_evidence(
             payload.get("terraVerticalEvidence")
         ),
         "selectedSrsOrigin": list(selected_srs_origin) if selected_srs_origin is not None else None,
@@ -224,6 +250,7 @@ def _base_result(
         "terraVerticalMode": evidence.get("terraVerticalMode"),
         "geoidConversionConfigured": evidence.get("geoidConversionConfigured"),
         "verticalOverrideConfigured": evidence.get("verticalOverrideConfigured"),
+        "verticalOverrideFieldState": evidence.get("verticalOverrideFieldState"),
         "wallLocalZOperation": "ELLH_MINUS_SRSORIGIN_Z" if allowed else None,
         "noGeoidOffsetApplied": True if allowed else None,
         "srsOrigin": origin,
@@ -366,6 +393,16 @@ def evaluate_generic_height_provenance(evidence: dict | None) -> dict:
         return _base_result(
             provenance="DEVELOPMENT_GATE_REVIEW_REQUIRED",
             reason=REASON_GEOID_NOT_PROVEN,
+            allowed=False,
+            mixed=False,
+            origin=parsed_used,
+            evidence=evidence,
+        )
+
+    if evidence.get("verticalOverrideFieldState") == FIELD_CONFLICT:
+        return _base_result(
+            provenance="HUMAN_REVIEW_REQUIRED",
+            reason=REASON_OVERRIDE_CONFLICT,
             allowed=False,
             mixed=False,
             origin=parsed_used,

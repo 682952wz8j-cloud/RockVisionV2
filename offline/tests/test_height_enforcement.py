@@ -16,8 +16,10 @@ from offline.metric_registration.height_datum import (
     EVIDENCE_NOT_AVAILABLE as HEIGHT_EVIDENCE_NOT_AVAILABLE,
     FIELD_NOT_PRESENT as HEIGHT_FIELD_NOT_PRESENT,
     FIELD_PRESENT_EMPTY as HEIGHT_FIELD_PRESENT_EMPTY,
+    FIELD_CONFLICT as HEIGHT_FIELD_CONFLICT,
     FIELD_PRESENT_POPULATED as HEIGHT_FIELD_PRESENT_POPULATED,
     HEIGHT_VERTICAL_DATUM_ENFORCEMENT_IMPLEMENTED,
+    MULTIPLE_OVERRIDE_DESCRIPTOR_CORRECTION_IMPLEMENTED,
     VERTICAL_OVERRIDE_ABSENCE_CORRECTION_IMPLEMENTED,
     REASON_ELLIPSOID_CONFLICT,
     REASON_ELLIPSOID_NOT_PROVEN,
@@ -28,6 +30,7 @@ from offline.metric_registration.height_datum import (
     REASON_MRK_ELLH_NOT_PROVEN,
     REASON_MRK_SEMANTIC_CONTRADICTION,
     REASON_NON_WGS84_UNSUPPORTED,
+    REASON_OVERRIDE_CONFLICT,
     REASON_OVERRIDE_NOT_PROVEN,
     REASON_OVERRIDE_UNSUPPORTED,
     REASON_TERRA_VERTICAL_NOT_PROVEN,
@@ -40,6 +43,7 @@ from offline.metric_registration.height_datum import (
 from offline.metric_registration.pipeline import register
 from offline.stage2_selection.ellipsoid import (
     EVIDENCE_NOT_AVAILABLE,
+    FIELD_CONFLICT,
     FIELD_NOT_PRESENT,
     FIELD_PRESENT_EMPTY,
     FIELD_PRESENT_POPULATED,
@@ -337,6 +341,32 @@ class HeightEnforcementPipelineTests(unittest.TestCase):
         self.assertEqual(payload["validationStatus"], "NOT VALIDATED")
         self.assertNotIn("scale", payload)
 
+    def test_conflicting_override_descriptors_stop_before_sim3(self) -> None:
+        sources = self._sources(
+            _approved(
+                verticalOverrideConfigured="UNKNOWN",
+                verticalOverrideFieldState=FIELD_CONFLICT,
+                srsOriginProvenanceOk=True,
+            )
+        )
+        with patch("offline.metric_registration.pipeline.ransac_umeyama") as ransac, patch(
+            "offline.metric_registration.pipeline.umeyama"
+        ) as umeyama_fn, patch(
+            "offline.metric_registration.pipeline.build_correspondences"
+        ) as corr:
+            corr.side_effect = RuntimeError("REACHED_CORRESPONDENCES")
+            ransac.side_effect = AssertionError("SIM3_CALLED")
+            umeyama_fn.side_effect = AssertionError("SIM3_CALLED")
+            payload = register(self.wall_id, self.tmp, sources=sources, dest=self.dest)
+
+        ransac.assert_not_called()
+        umeyama_fn.assert_not_called()
+        corr.assert_not_called()
+        self.assertFalse(payload["heightGateExecutionAllowed"])
+        self.assertEqual(payload["reasonCode"], REASON_OVERRIDE_CONFLICT)
+        self.assertEqual(payload["heightVerticalDatumProvenance"], "HUMAN_REVIEW_REQUIRED")
+        self.assertNotIn("scale", payload)
+
     def test_approved_evidence_may_continue_past_height_gate(self) -> None:
         sources = self._sources(_approved(srsOriginProvenanceOk=True))
         gate = evaluate_generic_height_from_sources(self.tmp / "incoming" / self.wall_id, sources)
@@ -447,6 +477,8 @@ class VerticalOverrideAbsenceTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["fieldState"], FIELD_NOT_PRESENT)
         self.assertIsNone(rows[0]["rawValue"])
+        self.assertEqual(rows[0]["overrideVerticalCsOccurrenceCount"], 0)
+        self.assertEqual(rows[0]["rawValues"], [])
         self.assertEqual(rows[0]["path"], "export0/SDK_Log.txt")
         self.assertEqual(vertical_override_state_from_terra_evidence(collected["evidence"]), "NO")
         result = evaluate_generic_height_provenance(
@@ -465,7 +497,25 @@ class VerticalOverrideAbsenceTests(unittest.TestCase):
         rows = _override_rows(collected)
         self.assertEqual(rows[0]["fieldState"], FIELD_PRESENT_EMPTY)
         self.assertEqual(rows[0]["rawValue"], "")
+        self.assertEqual(rows[0]["overrideVerticalCsOccurrenceCount"], 1)
         self.assertEqual(vertical_override_state_from_terra_evidence(collected["evidence"]), "NO")
+
+    def test_c_multiple_all_empty_is_present_empty(self) -> None:
+        export = self.incoming / "export0"
+        self._write_sdk(
+            export,
+            '[I]{"override_vertical_cs":""}\n[I]{"override_vertical_cs":"   "}\n[I]{"override_vertical_cs":""}\n',
+        )
+        collected = collect_terra_vertical_evidence(self.incoming, "export0")
+        rows = _override_rows(collected)
+        self.assertEqual(rows[0]["fieldState"], FIELD_PRESENT_EMPTY)
+        self.assertEqual(rows[0]["overrideVerticalCsOccurrenceCount"], 3)
+        self.assertEqual(rows[0]["rawValues"], ["", "   ", ""])
+        self.assertEqual(vertical_override_state_from_terra_evidence(collected["evidence"]), "NO")
+        result = evaluate_generic_height_provenance(
+            _approved(verticalOverrideConfigured="NO", verticalOverrideFieldState=FIELD_PRESENT_EMPTY)
+        )
+        self.assertTrue(result["heightGateExecutionAllowed"])
 
     def test_b_whitespace_only_is_present_empty(self) -> None:
         export = self.incoming / "export0"
@@ -495,6 +545,69 @@ class VerticalOverrideAbsenceTests(unittest.TestCase):
         self.assertEqual(result["reasonCode"], REASON_OVERRIDE_UNSUPPORTED)
         self.assertFalse(result["heightGateExecutionAllowed"])
 
+    def test_e_multiple_identical_populated_blocks_gate(self) -> None:
+        export = self.incoming / "export0"
+        self._write_sdk(
+            export,
+            '[I]{"override_vertical_cs":"EGM96"}\n[I]{"override_vertical_cs":"EGM96"}\n',
+        )
+        collected = collect_terra_vertical_evidence(self.incoming, "export0")
+        rows = _override_rows(collected)
+        self.assertEqual(rows[0]["fieldState"], FIELD_PRESENT_POPULATED)
+        self.assertEqual(rows[0]["overrideVerticalCsOccurrenceCount"], 2)
+        self.assertEqual(rows[0]["rawValues"], ["EGM96", "EGM96"])
+        self.assertEqual(vertical_override_state_from_terra_evidence(collected["evidence"]), "YES")
+        result = evaluate_generic_height_provenance(_approved(verticalOverrideConfigured="YES"))
+        self.assertEqual(result["reasonCode"], REASON_OVERRIDE_UNSUPPORTED)
+        self.assertFalse(result["heightGateExecutionAllowed"])
+
+    def test_f_empty_plus_populated_is_conflict(self) -> None:
+        export = self.incoming / "export0"
+        self._write_sdk(
+            export,
+            '[I]{"override_vertical_cs":""}\n[I]{"override_vertical_cs":"EGM96"}\n',
+        )
+        collected = collect_terra_vertical_evidence(self.incoming, "export0")
+        rows = _override_rows(collected)
+        self.assertEqual(rows[0]["fieldState"], FIELD_CONFLICT)
+        self.assertEqual(rows[0]["overrideVerticalCsOccurrenceCount"], 2)
+        self.assertEqual(rows[0]["rawValues"], ["", "EGM96"])
+        self.assertNotEqual(rows[0]["rawValue"], "")
+        self.assertEqual(vertical_override_state_from_terra_evidence(collected["evidence"]), "UNKNOWN")
+        projected = height_evidence_from_rule_c_payload(
+            {"terraVerticalEvidence": collected["evidence"]},
+            selected_srs_origin=ORIGIN,
+            selected_metadata_relative_path=META,
+            terra_export_root_relative="export0",
+        )
+        result = evaluate_generic_height_provenance(
+            _approved(
+                verticalOverrideConfigured=projected["verticalOverrideConfigured"],
+                verticalOverrideFieldState=projected["verticalOverrideFieldState"],
+            )
+        )
+        self.assertEqual(projected["verticalOverrideFieldState"], FIELD_CONFLICT)
+        self.assertEqual(result["reasonCode"], REASON_OVERRIDE_CONFLICT)
+        self.assertEqual(result["heightVerticalDatumProvenance"], "HUMAN_REVIEW_REQUIRED")
+        self.assertFalse(result["heightGateExecutionAllowed"])
+
+    def test_g_different_populated_values_are_conflict(self) -> None:
+        export = self.incoming / "export0"
+        self._write_sdk(
+            export,
+            '[I]{"override_vertical_cs":"EGM96"}\n[I]{"override_vertical_cs":"EPSG:5703"}\n',
+        )
+        collected = collect_terra_vertical_evidence(self.incoming, "export0")
+        rows = _override_rows(collected)
+        self.assertEqual(rows[0]["fieldState"], FIELD_CONFLICT)
+        self.assertEqual(rows[0]["rawValues"], ["EGM96", "EPSG:5703"])
+        self.assertEqual(vertical_override_state_from_terra_evidence(collected["evidence"]), "UNKNOWN")
+        result = evaluate_generic_height_provenance(
+            _approved(verticalOverrideConfigured="UNKNOWN", verticalOverrideFieldState=FIELD_CONFLICT)
+        )
+        self.assertEqual(result["reasonCode"], REASON_OVERRIDE_CONFLICT)
+        self.assertFalse(result["heightGateExecutionAllowed"])
+
     def test_d_config_unavailable_is_not_available(self) -> None:
         collected = collect_terra_vertical_evidence(self.incoming, "missing_export")
         rows = _override_rows(collected)
@@ -504,6 +617,23 @@ class VerticalOverrideAbsenceTests(unittest.TestCase):
         result = evaluate_generic_height_provenance(_approved(verticalOverrideConfigured="UNKNOWN"))
         self.assertEqual(result["reasonCode"], REASON_OVERRIDE_NOT_PROVEN)
         self.assertFalse(result["heightGateExecutionAllowed"])
+
+    def test_i_read_failure_is_not_available(self) -> None:
+        export = self.incoming / "export0"
+        self._write_sdk(export, '{"override_vertical_cs":""}\n')
+        sdk = export / "SDK_Log.txt"
+        original = Path.read_text
+
+        def _read(self, *args, **kwargs):
+            if self == sdk:
+                raise OSError("unreadable")
+            return original(self, *args, **kwargs)
+
+        with patch.object(Path, "read_text", _read):
+            collected = collect_terra_vertical_evidence(self.incoming, "export0")
+        rows = _override_rows(collected)
+        self.assertEqual(rows[0]["fieldState"], EVIDENCE_NOT_AVAILABLE)
+        self.assertEqual(vertical_override_state_from_terra_evidence(collected["evidence"]), "UNKNOWN")
 
     def test_d_no_export_root_is_not_available(self) -> None:
         collected = collect_terra_vertical_evidence(self.incoming, None)
@@ -553,13 +683,9 @@ class VerticalOverrideAbsenceTests(unittest.TestCase):
         self.assertEqual(HEIGHT_FIELD_NOT_PRESENT, FIELD_NOT_PRESENT)
         self.assertEqual(HEIGHT_FIELD_PRESENT_EMPTY, FIELD_PRESENT_EMPTY)
         self.assertEqual(HEIGHT_FIELD_PRESENT_POPULATED, FIELD_PRESENT_POPULATED)
+        self.assertEqual(HEIGHT_FIELD_CONFLICT, FIELD_CONFLICT)
         self.assertEqual(HEIGHT_EVIDENCE_NOT_AVAILABLE, EVIDENCE_NOT_AVAILABLE)
-
-    def test_collector_emits_exactly_one_override_row(self) -> None:
-        export = self.incoming / "export0"
-        self._write_sdk(export, '[I]{"override_vertical_cs":""}\n[I]{"override_vertical_cs":"EGM96"}\n')
-        collected = collect_terra_vertical_evidence(self.incoming, "export0")
-        self.assertEqual(len(_override_rows(collected)), 1)
+        self.assertTrue(MULTIPLE_OVERRIDE_DESCRIPTOR_CORRECTION_IMPLEMENTED)
 
     def test_g_jinshidong_real_present_empty(self) -> None:
         incoming = ROOT / "incoming" / "wall_jinshidong_01"
@@ -573,6 +699,8 @@ class VerticalOverrideAbsenceTests(unittest.TestCase):
         self.assertEqual(rows[0]["path"], f"{export}/SDK_Log.txt")
         self.assertEqual(rows[0]["fieldState"], FIELD_PRESENT_EMPTY)
         self.assertEqual(rows[0]["rawValue"], "")
+        self.assertEqual(rows[0]["overrideVerticalCsOccurrenceCount"], 1)
+        self.assertEqual(rows[0]["rawValues"], [""])
         self.assertEqual(vertical_override_state_from_terra_evidence(collected["evidence"]), "NO")
         sources = sources_from_selection(artifact)
         result = evaluate_generic_height_from_sources(incoming, sources)
@@ -596,6 +724,8 @@ class VerticalOverrideAbsenceTests(unittest.TestCase):
         self.assertEqual(rows[0]["path"], f"{export}/SDK_Log.txt")
         self.assertEqual(rows[0]["fieldState"], FIELD_NOT_PRESENT)
         self.assertIsNone(rows[0]["rawValue"])
+        self.assertEqual(rows[0]["overrideVerticalCsOccurrenceCount"], 0)
+        self.assertEqual(rows[0]["rawValues"], [])
         self.assertEqual(vertical_override_state_from_terra_evidence(collected["evidence"]), "NO")
         sibling = incoming / "九龙峰森林站大楼" / "map" / "SDK_Log.txt"
         self.assertTrue(sibling.is_file())

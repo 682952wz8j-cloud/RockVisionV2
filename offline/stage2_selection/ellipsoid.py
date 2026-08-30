@@ -22,7 +22,10 @@ from .states import (
 FIELD_NOT_PRESENT = "FIELD_NOT_PRESENT"
 FIELD_PRESENT_EMPTY = "FIELD_PRESENT_EMPTY"
 FIELD_PRESENT_POPULATED = "FIELD_PRESENT_POPULATED"
+FIELD_CONFLICT = "FIELD_CONFLICT"
 EVIDENCE_NOT_AVAILABLE = "EVIDENCE_NOT_AVAILABLE"
+
+_OVERRIDE_CS_RE = re.compile(r'"override_vertical_cs"\s*:\s*"([^"]*)"')
 
 # Closed Rule C v1 field tables. Not extensible search lists.
 # Only these names are read for family / Network RTK / explicit reference-system evidence.
@@ -152,8 +155,15 @@ def _ellh_valid(records: list[dict] | None) -> tuple[bool, int]:
     return count > 0, count
 
 
-def _override_vertical_cs_evidence(*, path: str | None, field_state: str, raw_value=None) -> dict:
-    return _evidence(
+def _override_vertical_cs_evidence(
+    *,
+    path: str | None,
+    field_state: str,
+    raw_value=None,
+    raw_values: list | None = None,
+    occurrence_count: int | None = None,
+) -> dict:
+    row = _evidence(
         path=path,
         field="override_vertical_cs",
         raw_value=raw_value,
@@ -161,6 +171,25 @@ def _override_vertical_cs_evidence(*, path: str | None, field_state: str, raw_va
         note=field_state,
         field_state=field_state,
     )
+    if raw_values is not None:
+        row["rawValues"] = list(raw_values)
+    if occurrence_count is not None:
+        row["overrideVerticalCsOccurrenceCount"] = occurrence_count
+    return row
+
+
+def _classify_override_vertical_cs(occurrences: list[str]) -> str:
+    if not occurrences:
+        return FIELD_NOT_PRESENT
+    populated = [value for value in occurrences if str(value).strip()]
+    empty = [value for value in occurrences if not str(value).strip()]
+    if populated and empty:
+        return FIELD_CONFLICT
+    if not populated:
+        return FIELD_PRESENT_EMPTY
+    if len({str(value).strip() for value in populated}) > 1:
+        return FIELD_CONFLICT
+    return FIELD_PRESENT_POPULATED
 
 
 def collect_terra_vertical_evidence(incoming: Path, export_root_rel: str | None) -> dict:
@@ -231,32 +260,29 @@ def collect_terra_vertical_evidence(incoming: Path, export_root_rel: str | None)
                 _override_vertical_cs_evidence(path=rel, field_state=EVIDENCE_NOT_AVAILABLE)
             )
         else:
-            override = None
+            occurrences: list[str] = []
             for line in text.splitlines():
                 if line.startswith("<TerraLog>"):
                     continue
-                match = re.search(r'"override_vertical_cs"\s*:\s*"([^"]*)"', line)
-                if match:
-                    override = match.group(1)
-                    break
-            if override is None:
-                evidence.append(
-                    _override_vertical_cs_evidence(
-                        path=rel,
-                        field_state=FIELD_NOT_PRESENT,
-                    )
-                )
+                occurrences.extend(_OVERRIDE_CS_RE.findall(line))
+            field_state = _classify_override_vertical_cs(occurrences)
+            if not occurrences:
+                raw_value = None
+            elif len(occurrences) == 1:
+                raw_value = occurrences[0]
             else:
-                presence = FIELD_PRESENT_EMPTY if override.strip() == "" else FIELD_PRESENT_POPULATED
-                evidence.append(
-                    _override_vertical_cs_evidence(
-                        path=rel,
-                        field_state=presence,
-                        raw_value=override,
-                    )
+                raw_value = list(occurrences)
+            evidence.append(
+                _override_vertical_cs_evidence(
+                    path=rel,
+                    field_state=field_state,
+                    raw_value=raw_value,
+                    raw_values=occurrences,
+                    occurrence_count=len(occurrences),
                 )
-                if override.strip():
-                    geoid = "YES"
+            )
+            if any(str(value).strip() for value in occurrences):
+                geoid = "YES"
 
     return {
         "terraVerticalMode": vertical_mode,
