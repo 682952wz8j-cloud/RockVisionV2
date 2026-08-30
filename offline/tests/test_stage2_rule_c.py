@@ -19,7 +19,11 @@ from offline.stage2_selection import ellipsoid as ellipsoid_mod
 from offline.stage2_selection.ellipsoid import (
     APPROVED_CAPTURE_FAMILY_FIELDS,
     APPROVED_EXPLICIT_REFERENCE_SYSTEM_FIELDS,
+    APPROVED_MATRICE_4_DRONE_MODELS,
+    APPROVED_MATRICE_4_EXIF_MODELS,
+    APPROVED_MATRICE_4_PRODUCT_NAMES,
     APPROVED_NETWORK_RTK_OVERRIDE_FIELDS,
+    EVIDENCE_AUTHORITATIVE_ELLIPSOID,
     evaluate_rule_c,
     evaluate_rule_c_session,
     identify_capture_family,
@@ -104,7 +108,24 @@ def _terra_default(export: Path, *, vertical: str = "Default", sdk_override: str
     )
 
 
-def _eval(wall: Path, *, model: str = "M4E", extra_xmp: dict[str, str] | None = None) -> dict:
+def _structured(*systems: str) -> list[dict]:
+    return [
+        {
+            "referenceSystem": name,
+            "evidenceClass": EVIDENCE_AUTHORITATIVE_ELLIPSOID,
+            "source": "synthetic-test-fixture",
+        }
+        for name in systems
+    ]
+
+
+def _eval(
+    wall: Path,
+    *,
+    model: str = "M4E",
+    extra_xmp: dict[str, str] | None = None,
+    explicit_reference_evidence: list[dict] | None = None,
+) -> dict:
     cap = wall / "flight"
     jpg = _dji(cap, 1, model=model, xmp=extra_xmp)
     mrk = _mrk(cap, [1])
@@ -120,6 +141,7 @@ def _eval(wall: Path, *, model: str = "M4E", extra_xmp: dict[str, str] | None = 
         mrk_relative_path=mrk.relative_to(wall).as_posix(),
         mrk_records=parsed["records"],
         terra_export_root_relative="export",
+        explicit_reference_evidence=explicit_reference_evidence or [],
     )
 
 
@@ -153,7 +175,7 @@ class RuleCReferenceEllipsoidTests(unittest.TestCase):
         self.assertEqual(result["reasonCode"], "RULE_C_NETWORK_RTK_ELLIPSOID_UNKNOWN")
 
     def test_c_explicit_cgcs2000(self) -> None:
-        result = _eval(self.wall, extra_xmp={"RtkCoordinateSystem": "CGCS2000"})
+        result = _eval(self.wall, explicit_reference_evidence=_structured("CGCS2000"))
         self.assertEqual(result["referenceEllipsoid"], "CGCS2000")
         self.assertEqual(result["referenceEllipsoidProvenanceStatus"], "PROVEN_NON_WGS84")
         self.assertEqual(result["datumCompatibilityStatus"], "INSUFFICIENT_STAGE2_CRS_CAPABILITY")
@@ -162,7 +184,7 @@ class RuleCReferenceEllipsoidTests(unittest.TestCase):
         self.assertIn("RULE_C_INSUFFICIENT_STAGE2_CRS_CAPABILITY", result["reasonCodes"])
 
     def test_d_explicit_wgs84_is_proven(self) -> None:
-        result = _eval(self.wall, extra_xmp={"RtkCoordinateSystem": "WGS84"})
+        result = _eval(self.wall, explicit_reference_evidence=_structured("WGS84"))
         self.assertEqual(result["referenceEllipsoid"], "WGS84")
         self.assertEqual(result["referenceEllipsoidProvenanceStatus"], "PROVEN_WGS84")
         self.assertFalse(result["specDefaultInvoked"])
@@ -208,7 +230,8 @@ class RuleCReferenceEllipsoidTests(unittest.TestCase):
     def test_h_network_rtk_plus_explicit_wgs84_is_proven(self) -> None:
         result = _eval(
             self.wall,
-            extra_xmp={"NTRIPHost": "203.0.113.10", "RtkCoordinateSystem": "WGS84"},
+            extra_xmp={"NTRIPHost": "203.0.113.10"},
+            explicit_reference_evidence=_structured("WGS84"),
         )
         self.assertEqual(result["rtkSource"], "NETWORK_RTK")
         self.assertEqual(result["referenceEllipsoidProvenanceStatus"], "PROVEN_WGS84")
@@ -217,10 +240,7 @@ class RuleCReferenceEllipsoidTests(unittest.TestCase):
         self.assertEqual(result["terminalStatus"], "AUTO_PASS")
 
     def test_i_conflicting_explicit_evidence(self) -> None:
-        result = _eval(
-            self.wall,
-            extra_xmp={"RtkCoordinateSystem": "WGS84", "RtkDatum": "CGCS2000"},
-        )
+        result = _eval(self.wall, explicit_reference_evidence=_structured("WGS84", "CGCS2000"))
         self.assertEqual(result["referenceEllipsoidProvenanceStatus"], "CONFLICTING_EVIDENCE")
         self.assertFalse(result["specDefaultInvoked"])
         self.assertEqual(result["terminalStatus"], "HUMAN_REVIEW_REQUIRED")
@@ -268,9 +288,12 @@ class RuleCReferenceEllipsoidTests(unittest.TestCase):
             APPROVED_NETWORK_RTK_OVERRIDE_FIELDS,
             ("NTRIPHost", "NTRIPPort", "NTRIPMountPoint"),
         )
+        self.assertEqual(APPROVED_EXPLICIT_REFERENCE_SYSTEM_FIELDS, ())
+        self.assertEqual(APPROVED_MATRICE_4_EXIF_MODELS, frozenset({"M4E", "M4T"}))
+        self.assertEqual(APPROVED_MATRICE_4_DRONE_MODELS, frozenset({"M4E", "M4T"}))
         self.assertEqual(
-            APPROVED_EXPLICIT_REFERENCE_SYSTEM_FIELDS,
-            ("RtkCoordinateSystem", "RtkDatum"),
+            APPROVED_MATRICE_4_PRODUCT_NAMES,
+            frozenset({"DJI Matrice 4E", "DJI Matrice 4T"}),
         )
         source = Path(ellipsoid_mod.__file__).read_text(encoding="utf-8")
         self.assertNotIn("OVERRIDE_TOKEN_RE", source)
@@ -412,6 +435,56 @@ class RuleCReferenceEllipsoidTests(unittest.TestCase):
         self.assertEqual(result["captureFamily"], "UNKNOWN")
         self.assertFalse(result["crossSessionFamilyInheritance"])
         self.assertTrue(result["mrkEllh"]["valid"])
+
+    def test_m4t_is_approved_family(self) -> None:
+        self.assertEqual(identify_capture_family(exif_model="M4T"), "DJI_MATRICE_4_SERIES")
+        self.assertEqual(identify_capture_family(product_name="DJI Matrice 4T"), "DJI_MATRICE_4_SERIES")
+        result = _eval(self.wall, model="M4T")
+        self.assertEqual(result["captureFamily"], "DJI_MATRICE_4_SERIES")
+        self.assertEqual(result["referenceEllipsoidProvenanceStatus"], "DEFAULT_WGS84_BY_APPROVED_DJI_SPEC")
+
+    def test_unapproved_matrice4_tokens_are_unknown(self) -> None:
+        rejected = [
+            {"exif_model": "M4D"},
+            {"exif_model": "M4TD"},
+            {"exif_model": "M4ET"},
+            {"exif_model": "M4"},
+            {"product_name": "DJI Matrice 4D"},
+            {"product_name": "DJI Matrice 4TD"},
+            {"product_name": "DJI Matrice 4 Enterprise"},
+            {"product_name": "Survey drone with Matrice 4 payload"},
+        ]
+        for kwargs in rejected:
+            self.assertEqual(identify_capture_family(**kwargs), "UNKNOWN", kwargs)
+        result = _eval(self.wall, model="M4D")
+        self.assertEqual(result["captureFamily"], "UNKNOWN")
+        self.assertFalse(result["specDefaultInvoked"])
+
+    def test_real_xmp_rtk_coordinate_system_is_ignored(self) -> None:
+        result = _eval(self.wall, extra_xmp={"RtkCoordinateSystem": "WGS84"})
+        self.assertNotEqual(result["referenceEllipsoidProvenanceStatus"], "PROVEN_WGS84")
+        self.assertEqual(result["referenceEllipsoidProvenanceStatus"], "DEFAULT_WGS84_BY_APPROVED_DJI_SPEC")
+
+    def test_real_xmp_rtk_datum_is_ignored(self) -> None:
+        result = _eval(self.wall, extra_xmp={"RtkDatum": "CGCS2000"})
+        self.assertNotEqual(result["referenceEllipsoidProvenanceStatus"], "PROVEN_NON_WGS84")
+        self.assertEqual(result["referenceEllipsoidProvenanceStatus"], "DEFAULT_WGS84_BY_APPROVED_DJI_SPEC")
+
+    def test_real_xmp_rtk_fields_do_not_create_authoritative_conflict(self) -> None:
+        result = _eval(
+            self.wall,
+            extra_xmp={"RtkCoordinateSystem": "WGS84", "RtkDatum": "CGCS2000"},
+        )
+        self.assertNotEqual(result["referenceEllipsoidProvenanceStatus"], "CONFLICTING_EVIDENCE")
+        self.assertEqual(result["referenceEllipsoidProvenanceStatus"], "DEFAULT_WGS84_BY_APPROVED_DJI_SPEC")
+
+    def test_wall_jiulongfeng_id_cannot_identify_family(self) -> None:
+        named = self.tmp / "incoming" / "wall_jiulongfeng_01"
+        named.mkdir(parents=True)
+        result = evaluate_rule_c(named)
+        self.assertEqual(result["captureFamily"], "UNKNOWN")
+        source = Path(ellipsoid_mod.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("wall_jiulongfeng_01", source)
 
 
 if __name__ == "__main__":

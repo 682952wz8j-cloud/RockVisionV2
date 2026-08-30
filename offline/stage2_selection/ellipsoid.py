@@ -35,10 +35,12 @@ APPROVED_NETWORK_RTK_OVERRIDE_FIELDS = (
     "NTRIPPort",
     "NTRIPMountPoint",
 )
-APPROVED_EXPLICIT_REFERENCE_SYSTEM_FIELDS = (
-    "RtkCoordinateSystem",
-    "RtkDatum",
-)
+# Empty: no real JPG/XMP field is an approved capture-side ellipsoid identifier.
+APPROVED_EXPLICIT_REFERENCE_SYSTEM_FIELDS: tuple[str, ...] = ()
+
+APPROVED_MATRICE_4_EXIF_MODELS = frozenset({"M4E", "M4T"})
+APPROVED_MATRICE_4_DRONE_MODELS = frozenset({"M4E", "M4T"})
+APPROVED_MATRICE_4_PRODUCT_NAMES = frozenset({"DJI Matrice 4E", "DJI Matrice 4T"})
 
 EVIDENCE_AUTHORITATIVE_ELLIPSOID = "AUTHORITATIVE_REFERENCE_ELLIPSOID_EVIDENCE"
 EVIDENCE_AUTHORITATIVE_SOURCE = "AUTHORITATIVE_CAPTURE_SOURCE_EVIDENCE"
@@ -46,8 +48,6 @@ EVIDENCE_SUPPORTING = "SUPPORTING_SOURCE_EVIDENCE"
 EVIDENCE_CONTRACT = "POSITIVE_CONTRACT_APPLICABILITY"
 EVIDENCE_NOT_AUTHORITATIVE = "NOT_AUTHORITATIVE_REFERENCE_ELLIPSOID_EVIDENCE"
 
-_M4_MODEL_RE = re.compile(r"^(M4E|M4T|M4D|M4TD|M4ET)$", re.I)
-_M4_PRODUCT_RE = re.compile(r"\bMATRICE\s*4([ETD]|TD)?\b", re.I)
 _WGS_RE = re.compile(r"^WGS[\s_-]?84$", re.I)
 _CGCS_RE = re.compile(r"^CGCS[\s_-]?2000$", re.I)
 _NAMED_GEOID_RE = re.compile(
@@ -105,13 +105,15 @@ def identify_capture_family(
         "drone-dji:DroneModel": drone_model,
         "EXIF:Model": exif_model,
     }
-    for field in APPROVED_CAPTURE_FAMILY_FIELDS:
-        token = values.get(field)
-        if not token or str(token).strip() in {"", "missing"}:
-            continue
-        text = str(token).strip()
-        if _M4_MODEL_RE.match(text) or _M4_PRODUCT_RE.search(text):
-            return APPROVED_CAPTURE_FAMILY_MATRICE_4
+    product = (values["drone-dji:ProductName"] or "").strip()
+    drone = (values["drone-dji:DroneModel"] or "").strip()
+    model = (values["EXIF:Model"] or "").strip()
+    if model in APPROVED_MATRICE_4_EXIF_MODELS:
+        return APPROVED_CAPTURE_FAMILY_MATRICE_4
+    if drone in APPROVED_MATRICE_4_DRONE_MODELS:
+        return APPROVED_CAPTURE_FAMILY_MATRICE_4
+    if product in APPROVED_MATRICE_4_PRODUCT_NAMES:
+        return APPROVED_CAPTURE_FAMILY_MATRICE_4
     return "UNKNOWN"
 
 
@@ -313,20 +315,6 @@ def _inspect_capture_images(
                         evidence_class=EVIDENCE_AUTHORITATIVE_SOURCE,
                     )
                 )
-        for name in APPROVED_EXPLICIT_REFERENCE_SYSTEM_FIELDS:
-            presence, raw = classify_field_presence(attrs, name)
-            if presence != FIELD_PRESENT_POPULATED:
-                continue
-            named = _normalize_ellipsoid_name(raw)
-            explicit.append(
-                _evidence(
-                    path=rel,
-                    field=name,
-                    raw_value=raw,
-                    evidence_class=EVIDENCE_AUTHORITATIVE_ELLIPSOID,
-                    note=named,
-                )
-            )
         datum = _exif_gps_map_datum(path) if path.is_file() else None
         if datum and not any(item.get("rawValue") == datum for item in gps_map_datum):
             gps_map_datum.append(
@@ -367,10 +355,32 @@ def _inspect_capture_images(
 def _explicit_named_systems(explicit: list[dict]) -> list[str]:
     names: list[str] = []
     for item in explicit:
-        named = item.get("note")
+        named = item.get("note") or item.get("referenceSystem")
         if named in {"WGS84", "CGCS2000", "OTHER_NAMED"} and named not in names:
             names.append(named)
     return names
+
+
+def _structured_explicit_evidence(items: list[dict] | None) -> list[dict]:
+    """Test/future structured evidence only. Production callers pass []."""
+    out: list[dict] = []
+    for item in items or []:
+        raw = item.get("referenceSystem")
+        named = _normalize_ellipsoid_name(str(raw)) if raw is not None else None
+        if named is None:
+            continue
+        if item.get("evidenceClass") != EVIDENCE_AUTHORITATIVE_ELLIPSOID:
+            continue
+        out.append(
+            _evidence(
+                path=item.get("source") or "structured-explicit-evidence",
+                field="explicitReferenceEvidence.referenceSystem",
+                raw_value=raw,
+                evidence_class=EVIDENCE_AUTHORITATIVE_ELLIPSOID,
+                note=named,
+            )
+        )
+    return out
 
 
 def evaluate_rule_c(
@@ -382,6 +392,7 @@ def evaluate_rule_c(
     mrk_records: list[dict] | None = None,
     terra_export_root_relative: str | None = None,
     gps_map_datum_values: list[dict] | None = None,
+    explicit_reference_evidence: list[dict] | None = None,
 ) -> dict:
     paths = list(capture_relative_paths or [])
     inspected = _inspect_capture_images(incoming, paths, camera_models)
@@ -394,9 +405,9 @@ def evaluate_rule_c(
 
     ellh_ok, ellh_count = _ellh_valid(mrk_records)
     terra = collect_terra_vertical_evidence(incoming, terra_export_root_relative)
-    explicit = inspected["explicitDatumEvidence"]
+    explicit = _structured_explicit_evidence(explicit_reference_evidence)
     named = _explicit_named_systems(explicit)
-    alternate = list(inspected["alternateReferenceEvidence"])
+    alternate = [item for item in explicit if item.get("note") in {"CGCS2000", "OTHER_NAMED"}]
     network = inspected["networkRtkDetected"]
 
     rtk_source = "UNKNOWN"
@@ -603,6 +614,9 @@ def evaluate_rule_c(
             "APPROVED_CAPTURE_FAMILY_FIELDS": list(APPROVED_CAPTURE_FAMILY_FIELDS),
             "APPROVED_NETWORK_RTK_OVERRIDE_FIELDS": list(APPROVED_NETWORK_RTK_OVERRIDE_FIELDS),
             "APPROVED_EXPLICIT_REFERENCE_SYSTEM_FIELDS": list(APPROVED_EXPLICIT_REFERENCE_SYSTEM_FIELDS),
+            "APPROVED_MATRICE_4_EXIF_MODELS": sorted(APPROVED_MATRICE_4_EXIF_MODELS),
+            "APPROVED_MATRICE_4_DRONE_MODELS": sorted(APPROVED_MATRICE_4_DRONE_MODELS),
+            "APPROVED_MATRICE_4_PRODUCT_NAMES": sorted(APPROVED_MATRICE_4_PRODUCT_NAMES),
         },
         "recursiveStringSearchAuthorized": False,
     }
@@ -653,6 +667,7 @@ def evaluate_rule_c_from_selection(
         mrk_records=records,
         terra_export_root_relative=export_root,
         gps_map_datum_values=gps_map,
+        explicit_reference_evidence=[],
     )
 
 
@@ -665,6 +680,7 @@ def evaluate_rule_c_session(
     mrk_relative_path: str | None = None,
     mrk_records: list[dict] | None = None,
     terra_export_root_relative: str | None = None,
+    explicit_reference_evidence: list[dict] | None = None,
 ) -> dict:
     """Evaluate one capture session. Family is never inherited from another session."""
     result = evaluate_rule_c(
@@ -674,6 +690,7 @@ def evaluate_rule_c_session(
         mrk_relative_path=mrk_relative_path,
         mrk_records=mrk_records,
         terra_export_root_relative=terra_export_root_relative,
+        explicit_reference_evidence=explicit_reference_evidence or [],
     )
     result["sessionId"] = session_id
     result["crossSessionFamilyInheritance"] = False
