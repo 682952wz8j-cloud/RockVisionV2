@@ -15,7 +15,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from offline.metric_registration.frames import origin_compatible_with_mrk
-from offline.metric_registration.height_datum import verify_height_datum
+from offline.metric_registration.height_datum import evaluate_generic_height_provenance, verify_height_datum
 from offline.metric_registration.holdout import split_rule_description
 from offline.metric_registration.pipeline import _judge
 from offline.stage2_selection.select import select_stage2_inputs
@@ -300,9 +300,29 @@ class Stage2SelectionTests(unittest.TestCase):
         self.assertTrue(check["doesNotProveSameReconstruction"])
 
     def test_generic_height_does_not_require_legacy_20260812(self) -> None:
-        height = verify_height_datum(self.wall, [1.0, 2.0, 3.0], require_legacy_proof=False)
+        height = evaluate_generic_height_provenance(
+            {
+                "referenceEllipsoid": "WGS84",
+                "referenceEllipsoidProvenanceStatus": "DEFAULT_WGS84_BY_APPROVED_DJI_SPEC",
+                "specDefaultInvoked": True,
+                "mrkEllhValid": True,
+                "heightObservationSemantic": "GNSS_GEODETIC_ELLIPSOIDAL_HEIGHT",
+                "terraVerticalMode": "DEFAULT",
+                "geoidConversionConfigured": "NO",
+                "verticalOverrideConfigured": "NO",
+                "usedSrsOrigin": [1.0, 2.0, 3.0],
+                "selectedSrsOrigin": [1.0, 2.0, 3.0],
+                "selectedMetadataRelativePath": "export/terra_ply/metadata.xml",
+                "usedMetadataRelativePath": "export/terra_ply/metadata.xml",
+                "terraExportRootRelative": "export",
+            }
+        )
+        self.assertEqual(height["heightVerticalDatumProvenance"], "AUTO_PASS")
         self.assertFalse(height["mixedDatumDetected"])
         self.assertFalse(height["legacyProofRequired"])
+        self.assertFalse((self.wall / "dji_flight_raw_jiulongfeng").exists())
+        closed = verify_height_datum(self.wall, [1.0, 2.0, 3.0], require_legacy_proof=False)
+        self.assertFalse(closed["heightGateExecutionAllowed"])
         self.assertFalse((self.wall / "dji_flight_raw_jiulongfeng").exists())
 
     def test_holdout_count_not_hard_coded(self) -> None:

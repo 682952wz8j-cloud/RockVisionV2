@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from offline.metric_registration.height_datum import height_evidence_from_rule_c_payload
+
 from .states import OUTPUT_FRAME, WALLMETRICMETERS_PROVENANCE
 
 
@@ -21,6 +23,7 @@ class Stage2SelectedSources:
     association_rule: str
     height_sfm_geo_desc: str | None = None
     height_legacy_mrk: str | None = None
+    height_provenance_evidence: dict | None = None
     output_frame: str = OUTPUT_FRAME
     wall_metric_meters_provenance: str = WALLMETRICMETERS_PROVENANCE
 
@@ -41,6 +44,13 @@ def sources_from_selection(artifact: dict) -> Stage2SelectedSources | None:
     if len(parents) != 1:
         return None
     ply = (artifact.get("selectedModelSource") or {}).get("relativePath")
+    export_root = (artifact.get("terraExportRoot") or {}).get("relativePath")
+    height_evidence = height_evidence_from_rule_c_payload(
+        artifact.get("gnssReferenceEllipsoidProvenance"),
+        selected_srs_origin=origin,
+        selected_metadata_relative_path=str(meta["relativePath"]),
+        terra_export_root_relative=export_root,
+    )
     return Stage2SelectedSources(
         wall_id=str(artifact.get("wallId") or ""),
         image_relative_paths=images,
@@ -54,4 +64,5 @@ def sources_from_selection(artifact: dict) -> Stage2SelectedSources | None:
         association_rule=str(mrk.get("associationRule") or ""),
         height_sfm_geo_desc=None,
         height_legacy_mrk=None,
+        height_provenance_evidence=height_evidence,
     )

@@ -14,7 +14,7 @@ from offline.ingestion.hashing import snapshot_hashes
 from .correspondences import build_correspondences, load_json
 from .errors import error_stats
 from .frames import combine_conditioning, origin_compatible_with_mrk, pointset_geometry
-from .height_datum import verify_height_datum
+from .height_datum import evaluate_generic_height_from_sources, verify_height_datum
 from .holdout import split_fit_holdout, split_rule_description
 from .ply_crosscheck import landmark_sanity, load_existing_ply, nearest_expanding, write_xyz_ply
 from .report import render_report
@@ -228,12 +228,43 @@ def _run(
     sources=None,
     colmap_dir: Path | None = None,
 ) -> dict:
+    generic = sources is not None
+    legacy_height = bool(
+        generic
+        and getattr(sources, "height_sfm_geo_desc", None)
+        and getattr(sources, "height_legacy_mrk", None)
+    )
+    if generic and not legacy_height:
+        height = evaluate_generic_height_from_sources(incoming, sources)
+        if not height.get("heightGateExecutionAllowed"):
+            logs.append(
+                f"STOP BEFORE SIM(3): generic height gate "
+                f"{height.get('heightVerticalDatumProvenance')} {height.get('reasonCode')}"
+            )
+            provenance = height.get("heightVerticalDatumProvenance")
+            return {
+                "wallId": wall_id,
+                "gateResult": "FAIL" if provenance == "AUTO_FAIL" else provenance,
+                "validationStatus": "NOT VALIDATED",
+                "heightDatum": height,
+                "heightVerticalDatumProvenance": provenance,
+                "heightGateExecutionAllowed": False,
+                "reasonCode": height.get("reasonCode"),
+                "problems": list(height.get("problems") or [height.get("reasonCode")]),
+                "errors": list(height.get("problems") or [height.get("reasonCode")]),
+                "correspondenceCount": 0,
+                "plyUsedInFit": False,
+                "productionBuildStage2Enabled": False,
+                "genericStage2Pass": False,
+                "outputFrame": "WallLocal",
+                "wallMetricMetersProvenance": "NOT_CLAIMED",
+            }
+
     import pycolmap
 
     from offline.qualification.associate import dji_filename_parts
 
     colmap_dir = colmap_dir or colmap_output_dir(root, wall_id)
-    generic = sources is not None
     if generic:
         images = []
         for rel in sources.image_relative_paths:
@@ -304,13 +335,15 @@ def _run(
     origin = np.array(origin_info["origin"], dtype=float)
     origin_check = origin_compatible_with_mrk(origin, metrics) if metrics else {"compatible": False, "reason": "no correspondences", "semantics": "SPATIAL_SANITY_CHECK", "isCaptureModelProvenanceProof": False}
     if generic:
-        height = verify_height_datum(
-            incoming,
-            origin.tolist(),
-            sfm_geo_desc=sources.height_sfm_geo_desc,
-            legacy_mrk=sources.height_legacy_mrk,
-            require_legacy_proof=bool(sources.height_sfm_geo_desc and sources.height_legacy_mrk),
-        )
+        if legacy_height:
+            height = verify_height_datum(
+                incoming,
+                origin.tolist(),
+                sfm_geo_desc=sources.height_sfm_geo_desc,
+                legacy_mrk=sources.height_legacy_mrk,
+                require_legacy_proof=True,
+            )
+        # else: height already decided by evaluate_generic_height_from_sources
     else:
         height = verify_height_datum(incoming, origin.tolist())
     if height["mixedDatumDetected"]:
@@ -535,6 +568,8 @@ def _run(
         "wallLocalOrigin": origin.tolist(),
         "originCompatibility": origin_check,
         "heightDatum": height,
+        "heightVerticalDatumProvenance": height.get("heightVerticalDatumProvenance"),
+        "heightGateExecutionAllowed": height.get("heightGateExecutionAllowed"),
         "problems": problems,
         "errors": errors,
         "matrix4x4": matrix4x4_row_major(scale, rotation, translation),
