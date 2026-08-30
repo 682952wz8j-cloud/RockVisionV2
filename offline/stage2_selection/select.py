@@ -15,12 +15,14 @@ from .mrk import associate_group_to_mrk
 from .states import (
     HEIGHT_VERTICAL_DATUM_PROVENANCE,
     OUTPUT_FRAME,
+    RULE_C_POLICY,
     SCHEMA_VERSION,
     WALLMETRICMETERS_PROVENANCE,
     ReasonCode,
     SelectionStatus,
     worst_status,
 )
+from .ellipsoid import evaluate_rule_c_from_selection
 from .terra import select_terra_model
 
 
@@ -124,6 +126,15 @@ def select_stage2_inputs(
                 "detail": "Validated pycolmap extract uses a single image_path; splitting is out of this Gate.",
             }
         )
+
+    ellipsoid_provenance = evaluate_rule_c_from_selection(
+        incoming_wall,
+        selected_capture=selected_capture,
+        selected_mrk=selected_mrk,
+        mrk_candidates=mrk_candidates,
+        terra_result=terra_result,
+        discovered_images=discovered["images"],
+    )
 
     overall = worst_status(statuses)
     if overall == SelectionStatus.AUTO_PASS:
@@ -241,6 +252,12 @@ def select_stage2_inputs(
             "sessionDji20260823NotRequired": True,
             "expectedImageCountNotRequired": True,
             "heightVerticalDatumProvenance": HEIGHT_VERTICAL_DATUM_PROVENANCE,
+            "ruleCPolicy": RULE_C_POLICY,
+            "gpsMapDatumIsNotProvenWgs84": True,
+            "epsg32650IsNotCaptureEllipsoidProof": True,
+            "rtkDiffAgeIsNotRtkSource": True,
+            "mrkQIsNotRtkSource": True,
+            "numericalSanityIsNotDatumProvenance": True,
             "plyUsedInFit": False,
         },
         "rejectedCandidates": {
@@ -259,6 +276,7 @@ def select_stage2_inputs(
         "outputFrame": OUTPUT_FRAME,
         "wallMetricMetersProvenance": WALLMETRICMETERS_PROVENANCE,
         "heightVerticalDatumProvenance": HEIGHT_VERTICAL_DATUM_PROVENANCE,
+        "gnssReferenceEllipsoidProvenance": ellipsoid_provenance,
         "originCompatibilitySemantics": "SPATIAL_SANITY_CHECK",
         "originCompatibilityIsProvenanceProof": False,
     }

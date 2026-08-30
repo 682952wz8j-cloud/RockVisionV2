@@ -44,6 +44,7 @@ def build_exif(
     focal_length: tuple[int, int] | None = (35, 1),
     focal_35mm: int | None = 35,
     gps: tuple[float, float, float] | None = (31.2, 121.5, 100.0),
+    gps_map_datum: str | None = None,
 ) -> bytes:
     tiff_header_len = 8
     # We build IFD0, then Exif IFD, then GPS IFD, then their overflow in one pass
@@ -81,6 +82,10 @@ def build_exif(
         gps_entries.append((0x0003, TYPE_ASCII, 2, _ascii(lon_ref)))
         gps_entries.append((0x0004, TYPE_RATIONAL, 3, dms(lon)))
         gps_entries.append((0x0006, TYPE_RATIONAL, 1, _rational(int(abs(alt) * 100), 100)))
+        if gps_map_datum:
+            gps_entries.append(
+                (0x0012, TYPE_ASCII, len(gps_map_datum) + 1, _ascii(gps_map_datum))
+            )
 
     # Layout:
     # 0: II*\0 + offset 8
@@ -153,6 +158,8 @@ def write_jpeg(
     with_gps: bool = True,
     make: str = "TestMake",
     model: str = "TestModel",
+    gps_map_datum: str | None = None,
+    xmp: dict[str, str] | None = None,
 ) -> None:
     image = Image.new("RGB", size, color)
     buffer = io.BytesIO()
@@ -164,6 +171,25 @@ def write_jpeg(
         path.write_bytes(jpeg)
         return
     gps = (31.2, 121.5, 100.0) if with_gps else None
-    exif = build_exif(make=make, model=model, gps=gps)
+    if gps_map_datum and gps is None:
+        gps = (0.0, 0.0, 0.0)
+    exif = build_exif(make=make, model=model, gps=gps, gps_map_datum=gps_map_datum)
     # Insert APP1 after SOI, before the existing APP0/DQT.
-    path.write_bytes(jpeg[:2] + exif + jpeg[2:])
+    payload = jpeg[:2] + exif + jpeg[2:]
+    if xmp:
+        payload = _insert_xmp(payload, xmp)
+    path.write_bytes(payload)
+
+
+def _insert_xmp(jpeg: bytes, attrs: dict[str, str]) -> bytes:
+    pairs = " ".join(f'drone-dji:{key}="{value}"' for key, value in attrs.items())
+    xmp = (
+        '<?xpacket begin="\xef\xbb\xbf" id="W5M0MpCehiHzreSzNTczkc9d"?>'
+        '<x:xmpmeta xmlns:x="adobe:ns:meta/">'
+        '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
+        f'<rdf:Description xmlns:drone-dji="http://www.dji.com/drone-dji/1.0/" {pairs}/>'
+        "</rdf:RDF></x:xmpmeta><?xpacket end=\"w\"?>"
+    )
+    body = b"http://ns.adobe.com/xap/1.0/\x00" + xmp.encode("utf-8")
+    app1 = b"\xff\xe1" + struct.pack(">H", len(body) + 2) + body
+    return jpeg[:2] + app1 + jpeg[2:]
