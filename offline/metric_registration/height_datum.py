@@ -25,6 +25,7 @@ LEGACY_MRK = "dji_flight_raw_jiulongfeng/rtk_ppk_004/DJI_20260812152955_0002_D.M
 HEIGHT_VERTICAL_DATUM_ENFORCEMENT_IMPLEMENTED = True
 VERTICAL_OVERRIDE_ABSENCE_CORRECTION_IMPLEMENTED = True
 MULTIPLE_OVERRIDE_DESCRIPTOR_CORRECTION_IMPLEMENTED = True
+VERTICAL_OVERRIDE_CONFLICT_PRECEDENCE_CORRECTION_IMPLEMENTED = True
 
 # Same tokens as offline.stage2_selection.ellipsoid. Not a second vocabulary.
 FIELD_NOT_PRESENT = "FIELD_NOT_PRESENT"
@@ -379,6 +380,16 @@ def evaluate_generic_height_provenance(evidence: dict | None) -> dict:
             evidence=evidence,
         )
 
+    if evidence.get("verticalOverrideFieldState") == FIELD_CONFLICT:
+        return _base_result(
+            provenance="HUMAN_REVIEW_REQUIRED",
+            reason=REASON_OVERRIDE_CONFLICT,
+            allowed=False,
+            mixed=False,
+            origin=parsed_used,
+            evidence=evidence,
+        )
+
     geoid = evidence.get("geoidConversionConfigured")
     if geoid == "YES":
         return _base_result(
@@ -393,16 +404,6 @@ def evaluate_generic_height_provenance(evidence: dict | None) -> dict:
         return _base_result(
             provenance="DEVELOPMENT_GATE_REVIEW_REQUIRED",
             reason=REASON_GEOID_NOT_PROVEN,
-            allowed=False,
-            mixed=False,
-            origin=parsed_used,
-            evidence=evidence,
-        )
-
-    if evidence.get("verticalOverrideFieldState") == FIELD_CONFLICT:
-        return _base_result(
-            provenance="HUMAN_REVIEW_REQUIRED",
-            reason=REASON_OVERRIDE_CONFLICT,
             allowed=False,
             mixed=False,
             origin=parsed_used,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 import tempfile
 import unittest
@@ -20,6 +21,7 @@ from offline.metric_registration.height_datum import (
     FIELD_PRESENT_POPULATED as HEIGHT_FIELD_PRESENT_POPULATED,
     HEIGHT_VERTICAL_DATUM_ENFORCEMENT_IMPLEMENTED,
     MULTIPLE_OVERRIDE_DESCRIPTOR_CORRECTION_IMPLEMENTED,
+    VERTICAL_OVERRIDE_CONFLICT_PRECEDENCE_CORRECTION_IMPLEMENTED,
     VERTICAL_OVERRIDE_ABSENCE_CORRECTION_IMPLEMENTED,
     REASON_ELLIPSOID_CONFLICT,
     REASON_ELLIPSOID_NOT_PROVEN,
@@ -730,6 +732,151 @@ class VerticalOverrideAbsenceTests(unittest.TestCase):
         sibling = incoming / "九龙峰森林站大楼" / "map" / "SDK_Log.txt"
         self.assertTrue(sibling.is_file())
         self.assertIn("override_vertical_cs", sibling.read_text(encoding="utf-8", errors="replace"))
+
+
+class VerticalOverrideConflictPrecedenceTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="rv_override_prec_"))
+        self.incoming = self.tmp / "incoming" / "wall_test"
+        self.dest = self.tmp / "metric_registration"
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _write_terra(self, export_rel: str, sdk_body: str) -> None:
+        export = self.incoming / export_rel
+        report = export / "report" / "model_report.json"
+        report.parent.mkdir(parents=True, exist_ok=True)
+        report.write_text(
+            json.dumps(
+                {
+                    "output coordinate": "WGS 84 / UTM zone 50N",
+                    "output vertical coordinate": "Default",
+                }
+            ),
+            encoding="utf-8",
+        )
+        (export / "SDK_Log.txt").write_text(sdk_body, encoding="utf-8")
+        meta = export / "terra_ply" / "metadata.xml"
+        meta.parent.mkdir(parents=True, exist_ok=True)
+        meta.write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            "<ModelMetadata version=\"1\">\n"
+            "<SRS>EPSG:32650</SRS>\n"
+            "<SRSOrigin>100.0,200.0,10.0</SRSOrigin>\n"
+            "</ModelMetadata>\n",
+            encoding="utf-8",
+        )
+
+    def _evaluate_from_collector(self, export_rel: str, sdk_body: str) -> tuple[dict, dict, dict]:
+        self._write_terra(export_rel, sdk_body)
+        collected = collect_terra_vertical_evidence(self.incoming, export_rel)
+        projected = height_evidence_from_rule_c_payload(
+            {
+                "referenceEllipsoid": "WGS84",
+                "referenceEllipsoidProvenanceStatus": "DEFAULT_WGS84_BY_APPROVED_DJI_SPEC",
+                "specDefaultInvoked": True,
+                "mrkEllh": {"valid": True},
+                "heightObservationSemantic": "GNSS_GEODETIC_ELLIPSOIDAL_HEIGHT",
+                "terraVerticalMode": collected["terraVerticalMode"],
+                "geoidConversionConfigured": collected["geoidConversionConfigured"],
+                "terraVerticalEvidence": collected["evidence"],
+                "policy": "RULE_C_SPEC_GOVERNED_DEFAULT",
+            },
+            selected_srs_origin=ORIGIN,
+            selected_metadata_relative_path=f"{export_rel}/terra_ply/metadata.xml",
+            terra_export_root_relative=export_rel,
+        )
+        result = evaluate_generic_height_provenance(
+            {
+                **projected,
+                "usedSrsOrigin": list(ORIGIN),
+                "usedMetadataRelativePath": f"{export_rel}/terra_ply/metadata.xml",
+            }
+        )
+        return collected, projected, result
+
+    def test_e2e_empty_plus_populated_conflict_precedes_geoid(self) -> None:
+        collected, projected, result = self._evaluate_from_collector(
+            "export0",
+            '[I]{"override_vertical_cs":""}\n[I]{"override_vertical_cs":"EGM96"}\n',
+        )
+        rows = _override_rows(collected)
+        self.assertEqual(rows[0]["fieldState"], FIELD_CONFLICT)
+        self.assertEqual(collected["geoidConversionConfigured"], "YES")
+        self.assertEqual(projected["geoidConversionConfigured"], "YES")
+        self.assertEqual(projected["verticalOverrideConfigured"], "UNKNOWN")
+        self.assertEqual(projected["verticalOverrideFieldState"], FIELD_CONFLICT)
+        self.assertEqual(result["reasonCode"], REASON_OVERRIDE_CONFLICT)
+        self.assertEqual(result["heightVerticalDatumProvenance"], "HUMAN_REVIEW_REQUIRED")
+        self.assertFalse(result["heightGateExecutionAllowed"])
+        self.assertNotEqual(result["reasonCode"], REASON_GEOID_UNSUPPORTED)
+        self.assertTrue(VERTICAL_OVERRIDE_CONFLICT_PRECEDENCE_CORRECTION_IMPLEMENTED)
+
+    def test_e2e_different_populated_conflict_precedes_geoid(self) -> None:
+        collected, projected, result = self._evaluate_from_collector(
+            "export0",
+            '[I]{"override_vertical_cs":"EGM96"}\n[I]{"override_vertical_cs":"EPSG:5703"}\n',
+        )
+        self.assertEqual(_override_rows(collected)[0]["fieldState"], FIELD_CONFLICT)
+        self.assertEqual(collected["geoidConversionConfigured"], "YES")
+        self.assertEqual(projected["verticalOverrideConfigured"], "UNKNOWN")
+        self.assertEqual(result["reasonCode"], REASON_OVERRIDE_CONFLICT)
+        self.assertEqual(result["heightVerticalDatumProvenance"], "HUMAN_REVIEW_REQUIRED")
+        self.assertFalse(result["heightGateExecutionAllowed"])
+        self.assertNotEqual(result["reasonCode"], REASON_GEOID_UNSUPPORTED)
+
+    def test_e2e_conflict_stops_registration_before_sim3(self) -> None:
+        self._write_terra(
+            "export0",
+            '[I]{"override_vertical_cs":""}\n[I]{"override_vertical_cs":"EGM96"}\n',
+        )
+        collected = collect_terra_vertical_evidence(self.incoming, "export0")
+        self.assertEqual(collected["geoidConversionConfigured"], "YES")
+        projected = height_evidence_from_rule_c_payload(
+            {
+                "referenceEllipsoid": "WGS84",
+                "referenceEllipsoidProvenanceStatus": "DEFAULT_WGS84_BY_APPROVED_DJI_SPEC",
+                "specDefaultInvoked": True,
+                "mrkEllh": {"valid": True},
+                "heightObservationSemantic": "GNSS_GEODETIC_ELLIPSOIDAL_HEIGHT",
+                "terraVerticalMode": collected["terraVerticalMode"],
+                "geoidConversionConfigured": collected["geoidConversionConfigured"],
+                "terraVerticalEvidence": collected["evidence"],
+            },
+            selected_srs_origin=ORIGIN,
+            selected_metadata_relative_path="export0/terra_ply/metadata.xml",
+            terra_export_root_relative="export0",
+        )
+        sources = Stage2SelectedSources(
+            wall_id="wall_test",
+            image_relative_paths=("flight/DJI_20260823122200_0001_V.JPG",),
+            image_dir_relative="flight",
+            mrk_relative_path="flight/x.MRK",
+            metadata_xml_relative_path="export0/terra_ply/metadata.xml",
+            srs="EPSG:32650",
+            srs_origin=(100.0, 200.0, 10.0),
+            ply_relative_path=None,
+            association_method="test",
+            association_rule="test",
+            height_provenance_evidence=projected,
+        )
+        with patch("offline.metric_registration.pipeline.ransac_umeyama") as ransac, patch(
+            "offline.metric_registration.pipeline.umeyama"
+        ) as umeyama_fn, patch(
+            "offline.metric_registration.pipeline.build_correspondences"
+        ) as corr:
+            corr.side_effect = RuntimeError("REACHED_CORRESPONDENCES")
+            ransac.side_effect = AssertionError("SIM3_CALLED")
+            umeyama_fn.side_effect = AssertionError("SIM3_CALLED")
+            payload = register("wall_test", self.tmp, sources=sources, dest=self.dest)
+        ransac.assert_not_called()
+        umeyama_fn.assert_not_called()
+        corr.assert_not_called()
+        self.assertEqual(payload["reasonCode"], REASON_OVERRIDE_CONFLICT)
+        self.assertFalse(payload["heightGateExecutionAllowed"])
+        self.assertNotIn("scale", payload)
+        self.assertNotEqual(payload["reasonCode"], REASON_GEOID_UNSUPPORTED)
 
 
 if __name__ == "__main__":
