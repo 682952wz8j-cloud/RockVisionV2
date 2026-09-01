@@ -14,6 +14,7 @@ VERIFY_IS_NOT_A_GATE_PASS = True
 DEFAULT_UNITTEST_MODULES: tuple[str, ...] = (
     "offline.tests.test_ingestion",
     "offline.tests.test_qualification",
+    "offline.tests.test_ply_stats",
     "offline.tests.test_colmap",
     "offline.tests.test_metric_registration",
     "offline.tests.test_height_enforcement",
