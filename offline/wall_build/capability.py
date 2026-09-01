@@ -1,6 +1,7 @@
-"""Capability / Gate checks for stages Phase 1 must not execute.
+"""Capability / Gate checks for stages production build must not execute.
 
-Same facts for every wall_id. Reconstruction is never invoked.
+Generic Stage 2 reconstruction and metric registration are executable.
+Stage 3 / route capabilities remain locked.
 """
 
 from __future__ import annotations
@@ -21,27 +22,10 @@ def blocked(reason: ReasonCode, *, detail: str | None = None) -> dict:
     return payload
 
 
-def reconstruction_check() -> dict:
-    """Never invoke reconstruct. Allowlist denial and capability gap are both recorded."""
-    return {
-        "status": StageStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED.value,
-        "capabilityStatus": StageStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED.value,
-        "executionAllowed": False,
-        "executionDeniedReason": ReasonCode.PHASE1_STAGE_NOT_IN_ALLOWLIST.value,
-        "reasonCode": ReasonCode.GENERIC_STAGE2_NOT_APPROVED.value,
-        "reasonCodes": [
-            ReasonCode.PHASE1_STAGE_NOT_IN_ALLOWLIST.value,
-            ReasonCode.GENERIC_STAGE2_NOT_APPROVED.value,
-        ],
-        "invoked": False,
-    }
-
-
 def downstream_stage_map() -> dict[str, dict]:
-    recon = reconstruction_check()
-    blocked_by_recon = blocked(
-        ReasonCode.UPSTREAM_STAGE_NOT_COMPLETE,
-        detail="Upstream RECONSTRUCTION did not AUTO_PASS.",
+    not_allowlisted = blocked(
+        ReasonCode.PHASE1_STAGE_NOT_IN_ALLOWLIST,
+        detail="Stage 3 / legacy register is not on the production executable allowlist.",
     )
     route_blocked = blocked(
         ReasonCode.DXF_COORDINATE_PROVENANCE_METHOD_NOT_APPROVED,
@@ -52,12 +36,10 @@ def downstream_stage_map() -> dict[str, dict]:
         detail="Production route package / routes.json is not authorized.",
     )
     return {
-        Stage.RECONSTRUCTION.value: recon,
-        Stage.METRIC_REGISTRATION.value: blocked_by_recon,
-        Stage.REGISTER.value: blocked_by_recon,
-        Stage.REFERENCE_MATCH.value: blocked_by_recon,
-        Stage.PNP.value: blocked_by_recon,
-        Stage.REFERENCE_MAP.value: blocked_by_recon,
+        Stage.REGISTER.value: not_allowlisted,
+        Stage.REFERENCE_MATCH.value: dict(not_allowlisted),
+        Stage.PNP.value: dict(not_allowlisted),
+        Stage.REFERENCE_MAP.value: dict(not_allowlisted),
         Stage.ROUTE_COORDINATE_REGISTRATION.value: route_blocked,
         Stage.ROUTE_PACKAGE_BUILD.value: package_blocked,
     }

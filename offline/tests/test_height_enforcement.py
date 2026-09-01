@@ -102,8 +102,8 @@ class HeightEnforcementUnitTests(unittest.TestCase):
         self.assertTrue(result["sameVerticalFrame"])
         self.assertFalse(result["mixedDatumDetected"])
         self.assertTrue(result["noGeoidOffsetApplied"])
-        self.assertFalse(result["productionBuildStage2Enabled"])
-        self.assertFalse(result["genericStage2Pass"])
+        self.assertTrue(result["productionBuildStage2Enabled"])
+        self.assertTrue(result["genericStage2Pass"])
 
     def test_b_proven_wgs84(self) -> None:
         result = evaluate_generic_height_provenance(

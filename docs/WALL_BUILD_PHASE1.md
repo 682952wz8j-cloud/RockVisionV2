@@ -1,4 +1,4 @@
-# Phase 1 gate-aware wall build — run lifecycle
+# Gate-aware wall build — run lifecycle
 
 This is the Human handoff / run model for:
 
@@ -18,7 +18,7 @@ Example:
 ./rockvision build wall_jinshidong_01
 ```
 
-Phase 1 does **not** mean unattended production through FIELD_TEST_READY.
+Phase 1 plus approved Generic Stage 2 does **not** mean unattended production through FIELD_TEST_READY. Stage 3 / route production remain locked.
 
 ---
 
@@ -55,16 +55,24 @@ Each START creates a new `runId` and an input manifest (path, size, classificati
 offline/work/<wall_id>/wall_build/<runId>/
 ```
 
-Phase 1 may execute only:
+Approved production `./rockvision build` may execute:
 
 - DISCOVERY
 - PREFLIGHT
 - INGEST
 - QUALIFY
+- STAGE 2 SELECTION (one frozen `select_stage2_inputs` result)
+- HEIGHT / VERTICAL DATUM GATE
+- POSITIONING QUALITY GATE
+- RECONSTRUCTION (generic selected sources only)
+- METRIC REGISTRATION (same sources + reconstruction-time provenance)
 
-It does not call reconstruct, register, reference-match, or pnp.
+It does not call legacy reconstruct/register without selected sources.
+It does not call reference-match, pnp, DXF coordinate conversion, or route package build.
 
-Multiple capture / MRK / metadata / model candidates are inventory only. Phase 1 does not select them and does not ask Human to choose.
+Multiple capture / MRK / metadata / model candidates remain inventory during discovery. Generic Stage 2 selection uses the approved selection contract; it does not invent a wall-id special case.
+
+Individual walls still fail closed on data/evidence gates (for example current Jinshidong data is `POSITIONING_QUALITY_NOT_PROVEN` and must not launch reconstruction).
 
 ## TERMINATE
 

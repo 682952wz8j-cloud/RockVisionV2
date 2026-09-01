@@ -1,7 +1,8 @@
 """Development-only Generic Stage 2 runner.
 
 This is NOT ordinary production `./rockvision build`.
-It does not enable RECONSTRUCTION or METRIC_REGISTRATION on the production allowlist.
+Production build now executes approved Generic Stage 2 itself.
+stage2-dev remains a separate workspace tool.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from pathlib import Path
 
 from offline.colmap.pipeline import reconstruct
 from offline.metric_registration.pipeline import register
+from offline.stage2_capability import capability_fields
 from offline.stage2_selection.artifact import write_selection_artifact
 from offline.stage2_selection.select import select_stage2_inputs
 from offline.stage2_selection.sources import Stage2SelectedSources, sources_from_selection
@@ -45,7 +47,8 @@ def run_select(wall_id: str, root: Path, *, workspace: Path) -> dict:
     write_selection_artifact(workspace / "stage2_input_selection.json", artifact)
     (workspace / "DEVELOPMENT_ONLY.txt").write_text(
         "This directory is a Generic Stage 2 development workspace.\n"
-        "Ordinary ./rockvision build does not run reconstruction or metric registration.\n",
+        "Ordinary ./rockvision build now runs approved Generic Stage 2.\n"
+        "stage2-dev remains a separate development workspace tool.\n",
         encoding="utf-8",
     )
     return artifact
@@ -74,7 +77,7 @@ def run_register_selected(
             "errors": ["stage2 input selection is not AUTO_PASS"],
             "selectionStatus": selection.get("selectionStatus"),
             "developmentOnly": True,
-            "productionBuildStage2Enabled": False,
+            **capability_fields(),
         }
     if height_sfm_geo_desc or height_legacy_mrk:
         sources = Stage2SelectedSources(
@@ -91,7 +94,7 @@ def run_register_selected(
             "gateResult": "FAIL",
             "errors": [blocked],
             "developmentOnly": True,
-            "productionBuildStage2Enabled": False,
+            **capability_fields(),
         }
     dest = workspace / "metric_registration"
     payload = register(
@@ -102,7 +105,7 @@ def run_register_selected(
         colmap_dir=colmap_dir,
     )
     payload["developmentOnly"] = True
-    payload["productionBuildStage2Enabled"] = False
+    payload.update(capability_fields())
     payload["outputFrame"] = "WallLocal"
     payload["wallMetricMetersProvenance"] = "NOT_CLAIMED"
     return payload
@@ -126,6 +129,7 @@ def run_reconstruct_selected(
             "gateResult": "FAIL",
             "errors": ["stage2 input selection is not AUTO_PASS"],
             "developmentOnly": True,
+            **capability_fields(),
         }
     blocked = _refuse_production_work_tree(root, wall_id, workspace, "colmap")
     if blocked:
@@ -134,10 +138,10 @@ def run_reconstruct_selected(
             "gateResult": "FAIL",
             "errors": [blocked],
             "developmentOnly": True,
-            "productionBuildStage2Enabled": False,
+            **capability_fields(),
         }
     dest = workspace / "colmap"
     payload = reconstruct(wall_id, root, sources=sources, dest=dest)
     payload["developmentOnly"] = True
-    payload["productionBuildStage2Enabled"] = False
+    payload.update(capability_fields())
     return payload

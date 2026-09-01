@@ -17,6 +17,7 @@ from collections import Counter
 from pathlib import Path
 
 from offline.qualification.associate import dji_filename_parts
+from offline.stage2_capability import capability_fields
 from offline.stage2_selection.ellipsoid import extract_jpeg_xmp_text, xmp_attr_occurrences
 
 POSITIONING_QUALITY_POLICY_VERSION = "POSITIONING_QUALITY_POLICY_V1"
@@ -237,8 +238,7 @@ def evaluate_positioning_quality_v1(frames: list[dict] | tuple[dict, ...] | None
         "positioningQualityReasonCode": session_reason,
         "positioningQualityExecutionAllowed": allowed,
         "positioningQualityGatePass": False,
-        "productionBuildStage2Enabled": False,
-        "genericStage2Pass": False,
+        **capability_fields(),
         "blockingFrames": blocking,
         "frames": frames_out,
         "reasonCounts": {reason: int(counts.get(reason, 0)) for reason in _REASON_PRECEDENCE},

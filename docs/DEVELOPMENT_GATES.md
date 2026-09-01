@@ -70,7 +70,12 @@ Stage 5 — Route AR                           OPEN / IN PROGRESS
                                            Stage 5 NOT PASS
 ```
 
-`S_wall_colmap` is **VALIDATED**. Gate 4A production `T_ARWorld_Wall` is
+`S_wall_colmap` is **VALIDATED**. Generic Stage 2 production capability is
+**PASS / CLOSED** (`GENERIC_STAGE2_PASS = YES`,
+`PRODUCTION_BUILD_STAGE2_ENABLED = YES`). Ordinary `./rockvision build`
+executes approved Generic Stage 2; individual walls still fail closed on
+data/evidence gates. Stage 3 / route production remain locked.
+Gate 4A production `T_ARWorld_Wall` is
 the metric SE(3) product in [`COORDINATE_CONVENTIONS.md`](COORDINATE_CONVENTIONS.md)
 §6. That is **not** persistent Wall↔ARWorld lock and **not** permission
 to render routes.

@@ -19,7 +19,7 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     build_cmd = sub.add_parser(
         "build",
-        help="Phase 1: gate-aware wall build (discovery/preflight/ingest/qualify, then stop)",
+        help="Gate-aware wall build: Phase 1 plus approved Generic Stage 2 reconstruction and metric registration",
     )
     build_cmd.add_argument("wall_id")
     ingest_cmd = sub.add_parser("ingest", help="Gate 1A: scan incoming/wall_<id>/")

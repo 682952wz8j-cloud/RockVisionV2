@@ -7,6 +7,7 @@ from pathlib import Path
 
 from offline.ingestion.hashing import sha256_file, snapshot_hashes
 from offline.ingestion.pipeline import repo_root_from
+from offline.stage2_capability import capability_fields
 
 from .diagnostics import write_diagnostics
 from .layout import (
@@ -84,8 +85,7 @@ def reconstruct(wall_id: str, root: Path, *, sources=None, dest: Path | None = N
                 "problems": [f"duplicate selected image basenames: {dupes}"],
                 "reasonCode": REASON_AMBIGUOUS,
                 "incomingUnchanged": True,
-                "genericStage2Pass": False,
-                "productionBuildStage2Enabled": False,
+                **capability_fields(),
             }
             write_json(dest / "reconstruction_metrics.json", payload)
             _write_log(dest / "logs" / "reconstruct.log", logs + payload["errors"])
@@ -496,8 +496,7 @@ def _finalize(
             "iphone_sift",
             "pnp",
         ],
-        "genericStage2Pass": False,
-        "productionBuildStage2Enabled": False,
+        **capability_fields(),
         "outputFrame": "WallLocal",
         "wallMetricMetersProvenance": "NOT_CLAIMED",
     }

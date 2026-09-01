@@ -146,6 +146,7 @@ These modules are the current verify suite:
 - `offline.tests.test_stage2_rule_c`
 - `offline.tests.test_stage2_regression`
 - `offline.tests.test_wall_build_phase1`
+- `offline.tests.test_wall_build_stage2`
 - `offline.tests.test_reference_matching`
 - `offline.tests.test_pnp`
 - `offline.tests.test_engineering_workflow`
@@ -161,8 +162,8 @@ reinterpret their meaning.
 - Physical iPhone field-session checks
 - Standalone frozen-artifact hash CLI (today these live inside unit tests)
 - Gate 5 route-package / renderer visual validation
-- Any check that would require executing Generic Stage 2 or reconstruction
-  on ordinary `./rockvision build`
+- Any check that would require executing unapproved Stage 3 / route
+  production on ordinary `./rockvision build`
 
 Do not add those by expanding verify into a new framework in this file.
 Add them later only as thin wrappers around already-authoritative checks.
@@ -184,5 +185,11 @@ Add them later only as thin wrappers around already-authoritative checks.
   process.
 - Workflow v2 is for work that is *not* automatically a Gate.
 - Opening or closing a Gate still requires an explicit protocol (R3).
-- `GENERIC_STAGE2_PASS` and `PRODUCTION_BUILD_STAGE2_ENABLED` remain
-  unchanged by this document.
+- `GENERIC_STAGE2_PASS` = YES / CLOSED
+- `PRODUCTION_BUILD_STAGE2_ENABLED` = YES
+
+Ordinary `./rockvision build` executes approved Generic Stage 2
+(selection, height, positioning quality, reconstruction, metric
+registration). Individual walls still fail closed on data/evidence
+gates. Stage 3 and route production remain locked. This document does
+not rewrite historical Gate 0–11 chapters.

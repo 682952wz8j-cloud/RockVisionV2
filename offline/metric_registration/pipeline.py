@@ -10,6 +10,7 @@ import numpy as np
 
 from offline.colmap.layout import check_incoming_layout, output_dir as colmap_output_dir, wall_incoming
 from offline.ingestion.hashing import snapshot_hashes
+from offline.stage2_capability import capability_fields
 
 from .correspondences import build_correspondences, load_json
 from .errors import error_stats
@@ -257,8 +258,7 @@ def _run(
                 "errors": list(height.get("problems") or [height.get("reasonCode")]),
                 "correspondenceCount": 0,
                 "plyUsedInFit": False,
-                "productionBuildStage2Enabled": False,
-                "genericStage2Pass": False,
+                **capability_fields(),
                 "outputFrame": "WallLocal",
                 "wallMetricMetersProvenance": "NOT_CLAIMED",
             }
@@ -292,8 +292,7 @@ def _run(
                 "errors": [positioning.get("positioningQualityReasonCode")],
                 "correspondenceCount": 0,
                 "plyUsedInFit": False,
-                "productionBuildStage2Enabled": False,
-                "genericStage2Pass": False,
+                **capability_fields(),
                 "positioningQualityGatePass": False,
                 "outputFrame": "WallLocal",
                 "wallMetricMetersProvenance": "NOT_CLAIMED",
@@ -325,8 +324,7 @@ def _run(
                 "errors": list(identity.get("problems") or [identity.get("colmapSourceIdentityReasonCode")]),
                 "correspondenceCount": 0,
                 "plyUsedInFit": False,
-                "productionBuildStage2Enabled": False,
-                "genericStage2Pass": False,
+                **capability_fields(),
                 "outputFrame": "WallLocal",
                 "wallMetricMetersProvenance": "NOT_CLAIMED",
             }
@@ -649,8 +647,7 @@ def _run(
         "colmapSourceIdentityProvenance": None if identity is None else identity.get("colmapSourceIdentityProvenance"),
         "colmapSourceIdentityReasonCode": None if identity is None else identity.get("colmapSourceIdentityReasonCode"),
         "colmapSourceIdentityExecutionAllowed": None if identity is None else identity.get("colmapSourceIdentityExecutionAllowed"),
-        "genericStage2Pass": False,
-        "productionBuildStage2Enabled": False,
+        **capability_fields(),
         "problems": problems,
         "errors": errors,
         "matrix4x4": matrix4x4_row_major(scale, rotation, translation),

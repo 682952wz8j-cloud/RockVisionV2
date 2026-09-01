@@ -18,7 +18,7 @@ def write_reports(run_dir: Path, report: dict) -> tuple[Path, Path]:
 def render_markdown(report: dict) -> str:
     stages = report.get("stageStatuses") or {}
     lines = [
-        "# Wall build report (Phase 1)",
+        "# Wall build report",
         "",
         f"- runId: `{report.get('runId')}`",
         f"- wallId: `{report.get('wallId')}`",
@@ -30,6 +30,8 @@ def render_markdown(report: dict) -> str:
         f"- NEXT_STAGE: `{report.get('nextStage')}`",
         f"- NEXT_STAGE_STATUS: `{report.get('nextStageStatus')}`",
         f"- FIELD_TEST_READY: `{report.get('fieldTestReady')}`",
+        f"- GENERIC_STAGE2_PASS: `{report.get('genericStage2Pass')}`",
+        f"- PRODUCTION_BUILD_STAGE2_ENABLED: `{report.get('productionBuildStage2Enabled')}`",
         f"- JINSHIDONG_UNATTENDED_TO_FIELD_TEST_READY: `{report.get('jinshidongUnattendedToFieldTestReady')}`",
         "",
         "## Stage statuses",

@@ -279,8 +279,8 @@ class PositioningQualityPipelineTests(unittest.TestCase):
         ransac.assert_not_called()
         self.assertNotIn("scale", payload)
         self.assertFalse(payload["positioningQualityExecutionAllowed"])
-        self.assertFalse(payload["productionBuildStage2Enabled"])
-        self.assertFalse(payload["genericStage2Pass"])
+        self.assertTrue(payload["productionBuildStage2Enabled"])
+        self.assertTrue(payload["genericStage2Pass"])
 
     def test_not_supported_stops_before_sim3(self) -> None:
         sources = self._sources((_frame("flight/DJI_20260823122200_0001_V.JPG", "16"),))
@@ -389,7 +389,7 @@ class PositioningQualityRealRegressionTests(unittest.TestCase):
             self.assertEqual(payload["reasonCode"], REASON_NOT_PROVEN)
             self.assertFalse(payload["positioningQualityExecutionAllowed"])
             self.assertNotIn("scale", payload)
-            self.assertFalse(payload["productionBuildStage2Enabled"])
+            self.assertTrue(payload["productionBuildStage2Enabled"])
         finally:
             shutil.rmtree(dest.parent, ignore_errors=True)
 

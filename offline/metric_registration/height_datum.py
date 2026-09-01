@@ -16,6 +16,7 @@ from pathlib import Path
 
 from offline.qualification.geodesy import geographic_to_utm
 from offline.qualification.rtk import parse_mrk
+from offline.stage2_capability import capability_fields
 
 from .frames import UTM_EPSG, geodetic_to_projected_metric
 
@@ -257,8 +258,7 @@ def _base_result(
         "srsOrigin": origin,
         "genericContract": "WallLocal Z = Ellh - Origin_H" if allowed else None,
         "problems": [] if allowed else [reason],
-        "productionBuildStage2Enabled": False,
-        "genericStage2Pass": False,
+        **capability_fields(),
     }
     if extra:
         payload.update(extra)

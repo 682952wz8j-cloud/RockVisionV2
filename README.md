@@ -84,6 +84,16 @@ prerequisite. Gate 4A **PASS / CLOSED** means production `T_ARWorld_Wall`
 is the metric SE(3) product. That is **not** persistent world lock and
 **not** permission to render routes.
 
+Generic Stage 2 production capability is **PASS / CLOSED**.
+`GENERIC_STAGE2_PASS = YES`. `PRODUCTION_BUILD_STAGE2_ENABLED = YES`.
+Ordinary `./rockvision build wall_<id>` now runs the approved generic
+selected-source path through reconstruction and metric registration.
+Individual walls still must pass selection, height, positioning-quality,
+COLMAP source identity, and registration validation. Current Jinshidong
+input remains `POSITIONING_QUALITY_NOT_PROVEN` and must not reconstruct.
+`WallMetricMeters` remains **NOT_CLAIMED** by Generic Stage 2. Stage 3
+and route production remain disabled.
+
 Stage 3 sub-gates:
 
 | Gate | Name | Status |

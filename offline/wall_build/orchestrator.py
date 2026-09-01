@@ -1,4 +1,4 @@
-"""Phase 1 gate-aware wall build orchestrator."""
+"""Gate-aware wall build orchestrator."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from time import perf_counter
 from offline.ingestion.pipeline import ingest, incoming_dir
 from offline.ingestion.types import RunResult
 from offline.qualification.pipeline import qualify
+from offline.stage2_capability import capability_fields
 
 from .capability import downstream_stage_map
 from .discovery import build_discovery, scan_wall_records
@@ -20,8 +21,10 @@ from .invocations import record
 from .manifest import build_input_manifest, utc_now, verify_input_manifest
 from .preflight import run_preflight
 from .reports import write_reports
+from .stage2_run import run_production_stage2
 from .states import (
-    PHASE1_EXECUTABLE_STAGES,
+    PRODUCTION_EXECUTABLE_STAGES,
+    PRODUCTION_STAGE_SEQUENCE,
     AutomationReached,
     ReasonCode,
     RunTerminalStatus,
@@ -31,13 +34,18 @@ from .states import (
 from .wall_id import wall_id_error
 
 SCHEMA_VERSION = "wallBuild.report.1"
-FORBIDDEN_COMMANDS = ("reconstruct", "register", "reference-match", "pnp")
+FORBIDDEN_COMMANDS = ("reference-match", "pnp")
 
 _AUTOMATION_FOR_STAGE = {
     Stage.DISCOVERY: AutomationReached.DISCOVERY_COMPLETE,
     Stage.PREFLIGHT: AutomationReached.PREFLIGHT_COMPLETE,
     Stage.INGEST: AutomationReached.INGEST_COMPLETE,
     Stage.QUALIFY: AutomationReached.QUALIFICATION_COMPLETE,
+    Stage.STAGE2_SELECTION: AutomationReached.STAGE2_SELECTION_COMPLETE,
+    Stage.HEIGHT_VERTICAL_DATUM: AutomationReached.HEIGHT_DATUM_COMPLETE,
+    Stage.POSITIONING_QUALITY: AutomationReached.POSITIONING_QUALITY_COMPLETE,
+    Stage.RECONSTRUCTION: AutomationReached.RECONSTRUCTION_COMPLETE,
+    Stage.METRIC_REGISTRATION: AutomationReached.METRIC_REGISTRATION_COMPLETE,
 }
 
 
@@ -119,7 +127,7 @@ def _map_qualify(payload: dict) -> dict:
 
 def _automation_reached(stage_statuses: dict[str, dict]) -> AutomationReached:
     reached = AutomationReached.NONE
-    for stage in (Stage.DISCOVERY, Stage.PREFLIGHT, Stage.INGEST, Stage.QUALIFY):
+    for stage in PRODUCTION_STAGE_SEQUENCE:
         payload = stage_statuses.get(stage.value) or {}
         if payload.get("status") == StageStatus.AUTO_PASS.value:
             reached = _AUTOMATION_FOR_STAGE[stage]
@@ -129,19 +137,21 @@ def _automation_reached(stage_statuses: dict[str, dict]) -> AutomationReached:
 
 
 def _next_stage(stage_statuses: dict[str, dict]) -> tuple[str, str, str | None]:
-    for stage in (Stage.DISCOVERY, Stage.PREFLIGHT, Stage.INGEST, Stage.QUALIFY):
+    for stage in PRODUCTION_STAGE_SEQUENCE:
         payload = stage_statuses.get(stage.value) or {}
         status = payload.get("status")
         if status == StageStatus.AUTO_PASS.value:
             continue
         if status == StageStatus.SKIPPED.value:
             continue
+        if not status:
+            continue
         return stage.value, status, payload.get("reasonCode")
-    recon = stage_statuses.get(Stage.RECONSTRUCTION.value) or {}
+    register = stage_statuses.get(Stage.REGISTER.value) or {}
     return (
-        Stage.RECONSTRUCTION.value,
-        recon.get("status") or StageStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED.value,
-        recon.get("reasonCode"),
+        Stage.REGISTER.value,
+        register.get("status") or StageStatus.BLOCKED.value,
+        register.get("reasonCode"),
     )
 
 
@@ -242,7 +252,7 @@ def run_wall_build(wall_id: str, root: Path, *, run_id: str | None = None) -> di
             "fieldTestReady": False,
             "fieldTestReadyLabel": "NO",
             "jinshidongUnattendedToFieldTestReady": "NO",
-            "executableStageAllowlist": sorted(s.value for s in PHASE1_EXECUTABLE_STAGES),
+            "executableStageAllowlist": sorted(s.value for s in PRODUCTION_EXECUTABLE_STAGES),
             "forbiddenCommandsNotInvoked": list(FORBIDDEN_COMMANDS),
             "developmentGateScope": HARD_BINDING_AUDIT,
             "efficiency": {
@@ -268,6 +278,7 @@ def run_wall_build(wall_id: str, root: Path, *, run_id: str | None = None) -> di
                 "fieldNotes": None,
             },
             "runOutputDir": str(dest),
+            **capability_fields(),
         }
         (dest / "input_manifest.json").write_text(
             json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
@@ -367,21 +378,33 @@ def run_wall_build(wall_id: str, root: Path, *, run_id: str | None = None) -> di
 
     t0 = perf_counter()
     record("qualify")
-    qualify_payload = qualify(wall_id, root)
+    try:
+        qualify_payload = qualify(wall_id, root)
+    except Exception as exc:
+        qualify_payload = {
+            "result": "FAIL",
+            "errors": [f"qualify exception: {exc}"],
+            "incomingUnchanged": True,
+            "colmapReadiness": {"status": "NOT READY"},
+        }
     stage_durations[Stage.QUALIFY.value] = round(perf_counter() - t0, 4)
     mapped_q = _map_qualify(qualify_payload)
     stage_statuses[Stage.QUALIFY.value] = mapped_q
     if mapped_q["status"] != StageStatus.AUTO_PASS.value:
         blocking.extend(mapped_q.get("errors") or ["qualify failed"])
-        _block_remaining(stage_statuses, from_stage=Stage.RECONSTRUCTION)
+        _block_remaining(stage_statuses, from_stage=Stage.STAGE2_SELECTION)
         return finish()
 
-    stage_statuses.update(downstream_stage_map())
-    recon = stage_statuses[Stage.RECONSTRUCTION.value]
-    blocking.append(
-        recon.get("reasonCode")
-        or ReasonCode.GENERIC_STAGE2_NOT_APPROVED.value
+    run_production_stage2(
+        wall_id=wall_id,
+        root=root,
+        incoming=incoming,
+        dest=dest,
+        stage_statuses=stage_statuses,
+        stage_durations=stage_durations,
+        blocking=blocking,
     )
+    _block_remaining(stage_statuses, from_stage=Stage.STAGE2_SELECTION)
     return finish()
 
 
@@ -390,6 +413,9 @@ def _block_remaining(stage_statuses: dict[str, dict], *, from_stage: Stage) -> N
         Stage.PREFLIGHT,
         Stage.INGEST,
         Stage.QUALIFY,
+        Stage.STAGE2_SELECTION,
+        Stage.HEIGHT_VERTICAL_DATUM,
+        Stage.POSITIONING_QUALITY,
         Stage.RECONSTRUCTION,
         Stage.METRIC_REGISTRATION,
         Stage.REGISTER,
@@ -413,20 +439,21 @@ def _block_remaining(stage_statuses: dict[str, dict], *, from_stage: Stage) -> N
             "executionDeniedReason": ReasonCode.PHASE1_STAGE_NOT_IN_ALLOWLIST.value,
             "invoked": False,
         }
-        if stage in PHASE1_EXECUTABLE_STAGES:
+        if stage in PRODUCTION_EXECUTABLE_STAGES:
+            extra["executionDeniedReason"] = ReasonCode.UPSTREAM_STAGE_NOT_COMPLETE.value
             stage_statuses[stage.value] = _stage(
                 StageStatus.BLOCKED,
                 reason=ReasonCode.UPSTREAM_STAGE_NOT_COMPLETE,
                 extra=extra,
             )
         else:
-            # Upstream allowlisted stages did not AUTO_PASS, so later
-            # stages are BLOCKED. Reconstruction is still not invoked.
             payload = downstream[stage.value]
             payload = {
                 **payload,
                 "status": StageStatus.BLOCKED.value,
-                "reasonCode": ReasonCode.UPSTREAM_STAGE_NOT_COMPLETE.value,
+                "reasonCode": payload.get("reasonCode") or ReasonCode.PHASE1_STAGE_NOT_IN_ALLOWLIST.value,
                 **extra,
+                "executionDeniedReason": payload.get("executionDeniedReason")
+                or ReasonCode.PHASE1_STAGE_NOT_IN_ALLOWLIST.value,
             }
             stage_statuses[stage.value] = payload

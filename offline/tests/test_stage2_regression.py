@@ -20,7 +20,7 @@ from offline.stage2_selection.select import select_stage2_inputs
 from offline.stage2_selection.sources import sources_from_selection
 from offline.testdata.ingestion.jpeg_exif import write_jpeg
 from offline.wall_build.orchestrator import run_wall_build
-from offline.wall_build.states import PHASE1_EXECUTABLE_STAGES, ReasonCode, Stage, StageStatus
+from offline.wall_build.states import ReasonCode, Stage, StageStatus
 
 EXPECTED_SCALE = 3.19764417024824
 EXPECTED_MRK = "DJI_202608231218_006_九龙峰/DJI_20260823122214_0002_D.MRK"
@@ -168,33 +168,37 @@ class Stage2RegressionTests(unittest.TestCase):
             self.assertEqual(payload["originCompatibility"]["semantics"], "SPATIAL_SANITY_CHECK")
             self.assertFalse(payload["originCompatibility"]["isCaptureModelProvenanceProof"])
             self.assertNotIn("expectedHoldout", payload.get("holdoutRule") or {})
-            self.assertFalse(payload["genericStage2Pass"])
+            self.assertTrue(payload["genericStage2Pass"])
+            self.assertTrue(payload["productionBuildStage2Enabled"])
             self.assertIsNone(payload.get("colmapSourceIdentityExecutionAllowed"))
         finally:
             shutil.rmtree(dest.parent, ignore_errors=True)
 
-    def test_production_build_remains_blocked(self) -> None:
-        self.assertEqual(
-            PHASE1_EXECUTABLE_STAGES,
-            frozenset({Stage.DISCOVERY, Stage.PREFLIGHT, Stage.INGEST, Stage.QUALIFY}),
-        )
+    def test_production_build_permits_reconstruction_and_registration(self) -> None:
+        from offline.stage2_capability import PRODUCTION_BUILD_STAGE2_ENABLED
+        from offline.wall_build.states import PRODUCTION_EXECUTABLE_STAGES
+
+        self.assertTrue(PRODUCTION_BUILD_STAGE2_ENABLED)
+        self.assertIn(Stage.RECONSTRUCTION, PRODUCTION_EXECUTABLE_STAGES)
+        self.assertIn(Stage.METRIC_REGISTRATION, PRODUCTION_EXECUTABLE_STAGES)
         tmp = Path(tempfile.mkdtemp(prefix="rv_s2_build_"))
         wall = tmp / "incoming" / "wall_test_stage2_build"
         wall.mkdir(parents=True)
         write_jpeg(wall / "cam.jpg", with_gps=True)
         try:
-            with patch("offline.colmap.cli.run_reconstruct") as recon, patch(
-                "offline.metric_registration.cli.run_register"
+            with patch("offline.wall_build.stage2_run.reconstruct") as recon, patch(
+                "offline.wall_build.stage2_run.register"
             ) as reg:
                 report = run_wall_build("wall_test_stage2_build", tmp)
             recon.assert_not_called()
             reg.assert_not_called()
             recon_status = report["stageStatuses"]["RECONSTRUCTION"]
-            self.assertFalse(recon_status["executionAllowed"])
-            self.assertEqual(recon_status["reasonCode"], ReasonCode.GENERIC_STAGE2_NOT_APPROVED.value)
-            self.assertEqual(recon_status["status"], StageStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED.value)
-            self.assertEqual(report["nextStage"], "RECONSTRUCTION")
-            self.assertEqual(report["nextStageStatus"], StageStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED.value)
+            self.assertFalse(recon_status.get("invoked"))
+            self.assertEqual(recon_status["status"], StageStatus.BLOCKED.value)
+            self.assertTrue(report["productionBuildStage2Enabled"])
+            self.assertIn("RECONSTRUCTION", report["executableStageAllowlist"])
+            self.assertIn("METRIC_REGISTRATION", report["executableStageAllowlist"])
+            self.assertNotIn(ReasonCode.GENERIC_STAGE2_NOT_APPROVED.value, report["reasonCodes"])
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
@@ -206,10 +210,12 @@ class Stage2RegressionTests(unittest.TestCase):
         self.assertIn("reconstruct-selected", source)
         self.assertIn("DEVELOPMENT ONLY", source)
         capability = (ROOT / "offline" / "wall_build" / "capability.py").read_text(encoding="utf-8")
-        self.assertIn("GENERIC_STAGE2_NOT_APPROVED", capability)
+        self.assertNotIn("GENERIC_STAGE2_NOT_APPROVED", capability)
         states = (ROOT / "offline" / "wall_build" / "states.py").read_text(encoding="utf-8")
-        self.assertIn("PHASE1_EXECUTABLE_STAGES", states)
-        self.assertNotIn("Stage.RECONSTRUCTION", states.split("PHASE1_EXECUTABLE_STAGES")[1].split(")")[0])
+        self.assertIn("PRODUCTION_EXECUTABLE_STAGES", states)
+        production = states.split("PRODUCTION_EXECUTABLE_STAGES")[1].split("PHASE1_FORBIDDEN")[0]
+        self.assertIn("Stage.RECONSTRUCTION", production)
+        self.assertIn("Stage.METRIC_REGISTRATION", production)
 
     def test_reconstruct_selected_is_exposed_and_requires_dev_workspace(self) -> None:
         cli = _load_cli()

@@ -1,7 +1,9 @@
-"""Phase 1 gate-aware wall build orchestrator.
+"""Gate-aware wall build orchestrator.
 
-Executable stages: DISCOVERY, PREFLIGHT, INGEST, QUALIFY.
-Later stages are capability / Gate checks only and are never invoked.
+Executable stages: DISCOVERY, PREFLIGHT, INGEST, QUALIFY,
+STAGE2_SELECTION, HEIGHT_VERTICAL_DATUM, POSITIONING_QUALITY,
+RECONSTRUCTION, METRIC_REGISTRATION.
+Stage 3 / route stages remain locked.
 """
 
 from .orchestrator import run_wall_build

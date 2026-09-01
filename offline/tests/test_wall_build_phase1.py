@@ -99,7 +99,8 @@ class WallBuildPhase1Tests(unittest.TestCase):
         cls.protected = {
             "gate5a": _fingerprint(ROOT / "validation" / "gate5a"),
             "jf_incoming": _fingerprint(ROOT / "incoming" / "wall_jiulongfeng_01"),
-            "jf_work": _fingerprint(ROOT / "offline" / "work" / "wall_jiulongfeng_01"),
+            "jf_colmap": _fingerprint(ROOT / "offline" / "work" / "wall_jiulongfeng_01" / "colmap"),
+            "jf_metric": _fingerprint(ROOT / "offline" / "work" / "wall_jiulongfeng_01" / "metric_registration"),
         }
 
     def setUp(self) -> None:
@@ -118,8 +119,8 @@ class WallBuildPhase1Tests(unittest.TestCase):
 
     def _build(self, wall_id: str = "wall_test_phase1_ok"):
         with (
-            patch("offline.colmap.cli.run_reconstruct") as reconstruct,
-            patch("offline.metric_registration.cli.run_register") as register,
+            patch("offline.wall_build.stage2_run.reconstruct") as reconstruct,
+            patch("offline.wall_build.stage2_run.register") as register,
             patch("offline.reference_matching.cli.run_reference_match") as match,
             patch("offline.pnp.cli.run_pnp") as pnp,
         ):
@@ -142,12 +143,14 @@ class WallBuildPhase1Tests(unittest.TestCase):
         write_jpeg(wall / "DJI_0001.JPG")
         cli = _load_cli()
         code = cli.main(["build", "wall_test_phase1_ok"], root=self.tmp)
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 1)
         report_paths = list((self.tmp / "offline" / "work" / "wall_test_phase1_ok" / "wall_build").glob("*/wall_build_report.json"))
         self.assertEqual(len(report_paths), 1)
         report = json.loads(report_paths[0].read_text(encoding="utf-8"))
         self.assertEqual(report["wallId"], "wall_test_phase1_ok")
-        self.assertEqual(report["runTerminalStatus"], RunTerminalStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED.value)
+        self.assertEqual(report["runTerminalStatus"], RunTerminalStatus.AUTO_FAIL.value)
+        self.assertEqual(report["stageStatuses"]["STAGE2_SELECTION"]["reasonCode"], ReasonCode.STAGE2_SELECTION_NOT_AUTO_PASS.value)
+        self.assertTrue(report["productionBuildStage2Enabled"])
 
     def test_invalid_wall_id(self) -> None:
         report = self._build("jinshidong")
@@ -181,8 +184,9 @@ class WallBuildPhase1Tests(unittest.TestCase):
         self.assertEqual(report["discoveredFileCount"], 5)
         self.assertTrue(report["ignoredUnknownFiles"])
         self.assertEqual(report["ignoredUnknownFiles"][0]["classification"], ReasonCode.IGNORED_UNKNOWN_FILE.value)
-        self.assertEqual(report["runTerminalStatus"], RunTerminalStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED.value)
-        self.assertNotEqual(report["runTerminalStatus"], RunTerminalStatus.AUTO_FAIL.value)
+        self.assertEqual(report["stageStatuses"]["DISCOVERY"]["status"], StageStatus.AUTO_PASS.value)
+        self.assertEqual(report["stageStatuses"]["STAGE2_SELECTION"]["reasonCode"], ReasonCode.STAGE2_SELECTION_NOT_AUTO_PASS.value)
+        self.assertNotEqual(report["runTerminalStatus"], RunTerminalStatus.HUMAN_REVIEW_REQUIRED.value)
 
     def test_unknown_file_does_not_fail_run(self) -> None:
         wall = self._wall("wall_test_phase1_unknown")
@@ -191,7 +195,8 @@ class WallBuildPhase1Tests(unittest.TestCase):
         report = self._build("wall_test_phase1_unknown")
         self.assertEqual(report["stageStatuses"]["DISCOVERY"]["status"], StageStatus.AUTO_PASS.value)
         self.assertEqual(report["stageStatuses"]["INGEST"]["status"], StageStatus.AUTO_PASS.value)
-        self.assertNotEqual(report["runTerminalStatus"], RunTerminalStatus.AUTO_FAIL.value)
+        self.assertEqual(report["stageStatuses"]["STAGE2_SELECTION"]["reasonCode"], ReasonCode.STAGE2_SELECTION_NOT_AUTO_PASS.value)
+        self.assertNotEqual(report["runTerminalStatus"], RunTerminalStatus.HUMAN_REVIEW_REQUIRED.value)
 
     def test_zero_byte_recognized_is_warning_not_run_fail(self) -> None:
         wall = self._wall("wall_test_phase1_zerobyte")
@@ -200,7 +205,8 @@ class WallBuildPhase1Tests(unittest.TestCase):
         report = self._build("wall_test_phase1_zerobyte")
         self.assertIn(ReasonCode.ZERO_BYTE_RECOGNIZED_INPUT.value, report["warnings"])
         self.assertEqual(report["stageStatuses"]["PREFLIGHT"]["status"], StageStatus.AUTO_PASS.value)
-        self.assertNotEqual(report["runTerminalStatus"], RunTerminalStatus.AUTO_FAIL.value)
+        self.assertEqual(report["stageStatuses"]["STAGE2_SELECTION"]["reasonCode"], ReasonCode.STAGE2_SELECTION_NOT_AUTO_PASS.value)
+        self.assertNotEqual(report["runTerminalStatus"], RunTerminalStatus.HUMAN_REVIEW_REQUIRED.value)
 
     def test_corrupt_dxf_fails_preflight_and_run(self) -> None:
         wall = self._wall("wall_test_phase1_dxf")
@@ -270,10 +276,9 @@ class WallBuildPhase1Tests(unittest.TestCase):
         self.assertGreaterEqual(len(report["modelCandidates"]), 2)
         self.assertTrue(all(not c.get("selected") for c in report["captureCandidates"]))
         self.assertNotIn(RunTerminalStatus.HUMAN_REVIEW_REQUIRED.value, {s["status"] for s in report["stageStatuses"].values()})
-        self.assertEqual(report["runTerminalStatus"], RunTerminalStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED.value)
-        self.assertEqual(report["nextStage"], Stage.RECONSTRUCTION.value)
-        self.assertEqual(report["nextStageStatus"], StageStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED.value)
-        self.assertEqual(report["nextStageReason"], ReasonCode.GENERIC_STAGE2_NOT_APPROVED.value)
+        self.assertEqual(report["runTerminalStatus"], RunTerminalStatus.AUTO_FAIL.value)
+        self.assertEqual(report["stageStatuses"]["STAGE2_SELECTION"]["reasonCode"], ReasonCode.STAGE2_SELECTION_NOT_AUTO_PASS.value)
+        self.assertFalse(report["stageStatuses"]["RECONSTRUCTION"].get("invoked"))
         self.assertIn(ReasonCode.MULTIPLE_CAPTURE_CANDIDATES.value, report["warnings"])
         self.assertIn(ReasonCode.MULTIPLE_MRK_CANDIDATES.value, report["warnings"])
         self.assertIn(ReasonCode.MULTIPLE_METADATA_CANDIDATES.value, report["warnings"])
@@ -286,18 +291,17 @@ class WallBuildPhase1Tests(unittest.TestCase):
         for stage in ("DISCOVERY", "PREFLIGHT", "INGEST", "QUALIFY"):
             self.assertEqual(report["stageStatuses"][stage]["status"], StageStatus.AUTO_PASS.value, stage)
         self.assertEqual(report["automationReached"], "QUALIFICATION_COMPLETE")
-        self.assertEqual(report["nextStage"], "RECONSTRUCTION")
-        self.assertEqual(report["nextStageStatus"], StageStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED.value)
+        self.assertEqual(report["nextStage"], "STAGE2_SELECTION")
+        self.assertNotEqual(report["stageStatuses"]["STAGE2_SELECTION"]["status"], StageStatus.AUTO_PASS.value)
         recon = report["stageStatuses"]["RECONSTRUCTION"]
-        self.assertFalse(recon["executionAllowed"])
-        self.assertEqual(recon["executionDeniedReason"], ReasonCode.PHASE1_STAGE_NOT_IN_ALLOWLIST.value)
-        self.assertEqual(recon["reasonCode"], ReasonCode.GENERIC_STAGE2_NOT_APPROVED.value)
-        self.assertEqual(recon["capabilityStatus"], StageStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED.value)
-        self.assertIn(ReasonCode.PHASE1_STAGE_NOT_IN_ALLOWLIST.value, recon["reasonCodes"])
-        self.assertIn(ReasonCode.GENERIC_STAGE2_NOT_APPROVED.value, recon["reasonCodes"])
+        self.assertFalse(recon.get("invoked"))
+        self.assertEqual(recon["status"], StageStatus.BLOCKED.value)
+        self.assertEqual(recon["reasonCode"], ReasonCode.UPSTREAM_STAGE_NOT_COMPLETE.value)
         self.assertEqual(report["stageStatuses"]["REGISTER"]["status"], StageStatus.BLOCKED.value)
         self.assertEqual(report["stageStatuses"]["REFERENCE_MATCH"]["status"], StageStatus.BLOCKED.value)
         self.assertEqual(report["stageStatuses"]["PNP"]["status"], StageStatus.BLOCKED.value)
+        self.assertTrue(report["productionBuildStage2Enabled"])
+        self.assertTrue(report["genericStage2Pass"])
         self.assertEqual(report["fieldTestReady"], False)
         self.assertEqual(report["fieldTestReadyLabel"], "NO")
         self.assertEqual(report["jinshidongUnattendedToFieldTestReady"], "NO")
@@ -311,7 +315,7 @@ class WallBuildPhase1Tests(unittest.TestCase):
         self.assertEqual(ingest["status"], StageStatus.AUTO_PASS.value)
         self.assertEqual(ingest["ingestResult"], "PASS WITH WARNINGS")
         self.assertTrue(ingest["warnings"])
-        self.assertNotEqual(report["runTerminalStatus"], RunTerminalStatus.AUTO_FAIL.value)
+        self.assertEqual(report["stageStatuses"]["STAGE2_SELECTION"]["reasonCode"], ReasonCode.STAGE2_SELECTION_NOT_AUTO_PASS.value)
         self.assertNotEqual(report["runTerminalStatus"], RunTerminalStatus.HUMAN_REVIEW_REQUIRED.value)
 
     def test_auto_fail_missing_images(self) -> None:
@@ -351,7 +355,7 @@ class WallBuildPhase1Tests(unittest.TestCase):
         }
         with (
             patch("offline.wall_build.orchestrator.qualify", return_value=fake),
-            patch("offline.colmap.cli.run_reconstruct") as reconstruct,
+            patch("offline.wall_build.stage2_run.reconstruct") as reconstruct,
         ):
             report = run_wall_build("wall_test_phase1_mut_q", self.tmp)
         reconstruct.assert_not_called()
@@ -376,7 +380,7 @@ class WallBuildPhase1Tests(unittest.TestCase):
 
         with (
             patch("offline.wall_build.orchestrator.ingest", side_effect=mutate_then_ingest),
-            patch("offline.colmap.cli.run_reconstruct") as reconstruct,
+            patch("offline.wall_build.stage2_run.reconstruct") as reconstruct,
         ):
             report = run_wall_build("wall_test_phase1_mut", self.tmp)
         reconstruct.assert_not_called()
@@ -418,7 +422,8 @@ class WallBuildPhase1Tests(unittest.TestCase):
     def test_protected_artifacts_unchanged(self) -> None:
         self.assertEqual(_fingerprint(ROOT / "validation" / "gate5a"), self.protected["gate5a"])
         self.assertEqual(_fingerprint(ROOT / "incoming" / "wall_jiulongfeng_01"), self.protected["jf_incoming"])
-        self.assertEqual(_fingerprint(ROOT / "offline" / "work" / "wall_jiulongfeng_01"), self.protected["jf_work"])
+        self.assertEqual(_fingerprint(ROOT / "offline" / "work" / "wall_jiulongfeng_01" / "colmap"), self.protected["jf_colmap"])
+        self.assertEqual(_fingerprint(ROOT / "offline" / "work" / "wall_jiulongfeng_01" / "metric_registration"), self.protected["jf_metric"])
 
     def test_production_execution_policy_is_wall_agnostic(self) -> None:
         names = ("wall_test_phase1_equivalent", "wall_jiulongfeng_01")
@@ -467,10 +472,13 @@ class WallBuildPhase1Tests(unittest.TestCase):
                     self.assertEqual(report["stageStatuses"][stage]["status"], StageStatus.AUTO_PASS.value)
                     self.assertTrue(report["stageStatuses"][stage].get("invoked"))
                 recon = report["stageStatuses"]["RECONSTRUCTION"]
-                self.assertFalse(recon["executionAllowed"])
-                self.assertEqual(recon["executionDeniedReason"], ReasonCode.PHASE1_STAGE_NOT_IN_ALLOWLIST.value)
-                self.assertEqual(recon["reasonCode"], ReasonCode.GENERIC_STAGE2_NOT_APPROVED.value)
                 self.assertFalse(recon.get("invoked"))
+                self.assertEqual(recon["status"], StageStatus.BLOCKED.value)
+                self.assertEqual(recon["reasonCode"], ReasonCode.UPSTREAM_STAGE_NOT_COMPLETE.value)
+                self.assertFalse(recon["executionAllowed"])
+                self.assertEqual(report["nextStage"], Stage.STAGE2_SELECTION.value)
+                self.assertTrue(report["productionBuildStage2Enabled"])
+                self.assertFalse(report["fieldTestReady"])
 
     def test_allowlist_recorded(self) -> None:
         wall = self._wall("wall_test_phase1_allow")
@@ -478,9 +486,19 @@ class WallBuildPhase1Tests(unittest.TestCase):
         report = self._build("wall_test_phase1_allow")
         self.assertEqual(
             set(report["executableStageAllowlist"]),
-            {"DISCOVERY", "PREFLIGHT", "INGEST", "QUALIFY"},
+            {
+                "DISCOVERY",
+                "PREFLIGHT",
+                "INGEST",
+                "QUALIFY",
+                "STAGE2_SELECTION",
+                "HEIGHT_VERTICAL_DATUM",
+                "POSITIONING_QUALITY",
+                "RECONSTRUCTION",
+                "METRIC_REGISTRATION",
+            },
         )
-        self.assertEqual(report["forbiddenCommandsNotInvoked"], ["reconstruct", "register", "reference-match", "pnp"])
+        self.assertEqual(report["forbiddenCommandsNotInvoked"], ["reference-match", "pnp"])
 
 
 if __name__ == "__main__":

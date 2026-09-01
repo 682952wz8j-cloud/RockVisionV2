@@ -177,8 +177,8 @@ class ColmapSourceIdentityEvaluatorTests(unittest.TestCase):
         self.assertEqual(result["selectedImageCount"], 3)
         self.assertEqual(result["registeredImageCount"], 3)
         self.assertEqual(result["foreignImageNames"], [])
-        self.assertFalse(result["genericStage2Pass"])
-        self.assertFalse(result["productionBuildStage2Enabled"])
+        self.assertTrue(result["genericStage2Pass"])
+        self.assertTrue(result["productionBuildStage2Enabled"])
         self.assertEqual(result["wallMetricMetersProvenance"], "NOT_CLAIMED")
 
     def test_a_legacy_hash_filename_synthesis_is_not_proven(self) -> None:
@@ -451,8 +451,8 @@ class ColmapSourceIdentityPipelineTests(unittest.TestCase):
         self.assertEqual(payload["reasonCode"], REASON_NOT_PROVEN)
         self.assertFalse((self.dest / "S_wall_colmap.json").is_file())
         self.assertFalse((self.dest / "camera_correspondences.json").is_file())
-        self.assertFalse(payload["genericStage2Pass"])
-        self.assertFalse(payload["productionBuildStage2Enabled"])
+        self.assertTrue(payload["genericStage2Pass"])
+        self.assertTrue(payload["productionBuildStage2Enabled"])
 
 
 class ColmapSourceIdentityRealRegressionTests(unittest.TestCase):
@@ -575,8 +575,8 @@ class ColmapSourceIdentityRealRegressionTests(unittest.TestCase):
             self.assertTrue(payload["colmapSourceIdentityExecutionAllowed"])
             self.assertEqual(payload["outputFrame"], "WallLocal")
             self.assertEqual(payload["wallMetricMetersProvenance"], "NOT_CLAIMED")
-            self.assertFalse(payload["genericStage2Pass"])
-            self.assertFalse(payload["productionBuildStage2Enabled"])
+            self.assertTrue(payload["genericStage2Pass"])
+            self.assertTrue(payload["productionBuildStage2Enabled"])
             self.assertIsNotNone(payload.get("scale"))
             audit_dir = (
                 ROOT

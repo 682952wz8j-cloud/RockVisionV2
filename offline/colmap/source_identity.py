@@ -15,6 +15,8 @@ from pathlib import Path
 
 from offline.ingestion.hashing import sha256_file
 
+from offline.stage2_capability import capability_fields
+
 SCHEMA_VERSION = "colmap_source_identity.1"
 PROVENANCE_FILENAME = "colmap_source_identity.json"
 SELECTED_MODEL_RELATIVE_PATH = "sparse/best"
@@ -212,8 +214,7 @@ def _result(
         "problems": problems,
         "outputFrame": "WallLocal",
         "wallMetricMetersProvenance": "NOT_CLAIMED",
-        "genericStage2Pass": False,
-        "productionBuildStage2Enabled": False,
+        **capability_fields(),
     }
     if extra:
         payload.update(extra)

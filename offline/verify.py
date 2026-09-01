@@ -24,6 +24,7 @@ DEFAULT_UNITTEST_MODULES: tuple[str, ...] = (
     "offline.tests.test_stage2_rule_c",
     "offline.tests.test_stage2_regression",
     "offline.tests.test_wall_build_phase1",
+    "offline.tests.test_wall_build_stage2",
     "offline.tests.test_reference_matching",
     "offline.tests.test_pnp",
     "offline.tests.test_engineering_workflow",

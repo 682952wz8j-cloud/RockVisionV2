@@ -16,7 +16,7 @@ def run_stage2_dev(args, root: Path) -> int:
     workspace = Path(args.dev_workspace)
     action = args.stage2_dev_action
     print("DEVELOPMENT ONLY — Generic Stage 2")
-    print("Ordinary ./rockvision build does NOT run reconstruction or metric registration.")
+    print("stage2-dev is not ordinary production build.")
     if action == "select":
         artifact = run_select(wall_id, root, workspace=workspace)
         print(f"Wall ID: {wall_id}")
@@ -47,7 +47,7 @@ def run_stage2_dev(args, root: Path) -> int:
         print(f"Wall ID: {wall_id}")
         print(f"Gate result: {payload.get('gateResult')}")
         print(f"Wrote {workspace / 'colmap'}")
-        print("productionBuildStage2Enabled: False")
+        print(f"productionBuildStage2Enabled: {payload.get('productionBuildStage2Enabled')}")
         return 0 if payload.get("gateResult") != "FAIL" else 1
     print(f"unknown stage2-dev action {action}")
     return 2
