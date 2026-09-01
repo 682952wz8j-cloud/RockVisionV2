@@ -45,6 +45,7 @@ class EngineeringWorkflowV2Tests(unittest.TestCase):
             "offline.tests.test_metric_registration",
             "offline.tests.test_height_enforcement",
             "offline.tests.test_positioning_quality",
+            "offline.tests.test_colmap_source_identity",
             "offline.tests.test_stage2_selection",
             "offline.tests.test_stage2_terra",
             "offline.tests.test_stage2_rule_c",

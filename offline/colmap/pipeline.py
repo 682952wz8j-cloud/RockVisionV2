@@ -27,6 +27,11 @@ from .metrics import (
     unpack_pair_table,
 )
 from .report import render_reconstruction_report, write_json
+from .source_identity import (
+    REASON_AMBIGUOUS,
+    duplicate_basenames,
+    write_generic_reconstruct_provenance,
+)
 
 CAMERA_MODEL_NAME = "SIMPLE_RADIAL"
 ENGINE = "pycolmap"
@@ -69,6 +74,22 @@ def reconstruct(wall_id: str, root: Path, *, sources=None, dest: Path | None = N
 
     before = snapshot_hashes(incoming)
     if generic:
+        dupes = duplicate_basenames(sources.image_relative_paths)
+        if dupes:
+            payload = {
+                "wallId": wall_id,
+                "gateResult": "HUMAN_REVIEW_REQUIRED",
+                "sWallColmap": "NOT COMPUTED",
+                "errors": [f"duplicate selected image basenames: {dupes}"],
+                "problems": [f"duplicate selected image basenames: {dupes}"],
+                "reasonCode": REASON_AMBIGUOUS,
+                "incomingUnchanged": True,
+                "genericStage2Pass": False,
+                "productionBuildStage2Enabled": False,
+            }
+            write_json(dest / "reconstruction_metrics.json", payload)
+            _write_log(dest / "logs" / "reconstruct.log", logs + payload["errors"])
+            return payload
         selected = []
         for rel in sources.image_relative_paths:
             path = incoming / rel
@@ -161,6 +182,8 @@ def reconstruct(wall_id: str, root: Path, *, sources=None, dest: Path | None = N
     observations = {}
     models: dict = {}
     selected_model_id = None
+    source_model_relative_path = None
+    registered_image_names: list[str] = []
     unregistered: list[str] = list(image_names)
     registered = 0
     pair_graph: list[dict] = []
@@ -262,12 +285,14 @@ def reconstruct(wall_id: str, root: Path, *, sources=None, dest: Path | None = N
                 models.items(),
                 key=lambda item: (item[1].num_reg_images(), item[1].num_points3D()),
             )
+            source_model_relative_path = f"sparse/{selected_model_id}"
             best_dir = dest / "sparse" / "best"
             best_dir.mkdir(parents=True, exist_ok=True)
             best.write(str(best_dir))
             sparse = sparse_from_reconstruction(best)
             observations = observations_from_reconstruction(best)
             names = registered_names(best)
+            registered_image_names = sorted(names)
             # COLMAP stores names as imported (filename only)
             unregistered = [name for name in image_names if name not in names]
             registered = len(image_names) - len(unregistered)
@@ -307,6 +332,10 @@ def reconstruct(wall_id: str, root: Path, *, sources=None, dest: Path | None = N
         problems,
         logs,
         engine_version,
+        generic=generic,
+        hashes=hashes,
+        registered_image_names=registered_image_names,
+        source_model_relative_path=source_model_relative_path,
     )
 
 
@@ -396,6 +425,11 @@ def _finalize(
     problems: list[str],
     logs: list[str],
     engine_version: str,
+    *,
+    generic: bool = False,
+    hashes: dict[str, str] | None = None,
+    registered_image_names: list[str] | None = None,
+    source_model_relative_path: str | None = None,
 ) -> dict:
     from .metrics import _stats
 
@@ -462,7 +496,25 @@ def _finalize(
             "iphone_sift",
             "pnp",
         ],
+        "genericStage2Pass": False,
+        "productionBuildStage2Enabled": False,
+        "outputFrame": "WallLocal",
+        "wallMetricMetersProvenance": "NOT_CLAIMED",
     }
+    if generic:
+        selected_paths = [row["relativePath"] for row in (manifest.get("images") or []) if row.get("relativePath")]
+        identity = write_generic_reconstruct_provenance(
+            dest=dest,
+            wall_id=wall_id,
+            selected_relative_paths=selected_paths,
+            selected_sha256=hashes or {},
+            selected_model_id=selected_model_id,
+            registered_image_names=list(registered_image_names or []),
+            image_dir_relative=manifest.get("sourceFolder"),
+            source_model_relative_path=source_model_relative_path,
+        )
+        payload["colmapSourceIdentity"] = identity
+        payload["selectedModelRelativePath"] = None if identity is None else identity.get("selectedModelRelativePath")
     write_json(dest / "reconstruction_metrics.json", payload)
     (dest / "reconstruction_report.md").write_text(render_reconstruction_report(payload), encoding="utf-8")
     _write_log(dest / "logs" / "reconstruct.log", logs + errors + problems + [f"gate={gate}"])

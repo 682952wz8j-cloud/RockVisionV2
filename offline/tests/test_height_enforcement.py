@@ -390,7 +390,16 @@ class HeightEnforcementPipelineTests(unittest.TestCase):
         fake.return_value.num_points3D.return_value = 0
         with patch.object(pycolmap, "Reconstruction", fake), patch(
             "offline.metric_registration.pipeline.build_correspondences"
-        ) as corr, patch("offline.metric_registration.pipeline.ransac_umeyama") as ransac:
+        ) as corr, patch("offline.metric_registration.pipeline.ransac_umeyama") as ransac, patch(
+            "offline.metric_registration.pipeline.evaluate_colmap_source_identity"
+        ) as ident:
+            ident.return_value = {
+                "colmapSourceIdentityExecutionAllowed": True,
+                "colmapSourceIdentityProvenance": "AUTO_PASS",
+                "colmapSourceIdentityReasonCode": "COLMAP_SOURCE_IDENTITY_PROVEN",
+                "resolvedModelPath": str(self.tmp / "colmap_model"),
+                "problems": [],
+            }
             corr.side_effect = RuntimeError("REACHED_CORRESPONDENCES")
             ransac.side_effect = AssertionError("SIM3_CALLED")
             payload = register(self.wall_id, self.tmp, sources=sources, dest=self.dest)

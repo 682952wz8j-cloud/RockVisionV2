@@ -14,6 +14,8 @@ from offline.ingestion.hashing import snapshot_hashes
 from .correspondences import build_correspondences, load_json
 from .errors import error_stats
 from .frames import combine_conditioning, origin_compatible_with_mrk, pointset_geometry
+from offline.colmap.source_identity import evaluate_colmap_source_identity
+
 from .height_datum import evaluate_generic_height_from_sources, verify_height_datum
 from .positioning_quality import evaluate_positioning_quality_from_sources
 from .holdout import split_fit_holdout, split_rule_description
@@ -297,11 +299,45 @@ def _run(
                 "wallMetricMetersProvenance": "NOT_CLAIMED",
             }
 
-    import pycolmap
-
     from offline.qualification.associate import dji_filename_parts
 
     colmap_dir = colmap_dir or colmap_output_dir(root, wall_id)
+    identity = None
+    if generic:
+        identity = evaluate_colmap_source_identity(incoming, sources, colmap_dir)
+        if not identity.get("colmapSourceIdentityExecutionAllowed"):
+            logs.append(
+                f"STOP BEFORE SIM(3): COLMAP source identity "
+                f"{identity.get('colmapSourceIdentityProvenance')} "
+                f"{identity.get('colmapSourceIdentityReasonCode')}"
+            )
+            provenance = identity.get("colmapSourceIdentityProvenance")
+            return {
+                "wallId": wall_id,
+                "gateResult": "FAIL" if provenance == "AUTO_FAIL" else provenance,
+                "validationStatus": "NOT VALIDATED",
+                "colmapSourceIdentity": identity,
+                "colmapSourceIdentityProvenance": provenance,
+                "colmapSourceIdentityReasonCode": identity.get("colmapSourceIdentityReasonCode"),
+                "colmapSourceIdentityExecutionAllowed": False,
+                "reasonCode": identity.get("colmapSourceIdentityReasonCode"),
+                "problems": list(identity.get("problems") or [identity.get("colmapSourceIdentityReasonCode")]),
+                "errors": list(identity.get("problems") or [identity.get("colmapSourceIdentityReasonCode")]),
+                "correspondenceCount": 0,
+                "plyUsedInFit": False,
+                "productionBuildStage2Enabled": False,
+                "genericStage2Pass": False,
+                "outputFrame": "WallLocal",
+                "wallMetricMetersProvenance": "NOT_CLAIMED",
+            }
+        sparse_path = Path(identity["resolvedModelPath"])
+    else:
+        sparse_path = colmap_dir / "sparse" / "0"
+        if not (sparse_path / "images.bin").is_file():
+            sparse_path = colmap_dir / "sparse" / "best"
+
+    import pycolmap
+
     if generic:
         images = []
         for rel in sources.image_relative_paths:
@@ -326,9 +362,6 @@ def _run(
         }
     else:
         manifest = load_json(colmap_dir / "colmap_source_manifest.json")
-    sparse_path = colmap_dir / "sparse" / "0"
-    if not (sparse_path / "images.bin").is_file():
-        sparse_path = colmap_dir / "sparse" / "best"
     reconstruction = pycolmap.Reconstruction()
     reconstruction.read(str(sparse_path))
     logs.append(f"read COLMAP sparse {sparse_path} images={reconstruction.num_reg_images()} points3D={reconstruction.num_points3D()}")
@@ -612,6 +645,10 @@ def _run(
         "positioningQualityReasonCode": None if positioning is None else positioning.get("positioningQualityReasonCode"),
         "positioningQualityExecutionAllowed": None if positioning is None else positioning.get("positioningQualityExecutionAllowed"),
         "positioningQualityGatePass": False,
+        "colmapSourceIdentity": identity,
+        "colmapSourceIdentityProvenance": None if identity is None else identity.get("colmapSourceIdentityProvenance"),
+        "colmapSourceIdentityReasonCode": None if identity is None else identity.get("colmapSourceIdentityReasonCode"),
+        "colmapSourceIdentityExecutionAllowed": None if identity is None else identity.get("colmapSourceIdentityExecutionAllowed"),
         "genericStage2Pass": False,
         "productionBuildStage2Enabled": False,
         "problems": problems,

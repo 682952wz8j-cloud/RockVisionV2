@@ -162,23 +162,38 @@ class Stage2RegressionTests(unittest.TestCase):
                 "height_legacy_mrk": HEIGHT_LEGACY_MRK,
             }
         )
+        from offline.colmap.source_identity import REASON_PROVEN, materialize_identity_workspace
+
+        frozen_colmap = ROOT / "offline" / "work" / "wall_jiulongfeng_01" / "colmap"
+        dest_colmap = Path(tempfile.mkdtemp(prefix="rv_s2_a2_colmap_")) / "colmap"
         dest = Path(tempfile.mkdtemp(prefix="rv_s2_a2_")) / "metric_registration"
         try:
+            identity = materialize_identity_workspace(
+                incoming=ROOT / "incoming" / "wall_jiulongfeng_01",
+                sources=sources_from_selection(artifact),
+                source_colmap_dir=frozen_colmap,
+                dest_colmap_dir=dest_colmap,
+            )
+            self.assertTrue(identity["colmapSourceIdentityExecutionAllowed"], identity.get("problems"))
+            self.assertEqual(identity["colmapSourceIdentityReasonCode"], REASON_PROVEN)
             payload = register(
                 "wall_jiulongfeng_01",
                 ROOT,
                 sources=sources,
                 dest=dest,
-                colmap_dir=ROOT / "offline" / "work" / "wall_jiulongfeng_01" / "colmap",
+                colmap_dir=dest_colmap,
             )
             self.assertAlmostEqual(payload["scale"], EXPECTED_SCALE, places=9)
+            self.assertEqual(payload["colmapSourceIdentityReasonCode"], REASON_PROVEN)
             self.assertEqual(payload["outputFrame"], "WallLocal")
             self.assertEqual(payload["wallMetricMetersProvenance"], "NOT_CLAIMED")
             self.assertEqual(payload["originCompatibility"]["semantics"], "SPATIAL_SANITY_CHECK")
             self.assertFalse(payload["originCompatibility"]["isCaptureModelProvenanceProof"])
             self.assertNotIn("expectedHoldout", payload.get("holdoutRule") or {})
+            self.assertFalse(payload["genericStage2Pass"])
         finally:
             shutil.rmtree(dest.parent, ignore_errors=True)
+            shutil.rmtree(dest_colmap.parent, ignore_errors=True)
 
     def test_production_build_remains_blocked(self) -> None:
         self.assertEqual(
