@@ -55,6 +55,16 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     stage2_dev_cmd.add_argument("--colmap-dir", help="Existing COLMAP sparse directory for register-selected")
     stage2_dev_cmd.add_argument("--height-sfm-geo-desc", dest="height_sfm_geo_desc", default=None)
     stage2_dev_cmd.add_argument("--height-legacy-mrk", dest="height_legacy_mrk", default=None)
+    verify_cmd = sub.add_parser(
+        "verify",
+        help="Run aggregated deterministic unit tests. Not a Gate PASS, FREEZE, or Stage advance.",
+    )
+    verify_cmd.add_argument(
+        "--module",
+        action="append",
+        dest="verify_modules",
+        help="Optional unittest module override. Repeatable. Default: existing offline.tests suite.",
+    )
     args = parser.parse_args(argv)
     repo = root or repo_root_from(Path(__file__))
     if args.command == "build":
@@ -89,6 +99,10 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
         from offline.stage2_dev.cli import run_stage2_dev
 
         return run_stage2_dev(args, repo)
+    if args.command == "verify":
+        from offline.verify import run_verify
+
+        return run_verify(args.verify_modules)
     parser.error(f"unknown command {args.command}")
     return 2
 
