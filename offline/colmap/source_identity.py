@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import shutil
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -35,6 +34,9 @@ STATUS_AUTO_PASS = "AUTO_PASS"
 STATUS_AUTO_FAIL = "AUTO_FAIL"
 STATUS_HUMAN_REVIEW = "HUMAN_REVIEW_REQUIRED"
 STATUS_DGRR = "DEVELOPMENT_GATE_REVIEW_REQUIRED"
+
+PROVENANCE_ORIGIN_RECONSTRUCTION_RUN = "RECONSTRUCTION_RUN"
+PROVENANCE_ORIGIN_NOT_AUTHORITATIVE = "NOT_AUTHORITATIVE"
 
 
 def _now() -> str:
@@ -126,12 +128,14 @@ def build_provenance_payload(
     registered_image_names: list[str],
     model_dir: Path,
     image_dir_relative: str | None = None,
+    provenance_origin: str = PROVENANCE_ORIGIN_NOT_AUTHORITATIVE,
 ) -> dict:
     paths = list(selected_relative_paths)
     registered = sorted(registered_image_names)
     return {
         "schemaVersion": SCHEMA_VERSION,
         "generatedAt": _now(),
+        "provenanceOrigin": provenance_origin,
         "wallId": wall_id,
         "selectedImageRelativePaths": paths,
         "selectedImageBasenames": [Path(rel).name for rel in paths],
@@ -181,6 +185,7 @@ def write_generic_reconstruct_provenance(
         registered_image_names=registered_image_names,
         model_dir=model_dir,
         image_dir_relative=image_dir_relative,
+        provenance_origin=PROVENANCE_ORIGIN_RECONSTRUCTION_RUN,
     )
     write_provenance(dest, payload)
     return payload
@@ -261,6 +266,18 @@ def evaluate_colmap_source_identity(
             reason=REASON_NOT_PROVEN,
             allowed=False,
             problems=[f"unsupported identity schema {recorded.get('schemaVersion')}"],
+            extra=extra_base,
+        )
+
+    if recorded.get("provenanceOrigin") != PROVENANCE_ORIGIN_RECONSTRUCTION_RUN:
+        return _result(
+            status=STATUS_DGRR,
+            reason=REASON_NOT_PROVEN,
+            allowed=False,
+            problems=[
+                "COLMAP source identity is not reconstruction-time provenance; "
+                "legacy filename/hash synthesis is not authoritative"
+            ],
             extra=extra_base,
         )
 
@@ -383,98 +400,3 @@ def evaluate_colmap_source_identity(
         problems=[],
         extra=extra_names,
     )
-
-
-def rank_numeric_sparse_models(sparse_dir: Path) -> tuple[int, object] | None:
-    import pycolmap
-
-    ranked = []
-    if not sparse_dir.is_dir():
-        return None
-    for child in sparse_dir.iterdir():
-        if not child.is_dir() or not child.name.isdigit():
-            continue
-        if not (child / "images.bin").is_file():
-            continue
-        rec = pycolmap.Reconstruction()
-        rec.read(str(child))
-        ranked.append((int(child.name), rec, rec.num_reg_images(), rec.num_points3D()))
-    if not ranked:
-        return None
-    selected_id, rec, _n_reg, _n_pts = max(ranked, key=lambda item: (item[2], item[3], -item[0]))
-    return selected_id, rec
-
-
-def materialize_identity_workspace(
-    *,
-    incoming: Path,
-    sources,
-    source_colmap_dir: Path,
-    dest_colmap_dir: Path,
-) -> dict:
-    """Copy an independently proven selected model into dest. Does not modify source_colmap_dir."""
-    relative_paths, hashes, missing = selected_source_snapshot(incoming, sources)
-    dupes = duplicate_basenames(relative_paths)
-    if dupes:
-        return _result(
-            status=STATUS_HUMAN_REVIEW,
-            reason=REASON_AMBIGUOUS,
-            allowed=False,
-            problems=[f"duplicate selected image basenames: {dupes}"],
-        )
-    if missing:
-        return _result(
-            status=STATUS_DGRR,
-            reason=REASON_SET_MISMATCH,
-            allowed=False,
-            problems=[f"selected source images missing under incoming: {missing}"],
-        )
-
-    ranked = rank_numeric_sparse_models(source_colmap_dir / "sparse")
-    if ranked is None:
-        return _result(
-            status=STATUS_DGRR,
-            reason=REASON_NOT_PROVEN,
-            allowed=False,
-            problems=["no numeric COLMAP sparse model is available to derive identity"],
-        )
-    selected_id, reconstruction = ranked
-    from .metrics import registered_names as names_of
-
-    live_names = sorted(names_of(reconstruction))
-    selected_basenames = {Path(rel).name for rel in relative_paths}
-    foreign = sorted(name for name in live_names if name not in selected_basenames)
-    if foreign:
-        return _result(
-            status=STATUS_AUTO_FAIL,
-            reason=REASON_FOREIGN_IMAGE,
-            allowed=False,
-            problems=[f"source COLMAP model contains foreign images: {foreign}"],
-            extra={"foreignImageNames": foreign, "registeredImageNames": live_names},
-        )
-    if not live_names:
-        return _result(
-            status=STATUS_DGRR,
-            reason=REASON_NOT_PROVEN,
-            allowed=False,
-            problems=["source COLMAP model has no registered images"],
-        )
-
-    source_model = source_colmap_dir / "sparse" / str(selected_id)
-    dest_model = dest_colmap_dir / SELECTED_MODEL_RELATIVE_PATH
-    if dest_model.exists():
-        shutil.rmtree(dest_model)
-    shutil.copytree(source_model, dest_model)
-    payload = build_provenance_payload(
-        wall_id=sources.wall_id,
-        selected_relative_paths=relative_paths,
-        selected_sha256=hashes,
-        selected_model_id=selected_id,
-        selected_model_relative_path=SELECTED_MODEL_RELATIVE_PATH,
-        source_model_relative_path=f"sparse/{selected_id}",
-        registered_image_names=live_names,
-        model_dir=dest_model,
-        image_dir_relative=sources.image_dir_relative,
-    )
-    write_provenance(dest_colmap_dir, payload)
-    return evaluate_colmap_source_identity(incoming, sources, dest_colmap_dir)

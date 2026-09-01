@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path:
 from offline.ingestion.hashing import sha256_file
 from offline.metric_registration.pipeline import register
 from offline.stage2_selection.select import select_stage2_inputs
-from offline.stage2_selection.sources import Stage2SelectedSources, sources_from_selection
+from offline.stage2_selection.sources import sources_from_selection
 from offline.testdata.ingestion.jpeg_exif import write_jpeg
 from offline.wall_build.orchestrator import run_wall_build
 from offline.wall_build.states import PHASE1_EXECUTABLE_STAGES, ReasonCode, Stage, StageStatus
@@ -29,8 +29,6 @@ EXPECTED_PLY = "九龙峰森林站大楼/models/pc/0/terra_ply/BlockR/BlockR.ply
 EXPECTED_CAPTURE_DIR = "DJI_202608231218_006_九龙峰"
 EXPECTED_SRS = "EPSG:32650"
 EXPECTED_ORIGIN = [597786.85842445458, 3333597.1281958264, 352.50399999973473]
-HEIGHT_SFM = "九龙峰森林站大楼/AT/sfm_geo_desc.json"
-HEIGHT_LEGACY_MRK = "dji_flight_raw_jiulongfeng/rtk_ppk_004/DJI_20260812152955_0002_D.MRK"
 FROZEN_IDENTITY_REGRESSION_EVIDENCE = {
     "metadata_xml_relative_path": EXPECTED_META,
     "ply_relative_path": EXPECTED_PLY,
@@ -155,45 +153,25 @@ class Stage2RegressionTests(unittest.TestCase):
         self.assertEqual(artifact["selectionStatus"], "AUTO_PASS")
         sources = sources_from_selection(artifact)
         self.assertIsNotNone(sources)
-        sources = Stage2SelectedSources(
-            **{
-                **sources.__dict__,
-                "height_sfm_geo_desc": HEIGHT_SFM,
-                "height_legacy_mrk": HEIGHT_LEGACY_MRK,
-            }
-        )
-        from offline.colmap.source_identity import REASON_PROVEN, materialize_identity_workspace
-
-        frozen_colmap = ROOT / "offline" / "work" / "wall_jiulongfeng_01" / "colmap"
-        dest_colmap = Path(tempfile.mkdtemp(prefix="rv_s2_a2_colmap_")) / "colmap"
+        # LEGACY_TEST_ORACLE: frozen reconstruction math. Not Generic source identity.
         dest = Path(tempfile.mkdtemp(prefix="rv_s2_a2_")) / "metric_registration"
         try:
-            identity = materialize_identity_workspace(
-                incoming=ROOT / "incoming" / "wall_jiulongfeng_01",
-                sources=sources_from_selection(artifact),
-                source_colmap_dir=frozen_colmap,
-                dest_colmap_dir=dest_colmap,
-            )
-            self.assertTrue(identity["colmapSourceIdentityExecutionAllowed"], identity.get("problems"))
-            self.assertEqual(identity["colmapSourceIdentityReasonCode"], REASON_PROVEN)
             payload = register(
                 "wall_jiulongfeng_01",
                 ROOT,
-                sources=sources,
                 dest=dest,
-                colmap_dir=dest_colmap,
+                colmap_dir=ROOT / "offline" / "work" / "wall_jiulongfeng_01" / "colmap",
             )
             self.assertAlmostEqual(payload["scale"], EXPECTED_SCALE, places=9)
-            self.assertEqual(payload["colmapSourceIdentityReasonCode"], REASON_PROVEN)
             self.assertEqual(payload["outputFrame"], "WallLocal")
             self.assertEqual(payload["wallMetricMetersProvenance"], "NOT_CLAIMED")
             self.assertEqual(payload["originCompatibility"]["semantics"], "SPATIAL_SANITY_CHECK")
             self.assertFalse(payload["originCompatibility"]["isCaptureModelProvenanceProof"])
             self.assertNotIn("expectedHoldout", payload.get("holdoutRule") or {})
             self.assertFalse(payload["genericStage2Pass"])
+            self.assertIsNone(payload.get("colmapSourceIdentityExecutionAllowed"))
         finally:
             shutil.rmtree(dest.parent, ignore_errors=True)
-            shutil.rmtree(dest_colmap.parent, ignore_errors=True)
 
     def test_production_build_remains_blocked(self) -> None:
         self.assertEqual(
