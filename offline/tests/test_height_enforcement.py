@@ -320,6 +320,13 @@ class HeightEnforcementPipelineTests(unittest.TestCase):
             association_method="test",
             association_rule="test",
             height_provenance_evidence=evidence,
+            positioning_quality_frames=(
+                {
+                    "imageRelativePath": "flight/DJI_20260823122200_0001_V.JPG",
+                    "sequence": 1,
+                    "rtkFlagOccurrences": ["50"],
+                },
+            ),
         )
 
     def test_unknown_ellipsoid_stops_before_sim3(self) -> None:

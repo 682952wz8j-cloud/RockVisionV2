@@ -24,6 +24,7 @@ class Stage2SelectedSources:
     height_sfm_geo_desc: str | None = None
     height_legacy_mrk: str | None = None
     height_provenance_evidence: dict | None = None
+    positioning_quality_frames: tuple[dict, ...] | None = None
     output_frame: str = OUTPUT_FRAME
     wall_metric_meters_provenance: str = WALLMETRICMETERS_PROVENANCE
 

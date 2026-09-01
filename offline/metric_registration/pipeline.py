@@ -15,6 +15,7 @@ from .correspondences import build_correspondences, load_json
 from .errors import error_stats
 from .frames import combine_conditioning, origin_compatible_with_mrk, pointset_geometry
 from .height_datum import evaluate_generic_height_from_sources, verify_height_datum
+from .positioning_quality import evaluate_positioning_quality_from_sources
 from .holdout import split_fit_holdout, split_rule_description
 from .ply_crosscheck import landmark_sanity, load_existing_ply, nearest_expanding, write_xyz_ply
 from .report import render_report
@@ -256,6 +257,42 @@ def _run(
                 "plyUsedInFit": False,
                 "productionBuildStage2Enabled": False,
                 "genericStage2Pass": False,
+                "outputFrame": "WallLocal",
+                "wallMetricMetersProvenance": "NOT_CLAIMED",
+            }
+
+    positioning = None
+    if generic:
+        positioning = evaluate_positioning_quality_from_sources(incoming, sources)
+        if not positioning.get("positioningQualityExecutionAllowed"):
+            logs.append(
+                f"STOP BEFORE SIM(3): positioning quality "
+                f"{positioning.get('positioningQualityProvenance')} "
+                f"{positioning.get('positioningQualityReasonCode')}"
+            )
+            return {
+                "wallId": wall_id,
+                "gateResult": positioning.get("positioningQualityProvenance"),
+                "validationStatus": "NOT VALIDATED",
+                "positioningQuality": positioning,
+                "positioningQualityProvenance": positioning.get("positioningQualityProvenance"),
+                "positioningQualityReasonCode": positioning.get("positioningQualityReasonCode"),
+                "positioningQualityExecutionAllowed": False,
+                "reasonCode": positioning.get("positioningQualityReasonCode"),
+                "policyVersion": positioning.get("policyVersion"),
+                "selectedFrameCount": positioning.get("selectedFrameCount"),
+                "fixedFrameCount": positioning.get("fixedFrameCount"),
+                "nonFixedFrameCount": positioning.get("nonFixedFrameCount"),
+                "missingOrUnparseableFrameCount": positioning.get("missingOrUnparseableFrameCount"),
+                "conflictFrameCount": positioning.get("conflictFrameCount"),
+                "rtkFlagDistribution": positioning.get("rtkFlagDistribution"),
+                "problems": [positioning.get("positioningQualityReasonCode")],
+                "errors": [positioning.get("positioningQualityReasonCode")],
+                "correspondenceCount": 0,
+                "plyUsedInFit": False,
+                "productionBuildStage2Enabled": False,
+                "genericStage2Pass": False,
+                "positioningQualityGatePass": False,
                 "outputFrame": "WallLocal",
                 "wallMetricMetersProvenance": "NOT_CLAIMED",
             }
@@ -570,6 +607,13 @@ def _run(
         "heightDatum": height,
         "heightVerticalDatumProvenance": height.get("heightVerticalDatumProvenance"),
         "heightGateExecutionAllowed": height.get("heightGateExecutionAllowed"),
+        "positioningQuality": positioning,
+        "positioningQualityProvenance": None if positioning is None else positioning.get("positioningQualityProvenance"),
+        "positioningQualityReasonCode": None if positioning is None else positioning.get("positioningQualityReasonCode"),
+        "positioningQualityExecutionAllowed": None if positioning is None else positioning.get("positioningQualityExecutionAllowed"),
+        "positioningQualityGatePass": False,
+        "genericStage2Pass": False,
+        "productionBuildStage2Enabled": False,
         "problems": problems,
         "errors": errors,
         "matrix4x4": matrix4x4_row_major(scale, rotation, translation),

@@ -77,6 +77,13 @@ def parse_xmp_attrs(text: str | None) -> dict[str, str]:
     return {key: value for key, value in _XMP_ATTR_RE.findall(text)}
 
 
+def xmp_attr_occurrences(text: str | None, name: str) -> list[str]:
+    """All values for one XMP attribute name, in file order. Last-wins is not applied."""
+    if not text:
+        return []
+    return [value for key, value in _XMP_ATTR_RE.findall(text) if key == name]
+
+
 def classify_field_presence(attrs: dict[str, str], name: str) -> tuple[str, str | None]:
     if name not in attrs:
         return FIELD_NOT_PRESENT, None
