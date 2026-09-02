@@ -272,6 +272,16 @@ class WallBuildStage2ProductionTests(unittest.TestCase):
         self.assertEqual(report["stageStatuses"]["METRIC_REGISTRATION"]["wallMetricMetersProvenance"], "NOT_CLAIMED")
         self.assertEqual(report["stageStatuses"]["METRIC_REGISTRATION"]["outputFrame"], "WallLocal")
 
+    def test_terra_ply_product_is_frozen_into_run_dest(self) -> None:
+        report, *_ = self._run_mocked()
+        dest = Path(report["runOutputDir"])
+        freeze_path = dest / "terra_ply_product.json"
+        self.assertTrue(freeze_path.is_file())
+        payload = json.loads(freeze_path.read_text(encoding="utf-8"))
+        self.assertTrue(payload["frozen"])
+        self.assertTrue(payload["terraProductProvenanceRecorded"])
+        self.assertEqual(payload["schemaVersion"], "terra_ply_product.1")
+
     def test_n_no_jiulongfeng_wall_id_special_branch(self) -> None:
         text = (ROOT / "offline" / "wall_build" / "stage2_run.py").read_text(encoding="utf-8")
         self.assertNotIn("wall_jiulongfeng_01", text)

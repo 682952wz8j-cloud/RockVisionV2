@@ -49,6 +49,7 @@ class EngineeringWorkflowV2Tests(unittest.TestCase):
             "offline.tests.test_colmap_source_identity",
             "offline.tests.test_stage2_selection",
             "offline.tests.test_stage2_terra",
+            "offline.tests.test_terra_ply_product",
             "offline.tests.test_stage2_rule_c",
             "offline.tests.test_stage2_regression",
             "offline.tests.test_wall_build_phase1",

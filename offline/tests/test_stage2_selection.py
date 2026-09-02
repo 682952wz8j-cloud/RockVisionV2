@@ -367,8 +367,8 @@ class Stage2SelectionTests(unittest.TestCase):
         _ply(self.wall / "aaa")
         _ply(self.wall / "zzz")
         artifact = _select(self.tmp)
-        self.assertEqual(artifact["selectionStatus"], "DEVELOPMENT_GATE_REVIEW_REQUIRED")
-        self.assertIn("GEOMETRY_CROSSCHECK_NOT_AVAILABLE", artifact["selectionReasonCodes"])
+        self.assertEqual(artifact["selectionStatus"], "AUTO_FAIL")
+        self.assertIn("TERRA_PLY_PRODUCT_NOT_PROVEN", artifact["selectionReasonCodes"])
         self.assertIsNone(artifact["selectedModelSource"])
 
     def test_no_wall_id_production_branch_in_selection_layer(self) -> None:
@@ -377,6 +377,7 @@ class Stage2SelectionTests(unittest.TestCase):
             "offline/stage2_selection/terra.py",
             "offline/stage2_selection/model.py",
             "offline/stage2_selection/discovery.py",
+            "offline/stage2_selection/ply_product.py",
         ):
             text = (ROOT / rel).read_text(encoding="utf-8")
             self.assertNotIn("wall_jiulongfeng_01", text)

@@ -32,7 +32,7 @@ from .tiles_inspect import sample_b3dm
 MISSING = "missing"
 
 
-def qualify(wall_id: str, root: Path) -> dict:
+def qualify(wall_id: str, root: Path, *, terra_ply_product: dict | None = None) -> dict:
     incoming = incoming_dir(root, wall_id)
     inventory_path = root / "offline" / "work" / wall_id / "ingestion" / "inventory.json"
     dest = root / "offline" / "work" / wall_id / "qualification"
@@ -53,7 +53,14 @@ def qualify(wall_id: str, root: Path) -> dict:
     records = inventory.get("files") or []
     datasets = (inventory.get("datasets") or {}).get("cesium3dTiles") or []
 
-    ply_rec = next((r for r in records if r.get("extension") == ".ply"), None)
+    from offline.stage2_selection.ply_product import select_formal_terra_ply_product
+
+    ply_product = terra_ply_product or select_formal_terra_ply_product(incoming)
+    selected_ply = (ply_product or {}).get("selected") or {}
+    selected_rel = selected_ply.get("relativePath")
+    ply_rec = next((r for r in records if r.get("relativePath") == selected_rel), None)
+    if ply_rec is None and selected_rel:
+        ply_rec = {"relativePath": selected_rel, "extension": ".ply"}
     textures = collect_ply_texture_names(incoming, ply_rec["relativePath"] if ply_rec else None)
     images = [assign_capture_session(classify_image(r, textures)) for r in records if r.get("detectedType") == "image"]
 
@@ -146,6 +153,7 @@ def qualify(wall_id: str, root: Path) -> dict:
         "cameraGeoreference": camera_geo,
         "rasters": rasters,
         "model": ply_report,
+        "terraPlyProduct": ply_product,
         "route": route_report,
         "tiles": tiles_report,
         "metadata": {

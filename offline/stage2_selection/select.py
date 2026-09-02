@@ -42,6 +42,7 @@ def select_stage2_inputs(
     run_id: str | None = None,
     inventory_source: str = "incoming_scan",
     frozen_identity_regression_evidence: dict | None = None,
+    frozen_terra_ply_product: dict | None = None,
 ) -> dict:
     incoming_wall = incoming or incoming_dir(root, wall_id)
     discovered = discover_candidates(incoming_wall)
@@ -97,7 +98,7 @@ def select_stage2_inputs(
             if group["mrkAssociation"].get("ambiguous"):
                 ambiguous.extend(group["mrkAssociation"]["ambiguous"])
 
-    terra_result = select_terra_model(incoming_wall)
+    terra_result = select_terra_model(incoming_wall, frozen_ply_product=frozen_terra_ply_product)
     terra_result, regression_applied = apply_frozen_identity_regression(
         terra_result,
         frozen_identity_regression_evidence,
@@ -214,6 +215,7 @@ def select_stage2_inputs(
         "terraMetadataCopies": terra_result.get("terraMetadataCopies") or [],
         "terraProducts": terra_result.get("terraProducts") or [],
         "intermediateCandidates": terra_result.get("intermediateCandidates") or [],
+        "terraPlyProduct": terra_result.get("terraPlyProduct"),
         "selectedCapture": selected_capture,
         "selectedMRKSource": selected_mrk,
         "selectedModelSource": selected_model if overall == SelectionStatus.AUTO_PASS else None,
@@ -235,6 +237,15 @@ def select_stage2_inputs(
             "mrk": "GENERIC_MRK_ASSOCIATION_RULE: photoId identifier + same-parent strong source-group evidence",
             "terraExportRoot": "APPROVED_METHOD_RULE: directory with a direct child named terra_*, not under .temp; name 0 is not required",
             "terraSpatialFrame": "APPROVED_METHOD_RULE: agreeing ModelMetadata SRS + parsed SRSOrigin; copies are frame copies, not geometry pointers",
+            "terraPlyProduct": (
+                "APPROVED_METHOD_RULE: formal reconstruction PLY is the unique usable "
+                "geometry under a Terra product declared by model_report.json "
+                "(generate point ply → terra_point_ply, generate ply → terra_ply). "
+                ".temp intermediates are never formal products. "
+                "No model_report falls back to a unique terra_ply/terra_point_ply "
+                "directory that already contains usable geometry. "
+                "Filesystem order, mtime, and size are not selection keys."
+            ),
             "modelSpatialMetadata": (
                 "Uniqueness of metadata.xml or PLY is not model provenance. "
                 "Geometry is not spatial-frame provenance. "

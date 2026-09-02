@@ -101,7 +101,7 @@ class Stage2TerraProvenanceTests(unittest.TestCase):
         _ply(self.wall / "models")
         artifact = self._select()
         self.assertEqual(artifact["selectionStatus"], "AUTO_FAIL")
-        self.assertIn("NO_TERRA_EXPORT_ROOT", artifact["selectionReasonCodes"])
+        self.assertIn("TERRA_PLY_PRODUCT_NOT_PROVEN", artifact["selectionReasonCodes"])
 
     def test_multiple_terra_export_roots_human_review(self) -> None:
         _capture(self.wall)
@@ -254,8 +254,8 @@ class Stage2TerraProvenanceTests(unittest.TestCase):
         _ply(self.wall / "export" / "terra_ply", name="mesh.ply")
         _ply(self.wall / "export" / "terra_point_ply", name="cloud.ply")
         artifact = self._select()
-        self.assertEqual(artifact["selectionStatus"], "DEVELOPMENT_GATE_REVIEW_REQUIRED")
-        self.assertIn("MULTIPLE_CROSSCHECK_PRODUCTS_NO_APPROVED_RANKING", artifact["selectionReasonCodes"])
+        self.assertEqual(artifact["selectionStatus"], "AUTO_FAIL")
+        self.assertIn("TERRA_PLY_PRODUCT_AMBIGUOUS", artifact["selectionReasonCodes"])
         self.assertIsNone(artifact["selectedCrosscheckProduct"])
         self.assertIsNone(artifact["selectedModelSource"])
 

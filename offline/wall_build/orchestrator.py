@@ -376,10 +376,20 @@ def run_wall_build(wall_id: str, root: Path, *, run_id: str | None = None) -> di
         _block_remaining(stage_statuses, from_stage=Stage.QUALIFY)
         return finish()
 
+    from offline.stage2_selection.ply_product import select_formal_terra_ply_product
+
+    ply_product = dict(select_formal_terra_ply_product(incoming))
+    ply_product["frozen"] = True
+    ply_product["terraProductProvenanceRecorded"] = True
+    (dest / "terra_ply_product.json").write_text(
+        json.dumps(ply_product, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
     t0 = perf_counter()
     record("qualify")
     try:
-        qualify_payload = qualify(wall_id, root)
+        qualify_payload = qualify(wall_id, root, terra_ply_product=ply_product)
     except Exception as exc:
         qualify_payload = {
             "result": "FAIL",
@@ -403,6 +413,7 @@ def run_wall_build(wall_id: str, root: Path, *, run_id: str | None = None) -> di
         stage_statuses=stage_statuses,
         stage_durations=stage_durations,
         blocking=blocking,
+        frozen_terra_ply_product=ply_product,
     )
     _block_remaining(stage_statuses, from_stage=Stage.STAGE2_SELECTION)
     return finish()

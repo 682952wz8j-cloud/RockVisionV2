@@ -97,7 +97,7 @@ class Stage2RegressionTests(unittest.TestCase):
         )
         self.assertEqual(
             artifact["selectedModelSource"]["associationRule"],
-            "APPROVED_METHOD_RULE:unique_crosscheck_capable_deliverable",
+            "APPROVED_METHOD_RULE:model_report_generate_flags_or_unique_terra_ply_token",
         )
         self.assertFalse(artifact["selectedModelSource"]["usedInFit"])
         selected = artifact["selectedCapture"]["memberRelativePaths"]

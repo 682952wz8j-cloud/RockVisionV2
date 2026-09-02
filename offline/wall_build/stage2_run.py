@@ -68,11 +68,14 @@ def run_production_stage2(
     stage_statuses: dict[str, dict],
     stage_durations: dict[str, float],
     blocking: list[str],
+    frozen_terra_ply_product: dict | None = None,
 ) -> None:
     """Execute approved Generic Stage 2. Stops fail-closed before COLMAP when possible."""
     t0 = perf_counter()
     record("stage2-selection")
-    selection = select_stage2_inputs(wall_id, root, run_id=dest.name)
+    selection = select_stage2_inputs(
+        wall_id, root, run_id=dest.name, frozen_terra_ply_product=frozen_terra_ply_product
+    )
     write_selection_artifact(dest / "stage2_input_selection.json", selection)
     sources = sources_from_selection(selection)
     selection_status = str(selection.get("selectionStatus") or StageStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED.value)

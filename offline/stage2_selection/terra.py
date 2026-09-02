@@ -452,7 +452,7 @@ def _representative_copy(copies: list[dict], selected_product: dict | None) -> d
     return valid[0]
 
 
-def select_terra_model(incoming: Path) -> dict:
+def select_terra_model(incoming: Path, *, frozen_ply_product: dict | None = None) -> dict:
     roots = discover_export_roots(incoming)
     empty = {
         "terraExportRoot": None,
@@ -473,16 +473,36 @@ def select_terra_model(incoming: Path) -> dict:
         "selectedModelSource": None,
         "uniqueUnprovenModelSpatialMetadata": None,
         "uniqueUnprovenModelGeometry": None,
+        "terraPlyProduct": None,
         "modelCandidates": [],
         "modelSpatialMetadataCandidates": [],
         "ambiguous": [],
     }
     if not roots:
+        from .ply_product import select_formal_terra_ply_product
+
+        ply_sel = select_formal_terra_ply_product(
+            incoming,
+            frozen=frozen_ply_product,
+            export_roots=roots,
+        )
+        reason_codes = []
+        if ply_sel.get("plyCandidateFound"):
+            reason_codes.append(ReasonCode.TERRA_PLY_PRODUCT_NOT_PROVEN.value)
+        if ReasonCode.NO_TERRA_EXPORT_ROOT.value not in reason_codes:
+            reason_codes.append(ReasonCode.NO_TERRA_EXPORT_ROOT.value)
+        if ply_sel.get("reasonCode") and ply_sel["reasonCode"] not in reason_codes:
+            reason_codes.insert(0, ply_sel["reasonCode"])
+        unique = []
+        for code in reason_codes:
+            if code not in unique:
+                unique.append(code)
         return {
             **empty,
+            "terraPlyProduct": ply_sel,
             "status": SelectionStatus.AUTO_FAIL.value,
-            "reasonCode": ReasonCode.NO_TERRA_EXPORT_ROOT.value,
-            "reasonCodes": [ReasonCode.NO_TERRA_EXPORT_ROOT.value],
+            "reasonCode": unique[0],
+            "reasonCodes": unique,
         }
     if len(roots) > 1:
         return {
@@ -501,23 +521,61 @@ def select_terra_model(incoming: Path) -> dict:
     root = roots[0]
     frame_result = select_spatial_frame(incoming, root)
     classified = classify_products(incoming, root)
-    cross = select_crosscheck_product(classified)
+    from .ply_product import select_formal_terra_ply_product
+
+    ply_sel = select_formal_terra_ply_product(
+        incoming,
+        frozen=frozen_ply_product,
+        export_roots=roots,
+    )
     copies = frame_result.get("copies") or []
     reason_codes: list[str] = []
-    for code in (frame_result.get("reasonCode"), cross.get("reasonCode")):
+    for code in (frame_result.get("reasonCode"), ply_sel.get("reasonCode")):
         if code and code != ReasonCode.UNIQUE_LEGAL_SOURCE_SET.value:
             reason_codes.append(code)
     statuses = [
         SelectionStatus(frame_result["status"]),
-        SelectionStatus(cross["status"]),
+        SelectionStatus(ply_sel["status"]),
     ]
+    if classified["unknown"]:
+        statuses.append(SelectionStatus.DEVELOPMENT_GATE_REVIEW_REQUIRED)
+        reason_codes.append(ReasonCode.UNKNOWN_TERRA_PRODUCT_TYPE.value)
     overall = worst_status(statuses)
     if overall == SelectionStatus.AUTO_PASS:
         reason_codes = [ReasonCode.UNIQUE_LEGAL_SOURCE_SET.value]
     elif not reason_codes:
         reason_codes = [overall.value]
-    selected_product = cross.get("selectedProduct") if cross["status"] == SelectionStatus.AUTO_PASS.value else None
-    selected_geometry = cross.get("selectedGeometry") if cross["status"] == SelectionStatus.AUTO_PASS.value else None
+    selected_product = None
+    selected_geometry = None
+    if ply_sel.get("status") == SelectionStatus.AUTO_PASS.value and ply_sel.get("selected"):
+        chosen = ply_sel["selected"]
+        token = chosen.get("productToken")
+        parts = Path(chosen["relativePath"]).parts
+        if token in parts:
+            product_rel = Path(*parts[: parts.index(token) + 1]).as_posix()
+        else:
+            product_rel = Path(chosen["relativePath"]).parent.as_posix()
+        selected_product = {
+            "relativePath": product_rel,
+            "productToken": token,
+            "productClass": (PRODUCT_CATALOG.get(chosen.get("productToken") or "") or {}).get("productClass"),
+            "deliverable": True,
+            "stage2CrosscheckCapability": True,
+            "associationRule": ply_sel.get("selectionRule"),
+        }
+        selected_geometry = {
+            "relativePath": chosen["relativePath"],
+            "filename": chosen["filename"],
+            "fileSize": chosen.get("fileSize"),
+            "sha256": chosen.get("sha256"),
+            "kind": "modelGeometry",
+            "usedInFit": False,
+            "productToken": chosen.get("productToken"),
+            "productClass": selected_product["productClass"],
+            "associationRule": ply_sel.get("selectionRule"),
+            "geometryIsNotFrameProvenance": True,
+            "selected": True,
+        }
     if overall != SelectionStatus.AUTO_PASS:
         selected_product = None
         selected_geometry = None
@@ -590,17 +648,22 @@ def select_terra_model(incoming: Path) -> dict:
         "uniqueUnprovenModelGeometry": None,
         "modelCandidates": model_candidates,
         "modelSpatialMetadataCandidates": copies,
+        "terraPlyProduct": ply_sel,
         "ambiguous": [
             *([{"kind": "terraMetadataCopy", **item} for item in frame_result.get("malformedCopies") or []]),
             *(
-                [{"kind": "crosscheckProduct", "relativePath": item["relativePath"]} for item in cross.get("capable") or []]
-                if cross["reasonCode"] == ReasonCode.MULTIPLE_CROSSCHECK_PRODUCTS_NO_APPROVED_RANKING.value
+                [
+                    {"kind": "terraPlyProduct", "relativePath": item["relativePath"]}
+                    for item in (ply_sel.get("candidates") or [])
+                    if item.get("rejectedReason") == ReasonCode.TERRA_PLY_PRODUCT_AMBIGUOUS.value
+                ]
+                if ply_sel.get("reasonCode") == ReasonCode.TERRA_PLY_PRODUCT_AMBIGUOUS.value
                 else []
             ),
         ],
         "frameStatus": frame_result["status"],
         "frameReasonCode": frame_result["reasonCode"],
-        "crosscheckStatus": cross["status"],
-        "crosscheckReasonCode": cross["reasonCode"],
+        "crosscheckStatus": ply_sel.get("status"),
+        "crosscheckReasonCode": ply_sel.get("reasonCode"),
         "unknownTerraProductTypes": classified["unknown"],
     }
