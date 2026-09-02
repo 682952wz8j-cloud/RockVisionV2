@@ -45,6 +45,21 @@ gate3b_*.jsonl
 # Python
 .venv/
 offline/.venv/
+backend/.venv/
 **/__pycache__/
 **/*.pyc
 **/.pytest_cache/
+
+# Local secrets (never commit SecretId / SecretKey / keys)
+.env
+*.env
+!.env.example
+!backend/.env.example
+cos.env
+credentials
+*.pem
+*.p12
+*.key
+id_rsa
+id_ed25519
+*_rsa

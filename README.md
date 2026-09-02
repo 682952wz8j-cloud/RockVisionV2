@@ -364,7 +364,41 @@ Details: [incoming/README.md](incoming/README.md).
 | [docs/CAMERA_IMAGE_CONVENTION.md](docs/CAMERA_IMAGE_CONVENTION.md) | ARFrame / SIFT image and keypoint space |
 | [docs/OPENCV_IOS_BUILD.md](docs/OPENCV_IOS_BUILD.md) | Pinned OpenCV 4.14.0 xcframework build |
 | [docs/DEVELOPMENT_GATES.md](docs/DEVELOPMENT_GATES.md) | Gate discipline; live status at top; Gate 0–11 body is early plan numbering |
+| [docs/CLOUD_ASSET_CONTRACT_V1.md](docs/CLOUD_ASSET_CONTRACT_V1.md) | CragPal Cloud Asset API v1 client contract (not production publishing) |
 | [incoming/README.md](incoming/README.md) | How to add a wall (raw drop) |
+
+---
+
+## Cloud Backend Phase 1 / Cloud Asset Contract v1
+
+This is **not** Stage 5 status and does **not** authorize production
+asset publishing, `routes.json`, or a route package.
+
+Proven **externally** (Tencent Cloud, outside this repository’s Git
+history; not re-proven by this checkout):
+
+| Capability | Status |
+|------------|--------|
+| Docker API runtime | proven externally |
+| private COS read | proven externally |
+| controlled asset read | proven externally |
+| systemd management | proven externally |
+| Nginx reverse proxy | proven externally |
+| public HTTP path | proven externally |
+| domain + HTTPS | **WAITING / NOT COMPLETE** |
+
+Do **not** treat HTTPS as PASS. This repository does **not** claim that
+`api.cragpal.com` exists or that ICP filing is complete.
+
+Cloud Asset Contract v1 (`GET /health`, `GET /v1/walls`,
+`GET /v1/walls/{wall_id}/manifest`,
+`GET /v1/walls/{wall_id}/releases/{release_id}/assets/{asset_id}`)
+is **IMPLEMENTED** in `backend/` after repository tests pass. That is a
+Git source-of-truth implementation only. It does **not** mean production
+asset publishing is authorized and does **not** change Stage 5 Gate
+status.
+
+Client rules: [docs/CLOUD_ASSET_CONTRACT_V1.md](docs/CLOUD_ASSET_CONTRACT_V1.md).
 
 **Identified status statements in those docs are stale; definitions are
 not.** Stage / Gate / `S_wall_colmap` **current status** is this README.
