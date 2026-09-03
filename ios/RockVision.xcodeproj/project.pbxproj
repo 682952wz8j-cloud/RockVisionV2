@@ -735,7 +735,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RockVision/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = RockVision;
+				INFOPLIST_KEY_CFBundleDisplayName = CragPal;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -773,7 +773,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RockVision/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = RockVision;
+				INFOPLIST_KEY_CFBundleDisplayName = CragPal;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
