@@ -278,6 +278,15 @@ final class ReferenceAssetSourceTests: XCTestCase {
         XCTAssertFalse(cloudSource.contains("CloudAPIClient"))
     }
 
+    func testDefaultLocalizationSourceRemainsDevelopmentFixture() throws {
+        let processor = try String(contentsOf: processorURL())
+        XCTAssertTrue(processor.contains("ReferenceAssetSession.load(.developmentFixture())"))
+        XCTAssertFalse(processor.contains("cloudValidatedRelease"))
+        XCTAssertFalse(processor.contains("installRelease"))
+        XCTAssertFalse(processor.contains("installExplicitRelease"))
+        XCTAssertFalse(processor.contains("installJiulongfengDev"))
+    }
+
     func testUndocumentedLocalTypeConventionIsGone() throws {
         let source = try String(contentsOf: cloudSourceURL())
         XCTAssertFalse(source.contains("CloudStage3AssetMapping"))

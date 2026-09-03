@@ -19,7 +19,8 @@ names are unchanged.
 |--------|------|---------|
 | GET | `/health` | Process liveness. No COS credentials required. |
 | GET | `/v1/walls` | Published wall catalog only. |
-| GET | `/v1/walls/{wall_id}/manifest` | Convenience: currently published immutable release. |
+| GET | `/v1/walls/{wall_id}/manifest` | Convenience: currently published immutable release (`catalog.latestReleaseId`). |
+| GET | `/v1/walls/{wall_id}/releases/{release_id}/manifest` | Immutable explicit release. Does not consult the catalog. |
 | GET | `/v1/walls/{wall_id}/releases/{release_id}/assets/{asset_id}` | Bytes for one asset in that exact immutable release. |
 
 There is no public `/cos-test` route, no generic `/assets/{asset_path}`
@@ -32,8 +33,14 @@ or SecretKey.
 `GET /v1/walls/{wall_id}/manifest` may resolve `catalog.latestReleaseId`
 and return that release's manifest.
 
-That manifest contains `releaseId` (v1: `rXXXXXX`). The client must then
-request every asset using **that exact** `releaseId`:
+`GET /v1/walls/{wall_id}/releases/{release_id}/manifest` returns that
+exact immutable release. It does **not** read `catalog.json`, does **not**
+resolve `latestReleaseId`, and does **not** require catalog membership.
+Unknown `(wallId, releaseId)` is 404. A stored manifest whose `wallId` or
+`releaseId` does not match the request is rejected (500).
+
+That convenience or explicit manifest contains `releaseId` (v1: `rXXXXXX`).
+The client must then request every asset using **that exact** `releaseId`:
 
 `GET /v1/walls/{wall_id}/releases/{release_id}/assets/{asset_id}`
 

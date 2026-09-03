@@ -68,8 +68,10 @@ class FakeCosClient:
     def __init__(self):
         self.objects: dict[str, bytes] = {}
         self.errors: dict[str, Exception] = {}
+        self.accessed_keys: list[str] = []
 
     def get_object(self, Bucket, Key):
+        self.accessed_keys.append(Key)
         if Key in self.errors:
             raise self.errors[Key]
         if Key not in self.objects:
@@ -155,6 +157,172 @@ class ManifestTests(unittest.TestCase):
     def test_unknown_wall_returns_404(self) -> None:
         response = _client().get("/v1/walls/wall_unknown_99/manifest")
         self.assertEqual(response.status_code, 404)
+
+
+DEV_WALL_ID = "wall_jiulongfeng_01_dev"
+
+
+def _dev_manifest() -> dict:
+    payload = example_manifest()
+    payload["wallId"] = DEV_WALL_ID
+    return payload
+
+
+def _explicit_manifest_path(wall_id: str = DEV_WALL_ID, release_id: str = EXAMPLE_RELEASE_ID) -> str:
+    return f"/v1/walls/{wall_id}/releases/{release_id}/manifest"
+
+
+class ExplicitManifestTests(unittest.TestCase):
+    def test_valid_explicit_manifest_returns_200_without_catalog_membership(self) -> None:
+        store = MemoryStore(
+            catalog=example_catalog(),
+            manifests={
+                (EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID): example_manifest(),
+                (DEV_WALL_ID, EXAMPLE_RELEASE_ID): _dev_manifest(),
+            },
+            assets={(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID, EXAMPLE_ASSET_ID): EXAMPLE_ASSET_BYTES},
+        )
+        client = _client(store)
+        catalog = client.get("/v1/walls")
+        self.assertEqual(catalog.status_code, 200)
+        wall_ids = [item["wallId"] for item in catalog.json()["walls"]]
+        self.assertEqual(wall_ids, [EXAMPLE_WALL_ID])
+        self.assertNotIn(DEV_WALL_ID, wall_ids)
+
+        convenience = client.get(f"/v1/walls/{DEV_WALL_ID}/manifest")
+        self.assertEqual(convenience.status_code, 404)
+
+        response = client.get(_explicit_manifest_path())
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["schema"], MANIFEST_SCHEMA)
+        self.assertEqual(payload["wallId"], DEV_WALL_ID)
+        self.assertEqual(payload["releaseId"], EXAMPLE_RELEASE_ID)
+
+    def test_explicit_manifest_identity_matches_request(self) -> None:
+        response = _client().get(_explicit_manifest_path(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID))
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["wallId"], EXAMPLE_WALL_ID)
+        self.assertEqual(payload["releaseId"], EXAMPLE_RELEASE_ID)
+
+    def test_unknown_explicit_release_returns_404(self) -> None:
+        response = _client().get(_explicit_manifest_path(EXAMPLE_WALL_ID, "r000099"))
+        self.assertEqual(response.status_code, 404)
+        response = _client().get(_explicit_manifest_path("wall_unknown_99", EXAMPLE_RELEASE_ID))
+        self.assertEqual(response.status_code, 404)
+
+    def test_unsafe_wall_id_returns_400(self) -> None:
+        response = _client().get("/v1/walls/a:b/releases/r000001/manifest")
+        self.assertEqual(response.status_code, 400)
+
+    def test_unsafe_release_id_returns_400(self) -> None:
+        for release_id in ("latest", "r1", "r00001", "R000001", "r000001a"):
+            response = _client().get(_explicit_manifest_path(EXAMPLE_WALL_ID, release_id))
+            self.assertEqual(response.status_code, 400, release_id)
+
+    def test_malformed_published_json_returns_500(self) -> None:
+        client = _cos_example_client()
+        client.objects[published_manifest_key(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID)] = b"not-json"
+        store = CosStore(client=client, bucket="example-bucket")
+        response = _client(store).get(_explicit_manifest_path(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID))
+        self.assertEqual(response.status_code, 500)
+        self.assertNotEqual(response.status_code, 404)
+
+    def test_wall_id_mismatch_returns_500(self) -> None:
+        client = _cos_example_client()
+        payload = example_manifest()
+        payload["wallId"] = "wall_other_01"
+        client.objects[published_manifest_key(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID)] = json.dumps(
+            payload
+        ).encode("utf-8")
+        store = CosStore(client=client, bucket="example-bucket")
+        response = _client(store).get(_explicit_manifest_path(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID))
+        self.assertEqual(response.status_code, 500)
+
+    def test_release_id_mismatch_returns_500(self) -> None:
+        client = _cos_example_client()
+        payload = example_manifest()
+        payload["releaseId"] = EXAMPLE_RELEASE_ID_2
+        client.objects[published_manifest_key(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID)] = json.dumps(
+            payload
+        ).encode("utf-8")
+        store = CosStore(client=client, bucket="example-bucket")
+        response = _client(store).get(_explicit_manifest_path(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID))
+        self.assertEqual(response.status_code, 500)
+
+    def test_cos_auth_failure_returns_502(self) -> None:
+        client = FakeCosClient()
+        client.errors[published_manifest_key(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID)] = CosServiceError(
+            "GET",
+            {"code": "AccessDenied", "message": "denied", "resource": "x", "requestid": "", "traceid": ""},
+            403,
+        )
+        store = CosStore(client=client, bucket="example-bucket")
+        response = _client(store).get(_explicit_manifest_path(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID))
+        self.assertEqual(response.status_code, 502)
+        self.assertNotEqual(response.status_code, 404)
+        self.assertNotIn("AccessDenied", response.text)
+
+    def test_cos_network_failure_returns_502(self) -> None:
+        client = FakeCosClient()
+        client.errors[published_manifest_key(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID)] = CosClientError("timeout")
+        store = CosStore(client=client, bucket="example-bucket")
+        response = _client(store).get(_explicit_manifest_path(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID))
+        self.assertEqual(response.status_code, 502)
+        self.assertNotIn("timeout", response.text)
+
+    def test_missing_cos_configuration_returns_503(self) -> None:
+        saved = {
+            name: os.environ.pop(name, None)
+            for name in (
+                "TENCENT_COS_REGION",
+                "TENCENT_SECRET_ID",
+                "TENCENT_SECRET_KEY",
+                "TENCENT_COS_BUCKET",
+                "CRAGPAL_ASSET_STORE",
+            )
+        }
+        try:
+            client = TestClient(create_app())
+            response = client.get(_explicit_manifest_path(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID))
+            self.assertEqual(response.status_code, 503)
+        finally:
+            for name, value in saved.items():
+                if value is None:
+                    os.environ.pop(name, None)
+                else:
+                    os.environ[name] = value
+
+    def test_existing_convenience_manifest_and_asset_routes_unchanged(self) -> None:
+        client = _client()
+        catalog = client.get("/v1/walls")
+        self.assertEqual(catalog.status_code, 200)
+        self.assertEqual(catalog.json()["walls"][0]["wallId"], EXAMPLE_WALL_ID)
+        convenience = client.get(f"/v1/walls/{EXAMPLE_WALL_ID}/manifest")
+        self.assertEqual(convenience.status_code, 200)
+        self.assertEqual(convenience.json()["releaseId"], EXAMPLE_RELEASE_ID)
+        asset = client.get(_asset_path())
+        self.assertEqual(asset.status_code, 200)
+        self.assertEqual(asset.content, EXAMPLE_ASSET_BYTES)
+
+    def test_explicit_manifest_does_not_read_catalog(self) -> None:
+        fake = FakeCosClient()
+        payload = _dev_manifest()
+        fake.objects[published_manifest_key(DEV_WALL_ID, EXAMPLE_RELEASE_ID)] = json.dumps(
+            payload
+        ).encode("utf-8")
+        store = CosStore(client=fake, bucket="example-bucket")
+        response = _client(store).get(_explicit_manifest_path())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["wallId"], DEV_WALL_ID)
+        self.assertNotIn(published_catalog_key(), fake.accessed_keys)
+        self.assertEqual(
+            fake.accessed_keys,
+            [published_manifest_key(DEV_WALL_ID, EXAMPLE_RELEASE_ID)],
+        )
+        convenience = _client(store).get(f"/v1/walls/{DEV_WALL_ID}/manifest")
+        self.assertEqual(convenience.status_code, 404)
 
 
 class AssetTests(unittest.TestCase):
@@ -349,6 +517,7 @@ class PublicSurfaceTests(unittest.TestCase):
         self.assertIn("/health", routes)
         self.assertIn("/v1/walls", routes)
         self.assertIn("/v1/walls/{wall_id}/manifest", routes)
+        self.assertIn("/v1/walls/{wall_id}/releases/{release_id}/manifest", routes)
         self.assertIn("/v1/walls/{wall_id}/releases/{release_id}/assets/{asset_id}", routes)
 
 

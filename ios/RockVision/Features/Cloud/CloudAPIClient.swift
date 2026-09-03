@@ -46,6 +46,19 @@ struct CloudAPIClient: Sendable {
         return manifest
     }
 
+    /// Immutable explicit release. Does not consult catalog or `latestReleaseId`.
+    func fetchManifest(wallId: String, releaseId: String) async throws -> WallManifest {
+        try CloudIdentifier.requireWallId(wallId)
+        try CloudIdentifier.requireReleaseId(releaseId)
+        let request = URLRequest(url: try releaseManifestURL(wallId: wallId, releaseId: releaseId))
+        let data = try await fetchData(request)
+        let manifest = try CloudAssetContract.decodeManifest(data)
+        guard manifest.wallId == wallId, manifest.releaseId == releaseId else {
+            throw CloudAssetError.decoding
+        }
+        return manifest
+    }
+
     /// Downloads one asset for a frozen `releaseId`. Never substitutes `latestReleaseId`.
     func downloadAsset(wallId: String, releaseId: String, assetId: String) async throws -> Data {
         try CloudIdentifier.requireWallId(wallId)
@@ -62,6 +75,12 @@ struct CloudAPIClient: Sendable {
     func manifestURL(wallId: String) throws -> URL {
         try CloudIdentifier.requireWallId(wallId)
         return try url(path: ["v1", "walls", wallId, "manifest"])
+    }
+
+    func releaseManifestURL(wallId: String, releaseId: String) throws -> URL {
+        try CloudIdentifier.requireWallId(wallId)
+        try CloudIdentifier.requireReleaseId(releaseId)
+        return try url(path: ["v1", "walls", wallId, "releases", releaseId, "manifest"])
     }
 
     func assetURL(wallId: String, releaseId: String, assetId: String) throws -> URL {

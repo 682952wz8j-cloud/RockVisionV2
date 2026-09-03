@@ -4,12 +4,19 @@ import SwiftUI
 /// Minimal development surface for Cloud Asset Client v1. Not a product wall browser.
 @MainActor
 final class CloudDebugController: ObservableObject {
+    static let jiulongfengDevWallId = "wall_jiulongfeng_01_dev"
+    static let jiulongfengDevReleaseId = "r000001"
+
     @Published var catalogText = "—"
     @Published var releaseId = "—"
     @Published var phase = CloudReleasePhase.notInstalled.rawValue
     @Published var status = "idle"
     @Published var offlineCache = "none"
     @Published var lastError = ""
+    @Published var explicitWallId = CloudDebugController.jiulongfengDevWallId
+    @Published var explicitReleaseId = "—"
+    @Published var explicitPhase = CloudReleasePhase.notInstalled.rawValue
+    @Published var explicitSource = "explicit release"
 
     private let service: CloudAssetService
     private let exampleWallId = "wall_example_01"
@@ -68,6 +75,33 @@ final class CloudDebugController: ObservableObject {
         }
     }
 
+    func installJiulongfengDev() {
+        lastError = ""
+        explicitPhase = CloudReleasePhase.downloading.rawValue
+        status = "installing explicit release"
+        Task {
+            do {
+                let result = try await service.installRelease(
+                    wallId: Self.jiulongfengDevWallId,
+                    releaseId: Self.jiulongfengDevReleaseId
+                )
+                explicitWallId = result.release.wallId
+                explicitReleaseId = result.release.releaseId
+                explicitPhase = CloudReleasePhase.current.rawValue
+                explicitSource = "explicit release"
+                status = result.reusedExistingRelease
+                    ? "CURRENT \(result.release.releaseId) source=explicit release reused"
+                    : "CURRENT \(result.release.releaseId) source=explicit release"
+                refreshLocal()
+            } catch {
+                explicitPhase = CloudReleasePhase.failed.rawValue
+                status = "FAILED explicit release"
+                lastError = String(describing: error)
+                refreshLocal()
+            }
+        }
+    }
+
     func refreshLocal() {
         if let current = service.localValidatedReleaseIfPresent(wallId: exampleWallId) {
             releaseId = current.releaseId
@@ -81,6 +115,18 @@ final class CloudDebugController: ObservableObject {
                 phase = CloudReleasePhase.notInstalled.rawValue
                 releaseId = "—"
             }
+        }
+        if let current = service.localValidatedReleaseIfPresent(wallId: Self.jiulongfengDevWallId) {
+            explicitWallId = current.wallId
+            explicitReleaseId = current.releaseId
+            explicitSource = "explicit release"
+            if explicitPhase != CloudReleasePhase.downloading.rawValue {
+                explicitPhase = CloudReleasePhase.current.rawValue
+            }
+        } else if explicitPhase != CloudReleasePhase.downloading.rawValue
+            && explicitPhase != CloudReleasePhase.failed.rawValue {
+            explicitReleaseId = "—"
+            explicitPhase = CloudReleasePhase.notInstalled.rawValue
         }
     }
 }
@@ -101,6 +147,10 @@ struct CloudDebugPanel: View {
             Text("release: \(controller.releaseId)")
             Text("state: \(controller.phase)")
             Text("cache: \(controller.offlineCache)")
+            Text("explicit wallId: \(controller.explicitWallId)")
+            Text("explicit releaseId: \(controller.explicitReleaseId)")
+            Text("explicit source: \(controller.explicitSource)")
+            Text("explicit state: \(controller.explicitPhase)")
             Text(controller.status)
             if !controller.lastError.isEmpty {
                 Text(controller.lastError)
@@ -110,6 +160,7 @@ struct CloudDebugPanel: View {
                 cloudButton("Fetch Catalog", action: controller.fetchCatalog)
                 cloudButton("Download / Update", action: controller.downloadExample)
             }
+            cloudButton("Install Jiulongfeng Dev r000001", action: controller.installJiulongfengDev)
         }
         .font(.system(size: 10, weight: .regular, design: .monospaced))
         .foregroundStyle(.white)

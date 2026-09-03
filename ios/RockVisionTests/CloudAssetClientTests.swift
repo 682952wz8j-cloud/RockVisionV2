@@ -5,6 +5,7 @@ import XCTest
 final class MockCloudTransport: CloudHTTPTransport, @unchecked Sendable {
     var catalogJSON: Data?
     var manifestJSONByWall: [String: Data] = [:]
+    var manifestJSONByRelease: [String: Data] = [:]
     var assetBytes: [String: Data] = [:]
     var statusByPath: [String: Int] = [:]
     var networkError = false
@@ -31,9 +32,23 @@ final class MockCloudTransport: CloudHTTPTransport, @unchecked Sendable {
         if path == "/v1/walls" {
             return try ok(catalogJSON ?? Data(), url)
         }
-        if path.hasSuffix("/manifest") {
-            let wallId = path.split(separator: "/").dropFirst(2).first.map(String.init) ?? ""
-            return try ok(manifestJSONByWall[wallId] ?? Data(), url)
+        let parts = path.split(separator: "/").map(String.init)
+        if parts.count == 6,
+           parts[0] == "v1",
+           parts[1] == "walls",
+           parts[3] == "releases",
+           parts[5] == "manifest" {
+            let key = "\(parts[2])/\(parts[4])"
+            if let payload = manifestJSONByRelease[key] {
+                return try ok(payload, url)
+            }
+            return (Data(), HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!)
+        }
+        if parts.count == 4,
+           parts[0] == "v1",
+           parts[1] == "walls",
+           parts[3] == "manifest" {
+            return try ok(manifestJSONByWall[parts[2]] ?? Data(), url)
         }
         if let payload = assetBytes[path] {
             return try ok(payload, url)
@@ -562,6 +577,170 @@ final class CloudAssetClientTests: XCTestCase {
         XCTAssertEqual(pointer.releaseId, release1)
     }
 
+    func testExplicitManifestURLUsesWallAndReleaseIds() throws {
+        let client = CloudAPIClient(configuration: .development, transport: MockCloudTransport())
+        let url = try client.releaseManifestURL(wallId: wallId, releaseId: release1)
+        XCTAssertEqual(
+            url.absoluteString,
+            "http://124.223.178.91/v1/walls/wall_example_01/releases/r000001/manifest"
+        )
+        XCTAssertTrue(url.path.contains("/v1/walls/\(wallId)/releases/\(release1)/manifest"))
+        XCTAssertEqual(try client.manifestURL(wallId: wallId).path, "/v1/walls/\(wallId)/manifest")
+    }
+
+    func testExplicitManifestRequestPathDoesNotUseCatalogOrConvenienceRoute() async throws {
+        let transport = MockCloudTransport()
+        transport.manifestJSONByRelease["\(wallId)/\(release1)"] = manifestJSON(releaseId: release1, bytes: exampleBytes)
+        let client = CloudAPIClient(configuration: .custom(URL(string: "https://cloud.test")!), transport: transport)
+        let manifest = try await client.fetchManifest(wallId: wallId, releaseId: release1)
+        XCTAssertEqual(manifest.wallId, wallId)
+        XCTAssertEqual(manifest.releaseId, release1)
+        XCTAssertEqual(transport.requestedPaths, ["/v1/walls/\(wallId)/releases/\(release1)/manifest"])
+        XCTAssertFalse(transport.requestedPaths.contains("/v1/walls"))
+        XCTAssertFalse(transport.requestedPaths.contains("/v1/walls/\(wallId)/manifest"))
+    }
+
+    func testConvenienceFetchManifestPathUnchanged() async throws {
+        let transport = MockCloudTransport()
+        transport.manifestJSONByWall[wallId] = manifestJSON(releaseId: release1, bytes: exampleBytes)
+        let client = CloudAPIClient(configuration: .custom(URL(string: "https://cloud.test")!), transport: transport)
+        let manifest = try await client.fetchManifest(wallId: wallId)
+        XCTAssertEqual(manifest.releaseId, release1)
+        XCTAssertEqual(transport.requestedPaths, ["/v1/walls/\(wallId)/manifest"])
+        XCTAssertFalse(transport.requestedPaths.contains("/v1/walls/\(wallId)/releases/\(release1)/manifest"))
+    }
+
+    func testExplicitManifestWallIdMismatchRejected() async {
+        let transport = MockCloudTransport()
+        transport.manifestJSONByRelease["\(wallId)/\(release1)"] = manifestJSON(
+            wallId: "wall_other_01",
+            releaseId: release1,
+            bytes: exampleBytes
+        )
+        let client = CloudAPIClient(configuration: .custom(URL(string: "https://cloud.test")!), transport: transport)
+        do {
+            _ = try await client.fetchManifest(wallId: wallId, releaseId: release1)
+            XCTFail("expected mismatch")
+        } catch {
+            XCTAssertEqual(error as? CloudAssetError, .decoding)
+        }
+    }
+
+    func testExplicitManifestReleaseIdMismatchRejected() async {
+        let transport = MockCloudTransport()
+        transport.manifestJSONByRelease["\(wallId)/\(release1)"] = manifestJSON(releaseId: release2, bytes: exampleBytes)
+        let client = CloudAPIClient(configuration: .custom(URL(string: "https://cloud.test")!), transport: transport)
+        do {
+            _ = try await client.fetchManifest(wallId: wallId, releaseId: release1)
+            XCTFail("expected mismatch")
+        } catch {
+            XCTAssertEqual(error as? CloudAssetError, .decoding)
+        }
+    }
+
+    func testExplicitReleaseInstallSucceedsWithoutCatalog() async throws {
+        let transport = MockCloudTransport()
+        transport.manifestJSONByRelease["\(wallId)/\(release1)"] = manifestJSON(releaseId: release1, bytes: exampleBytes)
+        transport.assetBytes[assetPath(release1)] = exampleBytes
+        let store = CloudReleaseStore(rootURL: uniqueRoot())
+        let service = CloudAssetService(
+            client: CloudAPIClient(configuration: .custom(URL(string: "https://cloud.test")!), transport: transport),
+            store: store
+        )
+        let result = try await service.installRelease(wallId: wallId, releaseId: release1)
+        XCTAssertFalse(result.reusedExistingRelease)
+        XCTAssertEqual(result.release.wallId, wallId)
+        XCTAssertEqual(result.release.releaseId, release1)
+        let current = try service.localValidatedRelease(wallId: wallId)
+        XCTAssertEqual(current.releaseId, release1)
+        let pointer = try JSONDecoder().decode(
+            CloudCurrentPointer.self,
+            from: try Data(contentsOf: store.currentPointerURL(wallId: wallId))
+        )
+        XCTAssertEqual(pointer.state, "READY")
+        XCTAssertEqual(pointer.releaseId, release1)
+        let data = try Data(contentsOf: try service.localAssetURL(wallId: wallId, assetId: assetId))
+        XCTAssertEqual(data, exampleBytes)
+        try CloudIntegrity.verify(data: data, descriptor: result.release.manifest.assets[0])
+        XCTAssertFalse(transport.requestedPaths.contains("/v1/walls"))
+        XCTAssertFalse(transport.requestedPaths.contains("/v1/walls/\(wallId)/manifest"))
+        XCTAssertTrue(transport.requestedPaths.contains("/v1/walls/\(wallId)/releases/\(release1)/manifest"))
+        XCTAssertTrue(transport.requestedPaths.contains(assetPath(release1)))
+    }
+
+    func testExplicitSameReleaseReuseDoesNotReplaceBytes() async throws {
+        let first = try await installExplicitExample()
+        let original = try Data(contentsOf: first.release.fileURL(forAssetId: assetId))
+        let transport = MockCloudTransport()
+        transport.manifestJSONByRelease["\(wallId)/\(release1)"] = manifestJSON(releaseId: release1, bytes: exampleBytes)
+        transport.assetBytes[assetPath(release1)] = Data("should-not-be-written".utf8)
+        let service = CloudAssetService(
+            client: CloudAPIClient(configuration: .custom(URL(string: "https://cloud.test")!), transport: transport),
+            store: first.store
+        )
+        let result = try await service.installRelease(wallId: wallId, releaseId: release1)
+        XCTAssertTrue(result.reusedExistingRelease)
+        XCTAssertEqual(try Data(contentsOf: first.release.fileURL(forAssetId: assetId)), original)
+        XCTAssertFalse(transport.requestedPaths.contains { $0.contains("/assets/") })
+    }
+
+    func testExplicitSameReleaseConflictFailsClosed() async throws {
+        let first = try await installExplicitExample()
+        let original = try Data(contentsOf: first.release.fileURL(forAssetId: assetId))
+        let pointerBefore = try Data(contentsOf: first.store.currentPointerURL(wallId: wallId))
+        let transport = MockCloudTransport()
+        transport.manifestJSONByRelease["\(wallId)/\(release1)"] = manifestJSON(releaseId: release1, bytes: exampleBytesV2)
+        let service = CloudAssetService(
+            client: CloudAPIClient(configuration: .custom(URL(string: "https://cloud.test")!), transport: transport),
+            store: first.store
+        )
+        do {
+            _ = try await service.installRelease(wallId: wallId, releaseId: release1)
+            XCTFail("expected conflict")
+        } catch {
+            XCTAssertEqual(error as? CloudAssetError, .immutableReleaseConflict)
+        }
+        XCTAssertEqual(try Data(contentsOf: first.release.fileURL(forAssetId: assetId)), original)
+        XCTAssertEqual(try Data(contentsOf: first.store.currentPointerURL(wallId: wallId)), pointerBefore)
+        XCTAssertFalse(transport.requestedPaths.contains { $0.contains("/assets/") })
+    }
+
+    func testUnknownExplicitReleaseFails() async {
+        let transport = MockCloudTransport()
+        let service = CloudAssetService(
+            client: CloudAPIClient(configuration: .custom(URL(string: "https://cloud.test")!), transport: transport),
+            store: CloudReleaseStore(rootURL: uniqueRoot())
+        )
+        do {
+            _ = try await service.installRelease(wallId: wallId, releaseId: release1)
+            XCTFail("expected unknown release")
+        } catch {
+            XCTAssertEqual(error as? CloudAssetError, .httpStatus(404))
+        }
+        XCTAssertFalse(transport.requestedPaths.contains("/v1/walls"))
+    }
+
+    func testNormalCatalogDoesNotIncludeDevelopmentWall() throws {
+        let catalog = try CloudAssetContract.decodeCatalog(catalogJSON(latest: release1))
+        XCTAssertEqual(catalog.walls.map(\.wallId), [wallId])
+        XCTAssertFalse(catalog.walls.contains { $0.wallId == "wall_jiulongfeng_01_dev" })
+    }
+
+    func testDebugExplicitInstallDoesNotCallCatalog() throws {
+        let source = try String(contentsOf: debugPanelSourceURL())
+        XCTAssertTrue(source.contains("Install Jiulongfeng Dev r000001"))
+        XCTAssertTrue(source.contains("installRelease("))
+        XCTAssertTrue(source.contains("wall_jiulongfeng_01_dev"))
+        XCTAssertTrue(source.contains("r000001"))
+        XCTAssertTrue(source.contains("explicit release"))
+        XCTAssertFalse(source.contains("ReferenceAssetSession.load(.cloudValidatedRelease"))
+        let installRange = source.range(of: "func installJiulongfengDev()")!
+        let refreshRange = source.range(of: "func refreshLocal()")!
+        let installBody = String(source[installRange.lowerBound..<refreshRange.lowerBound])
+        XCTAssertFalse(installBody.contains("fetchCatalog"))
+        XCTAssertFalse(installBody.contains("refreshAndInstall"))
+    }
+
     private struct Installed {
         var store: CloudReleaseStore
         var release: LocalValidatedRelease
@@ -577,6 +756,19 @@ final class CloudAssetClientTests: XCTestCase {
             store: usedStore
         )
         let result = try await installer.installPublishedRelease(wallId: wallId)
+        return Installed(store: usedStore, release: result.release)
+    }
+
+    private func installExplicitExample(store: CloudReleaseStore? = nil) async throws -> Installed {
+        let transport = MockCloudTransport()
+        transport.manifestJSONByRelease["\(wallId)/\(release1)"] = manifestJSON(releaseId: release1, bytes: exampleBytes)
+        transport.assetBytes[assetPath(release1)] = exampleBytes
+        let usedStore = store ?? CloudReleaseStore(rootURL: uniqueRoot())
+        let service = CloudAssetService(
+            client: CloudAPIClient(configuration: .custom(URL(string: "https://cloud.test")!), transport: transport),
+            store: usedStore
+        )
+        let result = try await service.installRelease(wallId: wallId, releaseId: release1)
         return Installed(store: usedStore, release: result.release)
     }
 
@@ -602,6 +794,7 @@ final class CloudAssetClientTests: XCTestCase {
 
     private func manifestJSON(
         schema: String = CloudAssetSchema.manifest,
+        wallId overrideWallId: String? = nil,
         releaseId: String,
         bytes: Data,
         shaOverride: String? = nil,
@@ -609,9 +802,10 @@ final class CloudAssetClientTests: XCTestCase {
     ) -> Data {
         let sha = shaOverride ?? CloudIntegrity.sha256Hex(bytes)
         let count = bytesOverride ?? bytes.count
+        let id = overrideWallId ?? wallId
         return Data(
             """
-            {"schema":"\(schema)","wallId":"\(wallId)","releaseId":"\(releaseId)","createdAt":"2026-09-02T15:30:00Z","assets":[{"assetId":"\(assetId)","type":"reference_map","required":true,"sha256":"\(sha)","bytes":\(count)}]}
+            {"schema":"\(schema)","wallId":"\(id)","releaseId":"\(releaseId)","createdAt":"2026-09-02T15:30:00Z","assets":[{"assetId":"\(assetId)","type":"reference_map","required":true,"sha256":"\(sha)","bytes":\(count)}]}
             """.utf8
         )
     }
@@ -642,5 +836,13 @@ final class CloudAssetClientTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("RockVision/Features/Cloud/CloudAPIClient.swift")
+    }
+
+    private func debugPanelSourceURL() throws -> URL {
+        let tests = URL(fileURLWithPath: #filePath)
+        return tests
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("RockVision/Features/Cloud/CloudDebugPanel.swift")
     }
 }

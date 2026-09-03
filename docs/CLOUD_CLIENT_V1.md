@@ -26,9 +26,16 @@ The client only builds:
 
 - `GET /v1/walls`
 - `GET /v1/walls/{wallId}/manifest`
+- `GET /v1/walls/{wallId}/releases/{releaseId}/manifest`
 - `GET /v1/walls/{wallId}/releases/{releaseId}/assets/{assetId}`
 
 `/v1/walls/{wallId}/assets/{assetId}` is not used.
+
+Convenience `fetchManifest(wallId:)` uses catalog `latestReleaseId`.
+Explicit `fetchManifest(wallId:releaseId:)` does not consult the catalog.
+Debug/test may install a known immutable development release this way.
+That is **not** catalog discovery and does **not** switch camera
+localization off the Bundle development fixture.
 
 Asset downloads always use the frozen `manifest.releaseId`.
 
@@ -82,9 +89,13 @@ concrete opaque `assetId` with `localAssetURL`. `assetId` is not a
 filename.
 
 This does **not** mean a real Cloud-hosted Stage 3 package has been
-published. `wall_example_01` / `r000001` / 38-byte `reference-map`
-(`type: reference_map`) is not a ReferenceDatabase and must not be used
-to claim Cloud visual localization.
+consumed for localization. `wall_example_01` / `r000001` / 38-byte
+`reference-map` (`type: reference_map`) is not a ReferenceDatabase.
+A DEVELOPMENT_TEST_ONLY COS release (`wall_jiulongfeng_01_dev` /
+`r000001`) may be installed through the explicit release path. That is
+**EXPLICIT CLOUD RELEASE INSTALLATION READY**, not Cloud-hosted
+ReferenceDatabase localization. Camera default remains the Bundle
+`DevelopmentFixture`.
 
 Offline localization uses previously downloaded local assets, never live
 Cloud requests.

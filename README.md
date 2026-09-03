@@ -393,6 +393,7 @@ Do **not** treat HTTPS as PASS. This repository does **not** claim that
 
 Cloud Asset Contract v1 (`GET /health`, `GET /v1/walls`,
 `GET /v1/walls/{wall_id}/manifest`,
+`GET /v1/walls/{wall_id}/releases/{release_id}/manifest`,
 `GET /v1/walls/{wall_id}/releases/{release_id}/assets/{asset_id}`)
 is **IMPLEMENTED** in `backend/` after repository tests pass. That is a
 Git source-of-truth implementation only. It does **not** mean production
@@ -409,7 +410,7 @@ for Cloud Asset API v1. Visual localization / AR / Stage 5 are unchanged.
 | Item | Status |
 |------|--------|
 | Contract models + schema check | implemented |
-| Catalog / manifest / release-scoped asset GET | implemented |
+| Catalog / convenience manifest / release-scoped manifest / asset GET | implemented |
 | bytes + SHA-256 verify, atomic CURRENT | implemented |
 | Offline use of previous CURRENT | implemented |
 | Reference asset source bridge (Bundle or validated Cloud CURRENT) | implemented (not Cloud localization E2E) |
@@ -431,6 +432,7 @@ published. Current status:
 - Cloud distribution infrastructure = PASS
 - Cloud Client v1 = PASS
 - Cloud → local validated asset bridge = implemented
+- Explicit Cloud release installation = **READY** (not a real-device PASS)
 - Cloud-hosted real ReferenceDatabase localization = **NOT PROVEN**
 
 The 38-byte `reference-map` fixture is not a Stage 3 ReferenceDatabase.
@@ -440,7 +442,10 @@ ATS: DEBUG may use the temporary HTTP IP exception
 IP exception from Release. Production endpoint is `https://api.cragpal.com`.
 
 Debug UI only: Fetch Catalog / Download for `wall_example_01` (API E2E
-fixture text, **not** a real Reference Map).
+fixture text, **not** a real Reference Map). Separate Debug action:
+Install Jiulongfeng Dev `r000001` via explicit `wallId`+`releaseId`
+(catalog-independent). That install does **not** switch camera
+localization to Cloud.
 
 **Identified status statements in those docs are stale; definitions are
 not.** Stage / Gate / `S_wall_colmap` **current status** is this README.

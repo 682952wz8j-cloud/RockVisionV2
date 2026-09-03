@@ -38,4 +38,9 @@ final class CloudAssetService: @unchecked Sendable {
     func refreshAndInstall(wallId: String) async throws -> CloudInstallResult {
         try await installer.installPublishedRelease(wallId: wallId)
     }
+
+    /// Debug/test only: install one known immutable release without catalog discovery.
+    func installRelease(wallId: String, releaseId: String) async throws -> CloudInstallResult {
+        try await installer.installExplicitRelease(wallId: wallId, releaseId: releaseId)
+    }
 }

@@ -30,57 +30,76 @@ final class CloudReleaseInstaller: @unchecked Sendable {
         try CloudIdentifier.requireWallId(wallId)
         do {
             let manifest = try await client.fetchManifest(wallId: wallId)
-            let frozenReleaseId = manifest.releaseId
-            try CloudIdentifier.requireReleaseId(frozenReleaseId)
-
-            switch store.inspectImmutableRelease(wallId: wallId, releaseId: frozenReleaseId) {
-            case .valid(let existing):
-                guard CloudAssetContract.sameImmutableRelease(existing.manifest, manifest) else {
-                    throw CloudAssetError.immutableReleaseConflict
-                }
-                let adopted = try store.adoptExistingReleaseAsCurrent(wallId: wallId, releaseId: frozenReleaseId)
-                return CloudInstallResult(release: adopted, optionalFailures: [], reusedExistingRelease: true)
-            case .corrupt:
-                throw CloudAssetError.storageFailure("local immutable release is corrupt")
-            case .absent:
-                break
-            }
-
-            let staging = try store.prepareStaging(wallId: wallId, releaseId: frozenReleaseId)
-            try store.writeManifest(manifest, toReleaseRoot: staging)
-
-            var optionalFailures: [String] = []
-            for asset in manifest.assets {
-                do {
-                    let data = try await client.downloadAsset(
-                        wallId: wallId,
-                        releaseId: frozenReleaseId,
-                        assetId: asset.assetId
-                    )
-                    try store.commitVerifiedAsset(data, descriptor: asset, toReleaseRoot: staging)
-                } catch {
-                    store.deleteAssetIfPresent(assetId: asset.assetId, inReleaseRoot: staging)
-                    if asset.required {
-                        store.discardStaging(wallId: wallId, releaseId: frozenReleaseId)
-                        throw mappedFailure(error)
-                    }
-                    optionalFailures.append(asset.assetId)
-                }
-            }
-
-            let activated = try store.activateVerifiedStaging(
-                wallId: wallId,
-                releaseId: frozenReleaseId,
-                manifest: manifest
-            )
-            return CloudInstallResult(
-                release: activated,
-                optionalFailures: optionalFailures,
-                reusedExistingRelease: false
-            )
+            return try await installFetchedManifest(wallId: wallId, manifest: manifest)
         } catch {
             throw mappedFailure(error)
         }
+    }
+
+    /// Explicit immutable release. Does not consult catalog or `latestReleaseId`.
+    func installExplicitRelease(wallId: String, releaseId: String) async throws -> CloudInstallResult {
+        try CloudIdentifier.requireWallId(wallId)
+        try CloudIdentifier.requireReleaseId(releaseId)
+        do {
+            let manifest = try await client.fetchManifest(wallId: wallId, releaseId: releaseId)
+            guard manifest.wallId == wallId, manifest.releaseId == releaseId else {
+                throw CloudAssetError.decoding
+            }
+            return try await installFetchedManifest(wallId: wallId, manifest: manifest)
+        } catch {
+            throw mappedFailure(error)
+        }
+    }
+
+    private func installFetchedManifest(wallId: String, manifest: WallManifest) async throws -> CloudInstallResult {
+        let frozenReleaseId = manifest.releaseId
+        try CloudIdentifier.requireReleaseId(frozenReleaseId)
+
+        switch store.inspectImmutableRelease(wallId: wallId, releaseId: frozenReleaseId) {
+        case .valid(let existing):
+            guard CloudAssetContract.sameImmutableRelease(existing.manifest, manifest) else {
+                throw CloudAssetError.immutableReleaseConflict
+            }
+            let adopted = try store.adoptExistingReleaseAsCurrent(wallId: wallId, releaseId: frozenReleaseId)
+            return CloudInstallResult(release: adopted, optionalFailures: [], reusedExistingRelease: true)
+        case .corrupt:
+            throw CloudAssetError.storageFailure("local immutable release is corrupt")
+        case .absent:
+            break
+        }
+
+        let staging = try store.prepareStaging(wallId: wallId, releaseId: frozenReleaseId)
+        try store.writeManifest(manifest, toReleaseRoot: staging)
+
+        var optionalFailures: [String] = []
+        for asset in manifest.assets {
+            do {
+                let data = try await client.downloadAsset(
+                    wallId: wallId,
+                    releaseId: frozenReleaseId,
+                    assetId: asset.assetId
+                )
+                try store.commitVerifiedAsset(data, descriptor: asset, toReleaseRoot: staging)
+            } catch {
+                store.deleteAssetIfPresent(assetId: asset.assetId, inReleaseRoot: staging)
+                if asset.required {
+                    store.discardStaging(wallId: wallId, releaseId: frozenReleaseId)
+                    throw mappedFailure(error)
+                }
+                optionalFailures.append(asset.assetId)
+            }
+        }
+
+        let activated = try store.activateVerifiedStaging(
+            wallId: wallId,
+            releaseId: frozenReleaseId,
+            manifest: manifest
+        )
+        return CloudInstallResult(
+            release: activated,
+            optionalFailures: optionalFailures,
+            reusedExistingRelease: false
+        )
     }
 
     private func mappedFailure(_ error: Error) -> CloudAssetError {

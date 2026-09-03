@@ -58,6 +58,12 @@ def create_app(store=None) -> FastAPI:
         _reject_unsafe_wall(wall_id)
         return resolve_store().manifest(wall_id)
 
+    @app.get("/v1/walls/{wall_id}/releases/{release_id}/manifest")
+    def wall_release_manifest(wall_id: str, release_id: str) -> dict:
+        _reject_unsafe_wall(wall_id)
+        _reject_unsafe_release(release_id)
+        return resolve_store().manifest_for_release(wall_id, release_id)
+
     @app.get("/v1/walls/{wall_id}/releases/{release_id}/assets/{asset_id}")
     def wall_release_asset(wall_id: str, release_id: str, asset_id: str) -> Response:
         _reject_unsafe_wall(wall_id)
