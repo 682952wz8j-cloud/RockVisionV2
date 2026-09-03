@@ -6,6 +6,7 @@ struct ContentView: View {
     @StateObject private var sessionHost = ARSessionHost()
     @StateObject private var openCV = OpenCVFrameProcessor()
     @StateObject private var fieldTest = FieldTestController()
+    @StateObject private var cloudDebug = CloudDebugController()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -19,6 +20,14 @@ struct ContentView: View {
                     .ignoresSafeArea()
                 KeypointOverlayView(points: openCV.siftSnapshot.overlayViewPoints)
                     .ignoresSafeArea()
+                VStack {
+                    HStack {
+                        Spacer()
+                        CloudDebugPanel(controller: cloudDebug)
+                    }
+                    Spacer()
+                }
+                .ignoresSafeArea(edges: .top)
                 FieldTestPanel(
                     controller: fieldTest,
                     tracking: sessionHost.snapshot.trackingState,

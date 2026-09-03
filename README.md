@@ -365,6 +365,7 @@ Details: [incoming/README.md](incoming/README.md).
 | [docs/OPENCV_IOS_BUILD.md](docs/OPENCV_IOS_BUILD.md) | Pinned OpenCV 4.14.0 xcframework build |
 | [docs/DEVELOPMENT_GATES.md](docs/DEVELOPMENT_GATES.md) | Gate discipline; live status at top; Gate 0–11 body is early plan numbering |
 | [docs/CLOUD_ASSET_CONTRACT_V1.md](docs/CLOUD_ASSET_CONTRACT_V1.md) | CragPal Cloud Asset API v1 client contract (not production publishing) |
+| [docs/CLOUD_CLIENT_V1.md](docs/CLOUD_CLIENT_V1.md) | iOS Cloud Asset Client v1 (cache/install only; not Stage 5) |
 | [incoming/README.md](incoming/README.md) | How to add a wall (raw drop) |
 
 ---
@@ -399,6 +400,30 @@ asset publishing is authorized and does **not** change Stage 5 Gate
 status.
 
 Client rules: [docs/CLOUD_ASSET_CONTRACT_V1.md](docs/CLOUD_ASSET_CONTRACT_V1.md).
+
+## Cloud Asset Client v1 (iOS)
+
+Repository implementation of the iPhone **Cloud Client + Local Cache**
+for Cloud Asset API v1. Visual localization / AR / Stage 5 are unchanged.
+
+| Item | Status |
+|------|--------|
+| Contract models + schema check | implemented |
+| Catalog / manifest / release-scoped asset GET | implemented |
+| bytes + SHA-256 verify, atomic CURRENT | implemented |
+| Offline use of previous CURRENT | implemented |
+| Production wall package / Jinshidong publish | **not authorized** |
+| Stage 5 / Gate 5D | **unchanged** |
+
+`Cloud Client capable` is **not** production wall package authorization
+and **not** Stage 5 PASS. BUILD ≠ PUBLISHED remains in force.
+
+ATS: DEBUG may use the temporary HTTP IP exception
+(`124.223.178.91`). Before production / App Store release, remove that
+IP exception from Release. Production endpoint is `https://api.cragpal.com`.
+
+Debug UI only: Fetch Catalog / Download for `wall_example_01` (API E2E
+fixture text, **not** a real Reference Map).
 
 **Identified status statements in those docs are stale; definitions are
 not.** Stage / Gate / `S_wall_colmap` **current status** is this README.
