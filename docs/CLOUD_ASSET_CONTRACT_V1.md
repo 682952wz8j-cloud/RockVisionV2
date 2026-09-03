@@ -139,6 +139,67 @@ CORRUPT
 
 Only `READY` may become `CURRENT`.
 
+## Stage 3 semantic types
+
+`asset.type` is an opaque string on the wire. Cloud Asset Contract v1
+freezes the following vocabulary for Stage 3 localization consumption.
+This is a backward-compatible meaning for existing manifest fields. It
+does **not** change catalog/manifest schema names, HTTP routes, COS
+layout, or release immutability.
+
+| `type` | Meaning |
+|--------|---------|
+| `reference_descriptors_rvs1` | Existing Stage 3 `ReferenceDatabase` descriptor binary: RVS1, float32 × 128. Parsed only by the existing `ReferenceDatabase` loader. |
+| `reference_landmarks_json` | Existing Stage 3 landmark metadata JSON (Point3D / reference image / keypoint / `colmapXYZ`). Parsed only by the existing `ReferenceDatabase` loader. |
+
+Both types are **required** for a Cloud-hosted Stage 3 localization
+package.
+
+`assetId` remains an opaque manifest identifier. It is **not** a
+filename and must not be inferred from COS object names.
+
+Example only (not a published package):
+
+```json
+{
+  "schema": "cragpal.wall-manifest.v1",
+  "wallId": "wall_example_stage3",
+  "releaseId": "r000002",
+  "createdAt": "2026-09-03T00:00:00Z",
+  "assets": [
+    {
+      "assetId": "stage3-descriptors",
+      "type": "reference_descriptors_rvs1",
+      "required": true,
+      "sha256": "<64 lowercase hex characters>",
+      "bytes": 123456
+    },
+    {
+      "assetId": "stage3-landmarks",
+      "type": "reference_landmarks_json",
+      "required": true,
+      "sha256": "<64 lowercase hex characters>",
+      "bytes": 23456
+    }
+  ]
+}
+```
+
+A usable Stage 3 release must contain **exactly one** required asset of
+type `reference_descriptors_rvs1` and **exactly one** required asset of
+type `reference_landmarks_json`. Fail closed if either type is missing,
+either is `required=false`, or more than one asset of either semantic
+type exists. Do not pick the first match.
+
+Cloud identifies and verifies bytes. It does not parse RVS1 or landmarks
+JSON. The existing `ReferenceDatabase` remains authoritative for those
+formats.
+
+Defining this vocabulary does **not** mean a real Cloud-hosted Stage 3
+package has been published. The current example wall
+(`wall_example_01` / `r000001` / `type: reference_map`) is a synthetic
+opaque blob and is **not** a Stage 3 ReferenceDatabase.
+
 ## Example catalog
 
 ```json

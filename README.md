@@ -412,11 +412,28 @@ for Cloud Asset API v1. Visual localization / AR / Stage 5 are unchanged.
 | Catalog / manifest / release-scoped asset GET | implemented |
 | bytes + SHA-256 verify, atomic CURRENT | implemented |
 | Offline use of previous CURRENT | implemented |
+| Reference asset source bridge (Bundle or validated Cloud CURRENT) | implemented (not Cloud localization E2E) |
 | Production wall package / Jinshidong publish | **not authorized** |
 | Stage 5 / Gate 5D | **unchanged** |
 
 `Cloud Client capable` is **not** production wall package authorization
 and **not** Stage 5 PASS. BUILD ≠ PUBLISHED remains in force.
+
+Localization input may resolve a Bundle development fixture **or** a
+validated local Cloud CURRENT release. Cloud is not in the per-frame
+loop.
+
+Cloud Asset Contract v1 Stage 3 vocabulary
+(`reference_descriptors_rvs1`, `reference_landmarks_json`) is frozen.
+That does **not** mean a Cloud-hosted ReferenceDatabase has been
+published. Current status:
+
+- Cloud distribution infrastructure = PASS
+- Cloud Client v1 = PASS
+- Cloud → local validated asset bridge = implemented
+- Cloud-hosted real ReferenceDatabase localization = **NOT PROVEN**
+
+The 38-byte `reference-map` fixture is not a Stage 3 ReferenceDatabase.
 
 ATS: DEBUG may use the temporary HTTP IP exception
 (`124.223.178.91`). Before production / App Store release, remove that

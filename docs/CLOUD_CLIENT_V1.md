@@ -55,6 +55,40 @@ install fails closed and does not overwrite that directory.
 the manifest, the file exists, and bytes + SHA-256 verify. Failed optional
 assets are not exposed.
 
+## Localization input bridge
+
+Cloud distribution → local validated CURRENT release →
+`ReferenceAssetSource` → existing `ReferenceDatabase.load`.
+
+The camera / matching loop consumes **local file URLs only**. It does not
+call `fetchCatalog`, `fetchManifest`, `downloadAsset`, or `URLSession`.
+
+Selection is explicit:
+
+- development fixture mode → Bundle `DevelopmentFixture`
+- cloud wall mode → validated local CURRENT via `localValidatedRelease` /
+  `localAssetURL`
+
+Cloud mode does **not** fall back to Bundle.
+
+Cloud Asset Contract v1 freezes Stage 3 semantic types:
+
+- `reference_descriptors_rvs1`
+- `reference_landmarks_json`
+
+A Cloud Stage 3 package must contain exactly one **required** asset of
+each type. The client resolves by semantic `type`, then uses the
+concrete opaque `assetId` with `localAssetURL`. `assetId` is not a
+filename.
+
+This does **not** mean a real Cloud-hosted Stage 3 package has been
+published. `wall_example_01` / `r000001` / 38-byte `reference-map`
+(`type: reference_map`) is not a ReferenceDatabase and must not be used
+to claim Cloud visual localization.
+
+Offline localization uses previously downloaded local assets, never live
+Cloud requests.
+
 ## ATS (temporary)
 
 DEBUG may use the development HTTP IP. Release `CloudAPIConfiguration.default`

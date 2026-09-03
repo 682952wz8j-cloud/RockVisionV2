@@ -23,7 +23,10 @@ struct ContentView: View {
                 VStack {
                     HStack {
                         Spacer()
-                        CloudDebugPanel(controller: cloudDebug)
+                        CloudDebugPanel(
+                            controller: cloudDebug,
+                            cameraProvenance: openCV.referenceAssetProvenance
+                        )
                     }
                     Spacer()
                 }

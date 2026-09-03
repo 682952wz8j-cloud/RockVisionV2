@@ -87,11 +87,16 @@ final class CloudDebugController: ObservableObject {
 
 struct CloudDebugPanel: View {
     @ObservedObject var controller: CloudDebugController
+    var cameraProvenance: ReferenceAssetProvenance = .unavailable
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Cloud Client v1")
                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
+            Text("Reference source: \(cameraProvenance.source)")
+            Text("wallId: \(cameraProvenance.wallId)")
+            Text("releaseId: \(cameraProvenance.releaseId)")
+            Text("asset state: \(cameraProvenance.assetState)")
             Text("catalog: \(controller.catalogText)")
             Text("release: \(controller.releaseId)")
             Text("state: \(controller.phase)")

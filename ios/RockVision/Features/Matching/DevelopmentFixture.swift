@@ -59,7 +59,8 @@ enum DevelopmentFixture {
         }
     }
 
-    static func loadVerified(from directory: URL) throws -> ReferenceDatabase {
+    /// Identity + SHA checks only. Does not parse the matcher database.
+    static func verifiedAssetURLs(from directory: URL) throws -> (manifest: Manifest, descriptors: URL, landmarks: URL) {
         let manifest = try loadManifest(from: directory.appendingPathComponent("manifest.json"))
         try verifyIdentity(manifest)
         let descriptorsURL = directory.appendingPathComponent(manifest.descriptorsPath)
@@ -86,18 +87,26 @@ enum DevelopmentFixture {
                 actual: landmarksSha
             )
         }
-        let database = try ReferenceDatabase.load(descriptorsURL: descriptorsURL, landmarksURL: landmarksURL)
-        if database.descriptorCount != manifest.descriptorCount {
+        return (manifest, descriptorsURL, landmarksURL)
+    }
+
+    static func loadVerified(from directory: URL) throws -> ReferenceDatabase {
+        let verified = try verifiedAssetURLs(from: directory)
+        let database = try ReferenceDatabase.load(
+            descriptorsURL: verified.descriptors,
+            landmarksURL: verified.landmarks
+        )
+        if database.descriptorCount != verified.manifest.descriptorCount {
             throw MatchingError.landmarkCountMismatch(
                 descriptors: database.descriptorCount,
-                landmarks: manifest.descriptorCount
+                landmarks: verified.manifest.descriptorCount
             )
         }
         let unique = Set(database.point3dIds).count
-        if unique != manifest.uniquePoint3D {
-            throw MatchingError.uniquePoint3DMismatch(expected: manifest.uniquePoint3D, actual: unique)
+        if unique != verified.manifest.uniquePoint3D {
+            throw MatchingError.uniquePoint3DMismatch(expected: verified.manifest.uniquePoint3D, actual: unique)
         }
-        if database.wallId != manifest.wallId
+        if database.wallId != verified.manifest.wallId
             || database.developmentFixtureOnly != true
             || database.notAWallPackage != true
             || database.matcherHotPath != ["descriptor", "point3DID"] {

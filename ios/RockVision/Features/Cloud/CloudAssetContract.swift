@@ -16,6 +16,9 @@ enum CloudAssetError: Error, Equatable {
     case offlineNoCache
     case invalidIdentifier(String)
     case immutableReleaseConflict
+    case missingRequiredSemanticType(String)
+    case semanticTypeNotRequired(String)
+    case duplicateSemanticType(String)
 
     static func == (lhs: CloudAssetError, rhs: CloudAssetError) -> Bool {
         switch (lhs, rhs) {
@@ -30,7 +33,10 @@ enum CloudAssetError: Error, Equatable {
         case (.unsupportedSchema(let a), .unsupportedSchema(let b)),
              (.integrityFailure(let a), .integrityFailure(let b)),
              (.storageFailure(let a), .storageFailure(let b)),
-             (.invalidIdentifier(let a), .invalidIdentifier(let b)):
+             (.invalidIdentifier(let a), .invalidIdentifier(let b)),
+             (.missingRequiredSemanticType(let a), .missingRequiredSemanticType(let b)),
+             (.semanticTypeNotRequired(let a), .semanticTypeNotRequired(let b)),
+             (.duplicateSemanticType(let a), .duplicateSemanticType(let b)):
             return a == b
         default:
             return false
@@ -63,6 +69,48 @@ struct WallAssetDescriptor: Codable, Equatable, Sendable {
     var required: Bool
     var sha256: String
     var bytes: Int
+}
+
+/// Frozen Cloud Asset Contract v1 semantic `type` vocabulary.
+/// `type` remains an opaque string on the wire; these values are the
+/// official meanings. They are not filenames and not COS object keys.
+enum CloudAssetType {
+    static let referenceMap = "reference_map"
+    static let referenceDescriptorsRVS1 = "reference_descriptors_rvs1"
+    static let referenceLandmarksJSON = "reference_landmarks_json"
+}
+
+/// Stage 3 localization consumption: exactly one required asset of each
+/// frozen semantic type. Resolution is by `type`, then the concrete `assetId`.
+enum CloudStage3AssetSemantics {
+    static func uniquelyRequiredAsset(type: String, in manifest: WallManifest) throws -> WallAssetDescriptor {
+        let matches = manifest.assets.filter { $0.type == type }
+        if matches.isEmpty {
+            throw CloudAssetError.missingRequiredSemanticType(type)
+        }
+        if matches.count > 1 {
+            throw CloudAssetError.duplicateSemanticType(type)
+        }
+        let asset = matches[0]
+        if !asset.required {
+            throw CloudAssetError.semanticTypeNotRequired(type)
+        }
+        return asset
+    }
+
+    static func requiredStage3Assets(
+        in manifest: WallManifest
+    ) throws -> (descriptors: WallAssetDescriptor, landmarks: WallAssetDescriptor) {
+        let descriptors = try uniquelyRequiredAsset(
+            type: CloudAssetType.referenceDescriptorsRVS1,
+            in: manifest
+        )
+        let landmarks = try uniquelyRequiredAsset(
+            type: CloudAssetType.referenceLandmarksJSON,
+            in: manifest
+        )
+        return (descriptors, landmarks)
+    }
 }
 
 enum CloudIdentifier {

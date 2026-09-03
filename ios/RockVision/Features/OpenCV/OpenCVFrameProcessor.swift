@@ -13,6 +13,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
     @Published private(set) var snapshot = OpenCVRuntimeSnapshot()
     @Published private(set) var siftSnapshot = SIFTRuntimeSnapshot()
     @Published private(set) var matchingSnapshot = MatchingRuntimeSnapshot()
+    @Published private(set) var referenceAssetProvenance = ReferenceAssetProvenance.unavailable
     @Published private(set) var pnpSnapshot = PnPRuntimeSnapshot()
     @Published private(set) var confirmationSnapshot = ConfirmationRuntimeSnapshot()
     @Published private(set) var alignmentSnapshot = AlignmentRuntimeSnapshot()
@@ -486,15 +487,17 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
     private func ensureFixtureLoaded() {
         guard !fixtureLoadAttempted else { return }
         fixtureLoadAttempted = true
-        switch DevelopmentFixture.loadIfPresent() {
-        case .ready(let database):
-            referenceDatabase = database
+        do {
+            let loaded = try ReferenceAssetSession.load(.developmentFixture())
+            referenceDatabase = loaded.database
+            referenceAssetProvenance = loaded.provenance
             matchingStatus = "active"
-            print("Matching: loaded development fixture rows=\(database.descriptorCount) unique3D=\(Set(database.point3dIds).count) notAWallPackage=\(database.notAWallPackage)")
-        case .inactive(let reason):
+            print("Matching: loaded development fixture rows=\(loaded.database.descriptorCount) unique3D=\(Set(loaded.database.point3dIds).count) notAWallPackage=\(loaded.database.notAWallPackage)")
+        } catch {
             referenceDatabase = nil
-            matchingStatus = reason
-            print("Matching: inactive \(reason)")
+            referenceAssetProvenance = .unavailable
+            matchingStatus = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            print("Matching: inactive \(matchingStatus)")
         }
         sim3 = ValidatedSim3Loader.loadFromBundle(.main)
         measurementFixture = Gate4BMeasurementFixture.loadFromBundle(.main)
