@@ -55,7 +55,15 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
     ]
     private var sceneBuckets: [String: [SIFTProcessingPreset: ResolutionAccumulator]] = [:]
     private var referenceDatabase: ReferenceDatabase?
-    private var fixtureLoadAttempted = false
+    private enum ReferenceSourceMode: Sendable, Equatable {
+        case bundleDevelopmentFixture
+        case cloudCurrentJiulongfengDevR000001
+    }
+
+    /// Default on fresh launch: Bundle DevelopmentFixture.
+    private var desiredReferenceSourceMode: ReferenceSourceMode = .bundleDevelopmentFixture
+    private var loadedReferenceSourceMode: ReferenceSourceMode?
+    private var debugCloudAssetServiceOverride: CloudAssetService?
     private var matchingStatus = "inactive"
     private var sim3: ValidatedSim3?
     private var measurementFixture: Gate4BMeasurementFixture?
@@ -485,14 +493,38 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
     }
 
     private func ensureFixtureLoaded() {
-        guard !fixtureLoadAttempted else { return }
-        fixtureLoadAttempted = true
+        let mode = desiredReferenceSourceMode
+        guard loadedReferenceSourceMode != mode else { return }
+        loadedReferenceSourceMode = mode
+
         do {
-            let loaded = try ReferenceAssetSession.load(.developmentFixture())
+            let loaded: LoadedReferenceAssets
+            switch mode {
+            case .bundleDevelopmentFixture:
+                loaded = try ReferenceAssetSession.load(.developmentFixture())
+            case .cloudCurrentJiulongfengDevR000001:
+                let expectedWallId = "wall_jiulongfeng_01_dev"
+                let expectedReleaseId = "r000001"
+
+                let service: CloudAssetService
+                if let override = debugCloudAssetServiceOverride {
+                    service = override
+                } else {
+                    service = try CloudAssetService.default()
+                }
+                loaded = try ReferenceAssetSession.load(.cloudValidatedRelease(wallId: expectedWallId, service: service))
+
+                // Fail-closed: CURRENT identity must match this exact release.
+                guard loaded.provenance.wallId == expectedWallId,
+                      loaded.provenance.releaseId == expectedReleaseId else {
+                    throw ReferenceAssetError.integrityRejected("cloud CURRENT identity mismatch (expected \(expectedWallId)/\(expectedReleaseId), got \(loaded.provenance.wallId)/\(loaded.provenance.releaseId))")
+                }
+            }
+
             referenceDatabase = loaded.database
             referenceAssetProvenance = loaded.provenance
             matchingStatus = "active"
-            print("Matching: loaded development fixture rows=\(loaded.database.descriptorCount) unique3D=\(Set(loaded.database.point3dIds).count) notAWallPackage=\(loaded.database.notAWallPackage)")
+            print("Matching: loaded reference source=\(loaded.provenance.source) wall=\(loaded.provenance.wallId) release=\(loaded.provenance.releaseId) rows=\(loaded.database.descriptorCount) unique3D=\(Set(loaded.database.point3dIds).count) notAWallPackage=\(loaded.database.notAWallPackage)")
         } catch {
             referenceDatabase = nil
             referenceAssetProvenance = .unavailable
@@ -508,6 +540,52 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
             print("PnP: S_wall_colmap missing; C_wall / observation-depth meters unavailable")
         }
     }
+
+    // MARK: - DEBUG-only reference source selection
+
+    /// Development-only: allow explicit source selection between Bundle fixture and
+    /// Cloud CURRENT (wall_jiulongfeng_01_dev / r000001).
+    func selectReferenceSourceBundleDevelopmentFixture() {
+        lock.lock()
+        desiredReferenceSourceMode = .bundleDevelopmentFixture
+        loadedReferenceSourceMode = nil
+        referenceDatabase = nil
+        referenceAssetProvenance = .unavailable
+        matchingStatus = "inactive (select Bundle fixture)"
+        lock.unlock()
+    }
+
+    /// Development-only: select Cloud CURRENT with strict identity enforcement.
+    func selectReferenceSourceCloudCurrentJiulongfengDevR000001() {
+        lock.lock()
+        desiredReferenceSourceMode = .cloudCurrentJiulongfengDevR000001
+        loadedReferenceSourceMode = nil
+        referenceDatabase = nil
+        referenceAssetProvenance = .unavailable
+        matchingStatus = "inactive (select Cloud CURRENT)"
+        lock.unlock()
+    }
+
+    #if DEBUG
+    func debugSetCloudAssetServiceOverrideForSelection(_ service: CloudAssetService?) {
+        lock.lock()
+        debugCloudAssetServiceOverride = service
+        lock.unlock()
+    }
+
+    /// Force load using the currently selected reference mode.
+    /// Intended for unit tests only.
+    func debugForceReferenceSourceLoadForTesting() {
+        ensureFixtureLoaded()
+    }
+
+    var debugDesiredReferenceSourceMode: String {
+        switch desiredReferenceSourceMode {
+        case .bundleDevelopmentFixture: return "bundleDevelopmentFixture"
+        case .cloudCurrentJiulongfengDevR000001: return "cloudCurrentJiulongfengDevR000001"
+        }
+    }
+    #endif
 
     private func matchIfNeeded(siftObj: OpenCVSIFTResult?, preset: SIFTProcessingPreset) -> MatchingFrameResult {
         let siftTotal = siftObj?.totalMilliseconds ?? 0

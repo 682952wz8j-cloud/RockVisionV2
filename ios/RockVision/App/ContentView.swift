@@ -25,7 +25,9 @@ struct ContentView: View {
                         Spacer()
                         CloudDebugPanel(
                             controller: cloudDebug,
-                            cameraProvenance: openCV.referenceAssetProvenance
+                            cameraProvenance: openCV.referenceAssetProvenance,
+                            onSelectReferenceSourceBundle: { openCV.selectReferenceSourceBundleDevelopmentFixture() },
+                            onSelectReferenceSourceCloudCurrent: { openCV.selectReferenceSourceCloudCurrentJiulongfengDevR000001() }
                         )
                     }
                     Spacer()

@@ -279,12 +279,12 @@ final class ReferenceAssetSourceTests: XCTestCase {
     }
 
     func testDefaultLocalizationSourceRemainsDevelopmentFixture() throws {
-        let processor = try String(contentsOf: processorURL())
-        XCTAssertTrue(processor.contains("ReferenceAssetSession.load(.developmentFixture())"))
-        XCTAssertFalse(processor.contains("cloudValidatedRelease"))
-        XCTAssertFalse(processor.contains("installRelease"))
-        XCTAssertFalse(processor.contains("installExplicitRelease"))
-        XCTAssertFalse(processor.contains("installJiulongfengDev"))
+        let processor = OpenCVFrameProcessor()
+        #if DEBUG
+        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "bundleDevelopmentFixture")
+        #else
+        throw XCTSkip("Only meaningful in DEBUG test builds.")
+        #endif
     }
 
     func testUndocumentedLocalTypeConventionIsGone() throws {

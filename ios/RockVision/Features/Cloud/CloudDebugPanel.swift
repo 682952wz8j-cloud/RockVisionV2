@@ -134,12 +134,20 @@ final class CloudDebugController: ObservableObject {
 struct CloudDebugPanel: View {
     @ObservedObject var controller: CloudDebugController
     var cameraProvenance: ReferenceAssetProvenance = .unavailable
+    var onSelectReferenceSourceBundle: () -> Void = {}
+    var onSelectReferenceSourceCloudCurrent: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Cloud Client v1")
                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
-            Text("Reference source: \(cameraProvenance.source)")
+            let referenceSourceLabel: String = {
+                guard cameraProvenance.assetState == "available" else { return "—" }
+                if cameraProvenance.source == "developmentFixture" { return "Bundle" }
+                if cameraProvenance.source == "cloud" { return "Cloud CURRENT" }
+                return cameraProvenance.source
+            }()
+            Text("Reference source: \(referenceSourceLabel)")
             Text("wallId: \(cameraProvenance.wallId)")
             Text("releaseId: \(cameraProvenance.releaseId)")
             Text("asset state: \(cameraProvenance.assetState)")
@@ -161,6 +169,10 @@ struct CloudDebugPanel: View {
                 cloudButton("Download / Update", action: controller.downloadExample)
             }
             cloudButton("Install Jiulongfeng Dev r000001", action: controller.installJiulongfengDev)
+            HStack(spacing: 6) {
+                cloudButton("Use Bundle Fixture", action: onSelectReferenceSourceBundle)
+                cloudButton("Use Cloud CURRENT r000001", action: onSelectReferenceSourceCloudCurrent)
+            }
         }
         .font(.system(size: 10, weight: .regular, design: .monospaced))
         .foregroundStyle(.white)
