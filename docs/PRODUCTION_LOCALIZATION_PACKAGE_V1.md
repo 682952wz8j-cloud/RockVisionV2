@@ -2,9 +2,12 @@
 
 Local, unpublished contract for a future **Production Localization Package**.
 
-This document defines a validator-facing data model. It does **not**
-authorize publication, COS upload, catalog promotion, iOS runtime
-consumption of a new Sim(3) Cloud type, or Route AR.
+This document defines the local package contract and the separate
+Publisher v1 authorization boundary. Local `PACKAGE_READY` does **not**
+authorize COS upload. Publisher v1 can publish one already-validated
+production package only after explicit `--approve`. It does **not**
+promote catalog, change iOS, consume a new Sim(3) Cloud type, or
+authorize Route AR. No real wall has been published.
 
 ## What this is
 
@@ -31,9 +34,9 @@ Keep these identities separate:
 | Stage 2 Build (`./rockvision build` / `wall_build`) | source evidence, not a package |
 | Stage 3 Generation (`./rockvision reference-match`) | descriptor/landmark freeze, not a package |
 | **Localization Package** | this contract (local candidate only) |
-| Publish Approval | not implemented |
-| Published Release | not written; never `published/` |
-| Catalog Promotion | unchanged |
+| Publish Approval | explicit `--approve` only; not implied by `PACKAGE_READY` |
+| Published Release | Publisher v1 can write `published/<wallId>/<releaseId>/`; not executed against real COS in this phase |
+| Catalog Promotion | unchanged; Publisher v1 never writes `published/catalog.json` |
 | Route AR Package | explicitly excluded |
 
 **BUILD ≠ PUBLISHED.** Copying files into `offline/packages/` is
@@ -108,6 +111,8 @@ Directory names, timestamps, and filenames are not proof.
 | `PACKAGE_READY` | all mandatory **local** provenance checks passed |
 
 `PACKAGE_READY` is not publish authorization.
+
+`PACKAGE_READY` ≠ `PUBLISH_APPROVED` ≠ `PUBLISHED` ≠ `CATALOG_DISCOVERABLE`.
 
 ## Production environment
 
@@ -221,8 +226,9 @@ That status is outside package validation.
 
 **LOCAL PACKAGE E2E PASS ≠ CLOUD PUBLICATION PASS ≠ REAL WALL PRODUCTION PASS.**
 
-This does not mark Jinshidong or Jiulongfeng production-ready. Publishing
-is not implemented. iOS still does not consume Cloud Sim(3).
+This does not mark Jinshidong or Jiulongfeng production-ready. Fake-COS
+publisher E2E is implemented; no real wall was published. iOS still
+does not consume Cloud Sim(3).
 
 ## Stage 3 generation vs package readiness
 
@@ -235,8 +241,9 @@ Keep these distinct:
 | Stage 3 provenance proven | freeze/Sim3/Stage 2 wall + run + `modelFingerprint` match |
 | Stage 3 qualification/review | Gate 3C `NEEDS REVIEW` compatibility/Swift handoff |
 | `PACKAGE_READY` | mandatory **local provenance** checks passed |
-| Publish approval | not implemented |
-| Published | not written; never COS / `published/` |
+| `PUBLISH_APPROVED` | explicit human `--approve` on the publisher CLI |
+| `PUBLISHED` | remote manifest verified and all referenced remote assets verified |
+| `CATALOG_DISCOVERABLE` | catalog promotion; **not** Publisher v1 |
 
 Gate 3C `build_reference_matching` always ends successful freeze with
 `stage=compatibility_human_review`, `gateResult=NEEDS REVIEW`,
@@ -248,6 +255,73 @@ That handoff is **outside** Production Localization Package validation.
 `PACKAGE_READY` does not require Gate 3C `PASS`. Freeze existence is
 not Stage 3 PASS. `PACKAGE_READY` ≠ publish approved ≠ published.
 
+## Immutable COS Publisher v1
+
+Publisher v1 is a **separate capability** from package validation and
+from the backend runtime COS reader.
+
+```text
+PACKAGE_READY
+→ explicit PUBLISH_APPROVED (`--approve`)
+→ asset upload
+→ remote byte/SHA-256 verification
+→ manifest last
+→ PUBLISHED
+```
+
+`PUBLISHED` ≠ `CATALOG_DISCOVERABLE`. Catalog promotion is a later phase.
+
+CLI:
+
+```text
+./rockvision publish-localization-package <wallId> <releaseId> --approve
+```
+
+Exact `wallId` and exact `releaseId` are required. Latest is never
+inferred. Without `--approve`: `NOT_AUTHORIZED`, no COS calls.
+`./rockvision build` never publishes.
+
+Immediately before any COS write the publisher re-runs
+`validate_package_dir`. It requires `PACKAGE_READY`, `LOCALIZATION_READY`,
+and `environment = production`. `routeArReady` may remain false.
+`development_test` packages are rejected.
+
+Remote keys:
+
+```text
+published/<wallId>/<releaseId>/assets/<assetId>
+published/<wallId>/<releaseId>/manifest.json
+```
+
+`assetId` stays opaque. Upload order is assets first, then independent
+remote hash verification, then `manifest.json`. HTTP/COS success is not
+publication proof. If asset verification fails, STOP; the manifest must
+remain absent. Incomplete remote state (assets present, manifest absent)
+is `NOT PUBLISHED` and is left in place. No automatic delete.
+
+The release path is immutable:
+
+- no overwrite of differing bytes
+- no delete
+- no silent redefinition of an existing release
+- no `published/catalog.json` mutation
+
+Retry / idempotency:
+
+| Remote state | Result |
+|--------------|--------|
+| nothing present | normal publish |
+| some assets identical, manifest absent | resume remaining assets, then manifest |
+| all assets identical, manifest absent | upload/verify manifest |
+| all assets and manifest identical | `ALREADY_PUBLISHED_IDENTICAL` |
+| any existing object differs | `IMMUTABLE_RELEASE_CONFLICT` |
+
+Publisher CAM is `CragPal_Asset_Publisher` via `CRAGPAL_PUBLISHER_*`
+(optional env file `~/.config/cragpal/publisher.env`). It is not the
+backend runtime read identity (`TENCENT_*` / `/etc/rockvision/cos.env`).
+Unit tests use a fake COS store. This phase does **not** perform a real
+COS write and does **not** publish a real wall.
+
 ## Remaining blockers before a real PACKAGE_READY wall
 
 - No real wall has been run through production `--run-id` Stage 3 yet.
@@ -258,5 +332,6 @@ not Stage 3 PASS. `PACKAGE_READY` ≠ publish approved ≠ published.
 - Jinshidong positioning quality is not proven.
 - Historical Sim3/freeze without provenance stay readable and
   not production `PACKAGE_READY`.
-- No publisher, no COS write, no catalog, no release allocation.
+- Publisher v1 is implemented against fake COS only. Real COS write,
+  real-wall publication, and catalog promotion are still blocked.
 - iOS does not load Cloud `S_wall_colmap`.

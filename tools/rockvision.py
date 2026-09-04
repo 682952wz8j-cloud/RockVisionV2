@@ -61,6 +61,26 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     stage2_dev_cmd.add_argument("--colmap-dir", help="Existing COLMAP sparse directory for register-selected")
     stage2_dev_cmd.add_argument("--height-sfm-geo-desc", dest="height_sfm_geo_desc", default=None)
     stage2_dev_cmd.add_argument("--height-legacy-mrk", dest="height_legacy_mrk", default=None)
+    publish_cmd = sub.add_parser(
+        "publish-localization-package",
+        help=(
+            "Publish one already-validated PRODUCTION localization package to immutable COS. "
+            "Requires exact wallId, exact releaseId, and --approve. Does not update catalog."
+        ),
+    )
+    publish_cmd.add_argument("wall_id")
+    publish_cmd.add_argument("release_id")
+    publish_cmd.add_argument(
+        "--approve",
+        action="store_true",
+        help="Explicit human authorization to write immutable COS objects. Without this flag, no COS calls.",
+    )
+    publish_cmd.add_argument(
+        "--package-dir",
+        dest="package_dir",
+        default=None,
+        help="Local package directory. Default: offline/packages/<wallId>/<releaseId>/",
+    )
     verify_cmd = sub.add_parser(
         "verify",
         help="Run aggregated deterministic unit tests. Not a Gate PASS, FREEZE, or Stage advance.",
@@ -105,6 +125,17 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
         from offline.stage2_dev.cli import run_stage2_dev
 
         return run_stage2_dev(args, repo)
+    if args.command == "publish-localization-package":
+        from offline.publisher.cli import run_publish_localization_package
+
+        package_dir = Path(args.package_dir) if args.package_dir else None
+        return run_publish_localization_package(
+            args.wall_id,
+            args.release_id,
+            approve=args.approve,
+            root=repo,
+            package_dir=package_dir,
+        )
     if args.command == "verify":
         from offline.verify import run_verify
 

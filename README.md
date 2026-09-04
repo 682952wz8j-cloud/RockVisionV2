@@ -366,7 +366,7 @@ Details: [incoming/README.md](incoming/README.md).
 | [docs/DEVELOPMENT_GATES.md](docs/DEVELOPMENT_GATES.md) | Gate discipline; live status at top; Gate 0–11 body is early plan numbering |
 | [docs/CLOUD_ASSET_CONTRACT_V1.md](docs/CLOUD_ASSET_CONTRACT_V1.md) | CragPal Cloud Asset API v1 client contract (not production publishing) |
 | [docs/CLOUD_CLIENT_V1.md](docs/CLOUD_CLIENT_V1.md) | iOS Cloud Asset Client v1 (cache/install only; not Stage 5) |
-| [docs/PRODUCTION_LOCALIZATION_PACKAGE_V1.md](docs/PRODUCTION_LOCALIZATION_PACKAGE_V1.md) | Local Production Localization Package contract (not published) |
+| [docs/PRODUCTION_LOCALIZATION_PACKAGE_V1.md](docs/PRODUCTION_LOCALIZATION_PACKAGE_V1.md) | Local Production Localization Package contract and Publisher v1 (fake COS; not a real-wall publish) |
 | [incoming/README.md](incoming/README.md) | How to add a wall (raw drop) |
 
 ---
@@ -463,16 +463,23 @@ Install Jiulongfeng Dev `r000001` via explicit `wallId`+`releaseId`
 validated local CURRENT as the localization reference. Camera default
 on launch remains Bundle `DevelopmentFixture`.
 
-## Production Localization Package v1 (local contract)
+## Production Localization Package v1 (local contract + Publisher v1)
 
-Local, unpublished package contract only. See
-[`docs/PRODUCTION_LOCALIZATION_PACKAGE_V1.md`](docs/PRODUCTION_LOCALIZATION_PACKAGE_V1.md).
+Local package contract plus a fail-closed immutable COS publisher.
+See [`docs/PRODUCTION_LOCALIZATION_PACKAGE_V1.md`](docs/PRODUCTION_LOCALIZATION_PACKAGE_V1.md).
 
-This is **not** a Wall Package, **not** a Route AR Package, **not**
-publish approval, **not** a published release, and **not** catalog
-promotion. Stage 2 Build ≠ Stage 3 Generation ≠ Localization Package.
-`LOCALIZATION_READY` does not imply `ROUTE_AR_READY`. BUILD ≠ PUBLISHED
-remains in force. No COS write. Stage / Gate status above is unchanged.
+This is **not** a Wall Package, **not** a Route AR Package, and **not**
+catalog promotion. Stage 2 Build ≠ Stage 3 Generation ≠ Localization
+Package ≠ Published Release. `LOCALIZATION_READY` does not imply
+`ROUTE_AR_READY`. `PACKAGE_READY` ≠ `PUBLISH_APPROVED` ≠ `PUBLISHED` ≠
+`CATALOG_DISCOVERABLE`. BUILD ≠ PUBLISHED remains in force.
+
+Publisher v1 (`./rockvision publish-localization-package <wallId> <releaseId> --approve`)
+can take one already-validated production package and write
+`published/<wallId>/<releaseId>/` (assets first, manifest last). Catalog
+is unchanged. Fake-COS publisher E2E is required and passing. **Real COS
+write = NO. Real wall published = NO.** Publisher CAM is separate from
+the backend runtime read identity. Stage / Gate status above is unchanged.
 
 Production Stage 3 may bind one explicit `wall_build/<runId>` via
 `./rockvision reference-match <wall_id> --run-id <runId>`. A synthetic

@@ -266,7 +266,10 @@ class WallBuildStage2ProductionTests(unittest.TestCase):
             self.assertEqual(report["stageStatuses"][stage]["status"], StageStatus.BLOCKED.value, stage)
             self.assertFalse(report["stageStatuses"][stage].get("invoked"))
         self.assertFalse(report["fieldTestReady"])
-        self.assertEqual(report["forbiddenCommandsNotInvoked"], ["reference-match", "pnp"])
+        self.assertEqual(
+            report["forbiddenCommandsNotInvoked"],
+            ["reference-match", "pnp", "publish-localization-package"],
+        )
 
     def test_m_no_wall_metric_meters_claim(self) -> None:
         report, _recon, _reg, _src, _match, _pnp = self._run_mocked()

@@ -498,7 +498,10 @@ class WallBuildPhase1Tests(unittest.TestCase):
                 "METRIC_REGISTRATION",
             },
         )
-        self.assertEqual(report["forbiddenCommandsNotInvoked"], ["reference-match", "pnp"])
+        self.assertEqual(
+            report["forbiddenCommandsNotInvoked"],
+            ["reference-match", "pnp", "publish-localization-package"],
+        )
 
 
 if __name__ == "__main__":
