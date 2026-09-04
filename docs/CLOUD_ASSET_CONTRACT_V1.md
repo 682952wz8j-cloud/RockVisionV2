@@ -222,6 +222,13 @@ opaque blob and is **not** a Stage 3 ReferenceDatabase.
 }
 ```
 
+`published/catalog.json` is **mutable shared state**. Discoverability is
+not implied by publication. Promotion is a separate operator command
+that compare-and-swaps this object after independently revalidating the
+already-published immutable release. Schema remains
+`cragpal.wall-catalog.v1`. Do not introduce a silent v2. Runtime GET
+behavior is unchanged.
+
 ## Example manifest
 
 ```json

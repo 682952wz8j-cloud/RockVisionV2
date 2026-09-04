@@ -81,6 +81,25 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
         default=None,
         help="Local package directory. Default: offline/packages/<wallId>/<releaseId>/",
     )
+    promote_cmd = sub.add_parser(
+        "promote-localization-release",
+        help=(
+            "Promote one already-published immutable release into published/catalog.json. "
+            "Requires exact wallId, exact releaseId, --name, and --approve. Does not rewrite releases."
+        ),
+    )
+    promote_cmd.add_argument("wall_id")
+    promote_cmd.add_argument("release_id")
+    promote_cmd.add_argument(
+        "--name",
+        required=True,
+        help="Display name for a new catalog wall. Must exactly equal the existing name for an already-listed wall.",
+    )
+    promote_cmd.add_argument(
+        "--approve",
+        action="store_true",
+        help="Explicit human authorization to mutate catalog. Without this flag, no COS writes.",
+    )
     verify_cmd = sub.add_parser(
         "verify",
         help="Run aggregated deterministic unit tests. Not a Gate PASS, FREEZE, or Stage advance.",
@@ -135,6 +154,15 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
             approve=args.approve,
             root=repo,
             package_dir=package_dir,
+        )
+    if args.command == "promote-localization-release":
+        from offline.catalog_promotion.cli import run_promote_localization_release
+
+        return run_promote_localization_release(
+            args.wall_id,
+            args.release_id,
+            name=args.name,
+            approve=args.approve,
         )
     if args.command == "verify":
         from offline.verify import run_verify

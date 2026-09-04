@@ -60,6 +60,7 @@ class EngineeringWorkflowV2Tests(unittest.TestCase):
             "offline.tests.test_stage3_run_binding",
             "offline.tests.test_localization_package_e2e",
             "offline.tests.test_publisher",
+            "offline.tests.test_catalog_promotion",
             "offline.tests.test_engineering_workflow",
         }
         self.assertEqual(set(DEFAULT_UNITTEST_MODULES), expected)

@@ -34,7 +34,7 @@ from .states import (
 from .wall_id import wall_id_error
 
 SCHEMA_VERSION = "wallBuild.report.1"
-FORBIDDEN_COMMANDS = ("reference-match", "pnp", "publish-localization-package")
+FORBIDDEN_COMMANDS = ("reference-match", "pnp", "publish-localization-package", "promote-localization-release")
 
 _AUTOMATION_FOR_STAGE = {
     Stage.DISCOVERY: AutomationReached.DISCOVERY_COMPLETE,

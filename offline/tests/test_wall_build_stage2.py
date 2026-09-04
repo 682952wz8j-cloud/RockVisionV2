@@ -268,7 +268,7 @@ class WallBuildStage2ProductionTests(unittest.TestCase):
         self.assertFalse(report["fieldTestReady"])
         self.assertEqual(
             report["forbiddenCommandsNotInvoked"],
-            ["reference-match", "pnp", "publish-localization-package"],
+            ["reference-match", "pnp", "publish-localization-package", "promote-localization-release"],
         )
 
     def test_m_no_wall_metric_meters_claim(self) -> None:

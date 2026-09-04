@@ -468,18 +468,25 @@ on launch remains Bundle `DevelopmentFixture`.
 Local package contract plus a fail-closed immutable COS publisher.
 See [`docs/PRODUCTION_LOCALIZATION_PACKAGE_V1.md`](docs/PRODUCTION_LOCALIZATION_PACKAGE_V1.md).
 
-This is **not** a Wall Package, **not** a Route AR Package, and **not**
-catalog promotion. Stage 2 Build ≠ Stage 3 Generation ≠ Localization
-Package ≠ Published Release. `LOCALIZATION_READY` does not imply
-`ROUTE_AR_READY`. `PACKAGE_READY` ≠ `PUBLISH_APPROVED` ≠ `PUBLISHED` ≠
-`CATALOG_DISCOVERABLE`. BUILD ≠ PUBLISHED remains in force.
+This is **not** a Wall Package and **not** a Route AR Package.
+Catalog promotion is a separate `--approve` command after publication,
+not an implicit publisher side-effect. Stage 2 Build ≠ Stage 3
+Generation ≠ Localization Package ≠ Published Release.
+`LOCALIZATION_READY` does not imply `ROUTE_AR_READY`. `PACKAGE_READY` ≠
+`PUBLISH_APPROVED` ≠ `PUBLISHED` ≠ `CATALOG_DISCOVERABLE`. BUILD ≠
+PUBLISHED remains in force.
 
 Publisher v1 (`./rockvision publish-localization-package <wallId> <releaseId> --approve`)
 can take one already-validated production package and write
 `published/<wallId>/<releaseId>/` (assets first, manifest last). Catalog
-is unchanged. Fake-COS publisher E2E is required and passing. **Real COS
-write = NO. Real wall published = NO.** Publisher CAM is separate from
-the backend runtime read identity. Stage / Gate status above is unchanged.
+is unchanged. Catalog promotion is a **separate** command
+(`./rockvision promote-localization-release <wallId> <releaseId> --name "<display name>" --approve`).
+`PUBLISHED` ≠ `CATALOG_DISCOVERABLE`. Promotion revalidates the remote
+release independently and compare-and-swaps `published/catalog.json`.
+Fake-COS publisher and catalog-promotion E2E are required and passing.
+**Real catalog write = NO. Real wall published = NO.** Publisher CAM is
+separate from the backend runtime read identity. Stage / Gate status
+above is unchanged.
 
 Production Stage 3 may bind one explicit `wall_build/<runId>` via
 `./rockvision reference-match <wall_id> --run-id <runId>`. A synthetic
