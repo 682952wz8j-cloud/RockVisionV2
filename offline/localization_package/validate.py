@@ -2,6 +2,11 @@
 
 Construction (files on disk) is not PACKAGE_READY. This module is the
 only authority for PACKAGE_READY / LOCALIZATION_READY.
+
+PACKAGE_READY means mandatory local provenance gates passed. It does not
+mean Gate 3C compatibility/Swift handoff was human-accepted, publish
+approved, or published. Gate 3C `NEEDS REVIEW` is outside this proof.
+Freeze existence is not treated as Stage 3 PASS.
 """
 
 from __future__ import annotations
@@ -293,6 +298,7 @@ def _stage3_reference_map_binding(package: dict, freeze: dict | None, identity: 
 
     Do not infer from directories, timestamps, or filenames. Historical freeze
     files without these fields are STAGE3_REFERENCE_MAP_BINDING_NOT_PROVEN.
+    Freeze existence is not Stage 3 PASS. Gate 3C NEEDS REVIEW is not consulted.
     """
     declared = package.get("stage3", {}).get("freezeIdentity") or {}
     freeze_fp = None if freeze is None else freeze.get("colmapModelFingerprint")

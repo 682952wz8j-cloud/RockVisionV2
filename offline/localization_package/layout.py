@@ -49,6 +49,7 @@ def evidence_path(root: Path, name: str) -> Path:
 
 
 def required_evidence_names() -> tuple[str, ...]:
+    """Mandatory package evidence. Gate 3C compatibility review is not included."""
     return (
         EVIDENCE_SELECTION,
         EVIDENCE_POSITIONING,

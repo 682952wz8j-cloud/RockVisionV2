@@ -35,6 +35,12 @@ from .opencv_env import load_pinned_opencv, provenance_payload
 from .serialize import apply_s_wall_colmap, freeze_artifact, load_frozen
 from .production_run import ProductionStage3BindError, resolve_production_stage3_inputs, wall_build_run_dir
 
+# Hardcoded Gate 3C terminal after freeze + same-image/LOO reports.
+# This is a Swift/handoff compatibility review, not a production-package
+# qualification result. This generator never auto-assigns PASS here.
+# CLI exit 0 on this value; STOP is the fail-closed path.
+GATE3C_COMPATIBILITY_HANDOFF_RESULT = "NEEDS REVIEW"
+
 
 def output_dir(root: Path, wall_id: str, *, run_dir: Path | None = None) -> Path:
     if run_dir is not None:
@@ -320,6 +326,9 @@ def build_reference_matching(wall_id: str, root: Path, *, run_id: str | None = N
         for obs in observations
     ]
     opencv_runtime = load_pinned_opencv(root)
+    # Freeze is the immutable descriptor/landmark identity. It is written
+    # before the compatibility/Swift handoff report. Freeze existence is
+    # not Gate 3C PASS and is not package qualification by itself.
     freeze = freeze_artifact(
         dest,
         wall_id=wall_id,
@@ -395,7 +404,7 @@ def build_reference_matching(wall_id: str, root: Path, *, run_id: str | None = N
         "runId": run_id,
         "gate": "3C",
         "stage": "compatibility_human_review",
-        "gateResult": "NEEDS REVIEW",
+        "gateResult": GATE3C_COMPATIBILITY_HANDOFF_RESULT,
         "humanReviewRequired": True,
         "stopBeforeSwift": True,
         "productionBound": production,
@@ -464,6 +473,7 @@ def _write_markdown(dest: Path, payload: dict) -> None:
         "# Gate 3C compatibility review",
         "",
         "STOP after step ⑦. Do not start Swift until this report is accepted.",
+        "This NEEDS REVIEW handoff is not Production Localization Package qualification.",
         "",
         f"Gate result: {payload.get('gateResult')}",
         "",

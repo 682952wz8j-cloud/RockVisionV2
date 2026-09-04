@@ -475,9 +475,11 @@ promotion. Stage 2 Build ≠ Stage 3 Generation ≠ Localization Package.
 remains in force. No COS write. Stage / Gate status above is unchanged.
 
 Production Stage 3 may bind one explicit `wall_build/<runId>` via
-`./rockvision reference-match <wall_id> --run-id <runId>`. That is not
-a published release and does not mark Jiulongfeng or Jinshidong
-`PACKAGE_READY`.
+`./rockvision reference-match <wall_id> --run-id <runId>`. A synthetic
+local package E2E can reach `PACKAGE_READY` while the Stage 3 generator
+still reports Gate 3C `NEEDS REVIEW` (Swift/handoff, not package
+qualification). That is not a published release and does not mark
+Jiulongfeng or Jinshidong `PACKAGE_READY`.
 
 **Identified status statements in those docs are stale; definitions are
 not.** Stage / Gate / `S_wall_colmap` **current status** is this README.

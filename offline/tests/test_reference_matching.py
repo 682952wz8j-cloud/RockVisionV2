@@ -478,5 +478,19 @@ class CompatibilityExclusionTests(unittest.TestCase):
             shutil.rmtree(tmp, ignore_errors=True)
 
 
+class Gate3CHandoffSemanticsTests(unittest.TestCase):
+    def test_needs_review_is_compatibility_handoff_not_package_qualification(self) -> None:
+        from offline.reference_matching.cli import run_reference_match
+        from offline.reference_matching.pipeline import GATE3C_COMPATIBILITY_HANDOFF_RESULT
+        from offline.localization_package.layout import required_evidence_names
+
+        self.assertEqual(GATE3C_COMPATIBILITY_HANDOFF_RESULT, "NEEDS REVIEW")
+        self.assertNotIn("gate3c_compatibility_review.json", required_evidence_names())
+        src = (ROOT / "offline" / "reference_matching" / "cli.py").read_text(encoding="utf-8")
+        self.assertIn('payload.get("gateResult") == "STOP"', src)
+        self.assertIn("return 0", src)
+        self.assertTrue(callable(run_reference_match))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -15,7 +15,7 @@ if str(ROOT) not in sys.path:
 
 from offline.localization_package.cloud_manifest import local_cloud_manifest
 from offline.localization_package.construct import write_package_candidate
-from offline.localization_package.layout import asset_path, evidence_path, package_json_path, packages_root
+from offline.localization_package.layout import asset_path, evidence_path, package_json_path, packages_root, required_evidence_names
 from offline.localization_package.package_schema import PackageSchemaError, decode_package_json, is_release_id
 from offline.localization_package.schema import (
     ENVIRONMENT_PRODUCTION,
@@ -435,6 +435,15 @@ class LocalizationPackageValidationTests(unittest.TestCase):
         root, _ = self._ready()
         result = validate_package_dir(root)
         self.assertTrue(result.ok)
+
+    def test_gate3c_compatibility_review_is_not_package_evidence(self) -> None:
+        self.assertNotIn("gate3c_compatibility_review.json", required_evidence_names())
+        root, _ = self._ready()
+        planted = evidence_path(root, "gate3c_compatibility_review.json")
+        planted.write_text(json.dumps({"gateResult": "FAIL", "humanReviewRequired": True}, indent=2) + "\n", encoding="utf-8")
+        result = validate_package_dir(root)
+        self.assertTrue(result.ok)
+        self.assertEqual(result.package_state, STATE_PACKAGE_READY)
 
     def test_jinshidong_style_positioning_quality_not_package_ready(self) -> None:
         root, _ = self._ready()

@@ -95,6 +95,7 @@ def freeze_artifact(
     wall_build_run_id: str | None = None,
     colmap_model_fingerprint: str | None = None,
 ) -> dict:
+    """Write frozen descriptor/landmark identity. Not a Gate 3C PASS."""
     dest.mkdir(parents=True, exist_ok=True)
     desc_path = dest / "descriptors.bin"
     landmarks_path = dest / "landmarks.json"

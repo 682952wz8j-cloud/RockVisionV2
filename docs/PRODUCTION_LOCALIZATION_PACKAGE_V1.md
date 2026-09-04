@@ -204,9 +204,55 @@ is a later phase. This local contract is ahead of current iOS
 consumption. Do not claim the Cloud E2E on Jiulongfeng Dev proves Cloud
 Sim(3) delivery.
 
+## Local production package E2E (synthetic)
+
+A synthetic production-positive fixture (`wall_pkg_e2e_01`) proves the
+local chain:
+
+validated `wall_build/<runId>`
+→ production `reference-match --run-id`
+→ construct under `offline/packages/`
+→ validate
+→ `PACKAGE_READY` / `LOCALIZATION_READY`
+
+`ROUTE_AR_READY` remains false. No routes. No COS. The production-bound
+generator still reports Gate 3C `NEEDS REVIEW` (Swift/handoff review).
+That status is outside package validation.
+
+**LOCAL PACKAGE E2E PASS ≠ CLOUD PUBLICATION PASS ≠ REAL WALL PRODUCTION PASS.**
+
+This does not mark Jinshidong or Jiulongfeng production-ready. Publishing
+is not implemented. iOS still does not consume Cloud Sim(3).
+
+## Stage 3 generation vs package readiness
+
+Keep these distinct:
+
+| Concept | Meaning |
+|---------|---------|
+| Stage 3 generation complete | `reference-match` produced descriptors/landmarks |
+| Stage 3 assets frozen | `freeze.json` records SHA-256/bytes of those assets |
+| Stage 3 provenance proven | freeze/Sim3/Stage 2 wall + run + `modelFingerprint` match |
+| Stage 3 qualification/review | Gate 3C `NEEDS REVIEW` compatibility/Swift handoff |
+| `PACKAGE_READY` | mandatory **local provenance** checks passed |
+| Publish approval | not implemented |
+| Published | not written; never COS / `published/` |
+
+Gate 3C `build_reference_matching` always ends successful freeze with
+`stage=compatibility_human_review`, `gateResult=NEEDS REVIEW`,
+`humanReviewRequired=true`, `stopBeforeSwift=true`. That is a historical
+development handoff before Swift. The generator never auto-assigns
+`PASS`. The CLI exits 0 on `NEEDS REVIEW` and 1 only on `STOP`/errors.
+
+That handoff is **outside** Production Localization Package validation.
+`PACKAGE_READY` does not require Gate 3C `PASS`. Freeze existence is
+not Stage 3 PASS. `PACKAGE_READY` ≠ publish approved ≠ published.
+
 ## Remaining blockers before a real PACKAGE_READY wall
 
 - No real wall has been run through production `--run-id` Stage 3 yet.
+  A synthetic local E2E can reach `PACKAGE_READY`; that is not a real
+  production wall.
 - Jiulongfeng DevelopmentFixture remains `developmentFixtureOnly` /
   `notAWallPackage` and is byte-frozen.
 - Jinshidong positioning quality is not proven.
