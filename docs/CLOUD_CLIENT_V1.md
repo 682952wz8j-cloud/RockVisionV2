@@ -31,14 +31,29 @@ The client only builds:
 
 `/v1/walls/{wallId}/assets/{assetId}` is not used.
 
-Convenience `fetchManifest(wallId:)` uses catalog `latestReleaseId`
-from `GET /v1/walls`. The backend owns projection of promotion records
-and the transitional legacy merge. The App does not enumerate
-`published/promotions/`.
-Explicit `fetchManifest(wallId:releaseId:)` does not consult the catalog.
-Debug/test may install a known immutable development release this way.
-That is **not** catalog discovery and does **not** switch camera
+## Discovery-driven install
+
+Ordinary production-style path:
+
+1. `GET /v1/walls`
+2. choose a fetched catalog entry (`wallId` from that entry)
+3. `GET /v1/walls/{wallId}/manifest` (convenience / published latest)
+4. freeze the **returned** `manifest.releaseId`
+5. download exact immutable assets for that frozen identity
+6. verify bytes + SHA-256
+7. atomically point wall-scoped CURRENT
+
+Catalog `latestReleaseId` is discovery metadata only. The installer does
+not send it. The installation transaction trusts the validated manifest
+identity returned by the convenience endpoint.
+
+Explicit `GET /v1/walls/{wallId}/releases/{releaseId}/manifest` /
+`installRelease(wallId:releaseId:)` remains debug/test-only (Jiulongfeng
+Dev). That is **not** catalog discovery and does **not** switch camera
 localization off the Bundle development fixture.
+
+The backend owns projection of promotion records and the transitional
+legacy merge. The App does not enumerate `published/promotions/`.
 
 Asset downloads always use the frozen `manifest.releaseId`.
 
@@ -52,8 +67,11 @@ Application Support/CloudAssets/walls/<wallId>/
   staging/<releaseId>/...
 ```
 
-CURRENT is a pointer updated only after every required asset passes
-bytes + SHA-256. A failed/interrupted update leaves the previous CURRENT
+CURRENT is a **per-wallId** pointer
+(`CloudAssets/walls/<wallId>/current.json`), updated only after every
+required asset passes bytes + SHA-256. Installing one wall does not
+replace another wall's CURRENT. There is no global CURRENT pointer.
+A failed/interrupted update leaves the previous CURRENT for that wall
 in place.
 
 Published `releaseId` directories are immutable. If `releases/<releaseId>`
@@ -72,6 +90,9 @@ Cloud distribution → local validated CURRENT release →
 
 The camera / matching loop consumes **local file URLs only**. It does not
 call `fetchCatalog`, `fetchManifest`, `downloadAsset`, or `URLSession`.
+Catalog discovery / `refreshAndInstall(wallId:)` does not select a
+localization reference source. Stage 3 Cloud CURRENT remains the
+explicit Jiulongfeng Dev debug action.
 
 Selection is explicit:
 

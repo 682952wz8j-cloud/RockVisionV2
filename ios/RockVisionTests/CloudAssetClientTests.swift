@@ -13,6 +13,10 @@ final class MockCloudTransport: CloudHTTPTransport, @unchecked Sendable {
     private var assetRequestCount = 0
     private(set) var requestedPaths: [String] = []
 
+    func resetRequestedPaths() {
+        requestedPaths = []
+    }
+
     func data(for request: URLRequest) async throws -> (Data, URLResponse) {
         guard let url = request.url else { throw CloudAssetError.network }
         let path = url.path
@@ -844,5 +848,329 @@ final class CloudAssetClientTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("RockVision/Features/Cloud/CloudDebugPanel.swift")
+    }
+}
+
+@MainActor
+final class CloudCatalogDiscoveryInstallTests: XCTestCase {
+    private let exampleWallId = "wall_example_01"
+    private let publisherWallId = "wall_publisher_e2e_01"
+    private let jiulongfengWallId = "wall_jiulongfeng_01_dev"
+    private let release1 = "r000001"
+    private let release2 = "r000002"
+    private let assetId = "reference-map"
+    private let exampleBytes = Data("cragpal-example-reference-map-v1\n".utf8)
+    private let publisherBytes = Data("cragpal-publisher-e2e-reference-map-v1\n".utf8)
+    private let jiulongfengBytes = Data("cragpal-jiulongfeng-dev-reference-map-v1\n".utf8)
+
+    func testFetchedCatalogRetainsBothReturnedEntries() async throws {
+        let harness = makeHarness()
+        let catalog = try await fetchCatalog(harness.controller)
+        XCTAssertEqual(harness.controller.catalogWalls.map(\.wallId), [exampleWallId, publisherWallId])
+        XCTAssertEqual(catalog.walls.map(\.wallId), [exampleWallId, publisherWallId])
+        XCTAssertEqual(harness.controller.catalogWalls, catalog.walls)
+        XCTAssertEqual(
+            harness.controller.catalogWalls.first { $0.wallId == publisherWallId }?.name,
+            "CragPal Publisher E2E Test Wall"
+        )
+        XCTAssertEqual(
+            harness.controller.catalogWalls.first { $0.wallId == publisherWallId }?.latestReleaseId,
+            release1
+        )
+    }
+
+    func testInstallActionUsesWallIdFromFetchedCatalogEntry() async throws {
+        let harness = makeHarness()
+        _ = try await fetchCatalog(harness.controller)
+        let entry = try XCTUnwrap(harness.controller.catalogWalls.first { $0.wallId == publisherWallId })
+        let result = try await installDiscovered(harness.controller, entry)
+        XCTAssertEqual(result.release.wallId, entry.wallId)
+        XCTAssertEqual(harness.controller.discoveredWallId, entry.wallId)
+        XCTAssertEqual(harness.controller.discoveredName, entry.name)
+        XCTAssertEqual(harness.controller.catalogLatestReleaseId, entry.latestReleaseId)
+        XCTAssertEqual(harness.controller.installedReleaseId, release1)
+        XCTAssertEqual(harness.controller.discoveryCurrentWallId, publisherWallId)
+        XCTAssertEqual(harness.controller.discoveryCurrentReleaseId, release1)
+        XCTAssertTrue(harness.transport.requestedPaths.contains("/v1/walls/\(entry.wallId)/manifest"))
+        XCTAssertFalse(harness.transport.requestedPaths.contains("/v1/walls/\(exampleWallId)/manifest"))
+    }
+
+    func testDiscoveryInstallUsesConvenienceManifestAndDoesNotSupplyReleaseId() async throws {
+        let harness = makeHarness()
+        _ = try await fetchCatalog(harness.controller)
+        let entry = try XCTUnwrap(harness.controller.catalogWalls.first { $0.wallId == publisherWallId })
+        _ = try await installDiscovered(harness.controller, entry)
+        XCTAssertTrue(harness.transport.requestedPaths.contains("/v1/walls"))
+        XCTAssertTrue(harness.transport.requestedPaths.contains("/v1/walls/\(publisherWallId)/manifest"))
+        XCTAssertFalse(
+            harness.transport.requestedPaths.contains("/v1/walls/\(publisherWallId)/releases/\(release1)/manifest")
+        )
+        XCTAssertTrue(
+            harness.transport.requestedPaths.contains(
+                "/v1/walls/\(publisherWallId)/releases/\(release1)/assets/\(assetId)"
+            )
+        )
+        let source = try String(contentsOf: debugPanelSourceURL())
+        let installRange = source.range(of: "func installDiscoveredAsync(_ entry: WallCatalogEntry)")!
+        let panelRange = source.range(of: "struct CloudDebugPanel")!
+        let installBody = String(source[installRange.lowerBound..<panelRange.lowerBound])
+        XCTAssertTrue(installBody.contains("refreshAndInstall(wallId: entry.wallId)"))
+        XCTAssertFalse(installBody.contains("installRelease("))
+        XCTAssertFalse(installBody.contains("refreshAndInstall(wallId: entry.latestReleaseId"))
+        XCTAssertFalse(installBody.contains("installRelease(wallId:"))
+        XCTAssertFalse(source.contains("let publisherE2EWallId"))
+        XCTAssertFalse(source.contains("\"wall_publisher_e2e_01\""))
+    }
+
+    func testManifestReturnedReleaseBecomesFrozenInstalledCurrent() async throws {
+        let harness = makeHarness()
+        _ = try await fetchCatalog(harness.controller)
+        let entry = try XCTUnwrap(harness.controller.catalogWalls.first { $0.wallId == publisherWallId })
+        let result = try await installDiscovered(harness.controller, entry)
+        XCTAssertEqual(result.release.releaseId, release1)
+        XCTAssertEqual(result.release.manifest.releaseId, release1)
+        XCTAssertEqual(harness.controller.catalogLatestReleaseId, release1)
+        XCTAssertEqual(harness.controller.installedReleaseId, release1)
+        XCTAssertEqual(harness.controller.discoveryPhase, CloudReleasePhase.current.rawValue)
+        XCTAssertEqual(harness.controller.discoveryReused, "NO")
+        let current = try XCTUnwrap(harness.service.localValidatedReleaseIfPresent(wallId: publisherWallId))
+        XCTAssertEqual(current.wallId, publisherWallId)
+        XCTAssertEqual(current.releaseId, release1)
+        let data = try Data(contentsOf: try harness.service.localAssetURL(wallId: publisherWallId, assetId: assetId))
+        XCTAssertEqual(data, publisherBytes)
+        try CloudIntegrity.verify(data: data, descriptor: result.release.manifest.assets[0])
+    }
+
+    func testFailedRequiredAssetDoesNotBecomeCurrentAndLeavesJiulongfeng() async throws {
+        let harness = makeHarness()
+        _ = try await harness.service.installRelease(wallId: jiulongfengWallId, releaseId: release1)
+        harness.transport.assetBytes[publisherAssetPath(release1)] = Data("tampered-required-asset".utf8)
+        _ = try await fetchCatalog(harness.controller)
+        let entry = try XCTUnwrap(harness.controller.catalogWalls.first { $0.wallId == publisherWallId })
+        let result = await harness.controller.installDiscoveredAsync(entry)
+        XCTAssertNil(result)
+        XCTAssertEqual(harness.controller.discoveryPhase, CloudReleasePhase.failed.rawValue)
+        XCTAssertNil(harness.service.localValidatedReleaseIfPresent(wallId: publisherWallId))
+        let jiulongfeng = try XCTUnwrap(harness.service.localValidatedReleaseIfPresent(wallId: jiulongfengWallId))
+        XCTAssertEqual(jiulongfeng.wallId, jiulongfengWallId)
+        XCTAssertEqual(jiulongfeng.releaseId, release1)
+        XCTAssertEqual(
+            try Data(contentsOf: try harness.service.localAssetURL(wallId: jiulongfengWallId, assetId: assetId)),
+            jiulongfengBytes
+        )
+    }
+
+    func testSuccessfulSyntheticInstallBecomesCurrentWithoutTouchingJiulongfeng() async throws {
+        let harness = makeHarness()
+        _ = try await harness.service.installRelease(wallId: jiulongfengWallId, releaseId: release1)
+        let jiuBefore = try Data(contentsOf: harness.store.currentPointerURL(wallId: jiulongfengWallId))
+        _ = try await fetchCatalog(harness.controller)
+        let entry = try XCTUnwrap(harness.controller.catalogWalls.first { $0.wallId == publisherWallId })
+        _ = try await installDiscovered(harness.controller, entry)
+        let publisher = try XCTUnwrap(harness.service.localValidatedReleaseIfPresent(wallId: publisherWallId))
+        XCTAssertEqual(publisher.wallId, publisherWallId)
+        XCTAssertEqual(publisher.releaseId, release1)
+        let jiulongfeng = try XCTUnwrap(harness.service.localValidatedReleaseIfPresent(wallId: jiulongfengWallId))
+        XCTAssertEqual(jiulongfeng.wallId, jiulongfengWallId)
+        XCTAssertEqual(jiulongfeng.releaseId, release1)
+        XCTAssertEqual(try Data(contentsOf: harness.store.currentPointerURL(wallId: jiulongfengWallId)), jiuBefore)
+        let currents = harness.service.localCurrentReleases()
+        XCTAssertEqual(Set(currents.map(\.wallId)), [publisherWallId, jiulongfengWallId])
+        XCTAssertTrue(harness.controller.localCurrentSummary.contains("\(publisherWallId)/\(release1) CURRENT"))
+        XCTAssertTrue(harness.controller.localCurrentSummary.contains("\(jiulongfengWallId)/\(release1) CURRENT"))
+    }
+
+    func testTwoWallScopedCurrentPointersCoexist() async throws {
+        let harness = makeHarness()
+        _ = try await harness.service.installRelease(wallId: jiulongfengWallId, releaseId: release1)
+        _ = try await harness.service.refreshAndInstall(wallId: publisherWallId)
+        let currents = harness.service.localCurrentReleases()
+        XCTAssertEqual(currents.count, 2)
+        XCTAssertEqual(
+            try JSONDecoder().decode(
+                CloudCurrentPointer.self,
+                from: try Data(contentsOf: harness.store.currentPointerURL(wallId: publisherWallId))
+            ).releaseId,
+            release1
+        )
+        XCTAssertEqual(
+            try JSONDecoder().decode(
+                CloudCurrentPointer.self,
+                from: try Data(contentsOf: harness.store.currentPointerURL(wallId: jiulongfengWallId))
+            ).releaseId,
+            release1
+        )
+        XCTAssertNotEqual(
+            try harness.store.currentPointerURL(wallId: publisherWallId).path,
+            try harness.store.currentPointerURL(wallId: jiulongfengWallId).path
+        )
+    }
+
+    func testRepeatedDiscoveryInstallReusesIdenticalImmutableRelease() async throws {
+        let harness = makeHarness()
+        _ = try await fetchCatalog(harness.controller)
+        let entry = try XCTUnwrap(harness.controller.catalogWalls.first { $0.wallId == publisherWallId })
+        let first = try await installDiscovered(harness.controller, entry)
+        XCTAssertFalse(first.reusedExistingRelease)
+        let original = try Data(contentsOf: first.release.fileURL(forAssetId: assetId))
+        harness.transport.assetBytes[publisherAssetPath(release1)] = Data("should-not-be-written".utf8)
+        harness.transport.resetRequestedPaths()
+        let second = try await installDiscovered(harness.controller, entry)
+        XCTAssertTrue(second.reusedExistingRelease)
+        XCTAssertEqual(harness.controller.discoveryReused, "YES")
+        XCTAssertEqual(try Data(contentsOf: first.release.fileURL(forAssetId: assetId)), original)
+        XCTAssertFalse(harness.transport.requestedPaths.contains { $0.contains("/assets/") })
+        XCTAssertTrue(harness.transport.requestedPaths.contains("/v1/walls/\(publisherWallId)/manifest"))
+        XCTAssertFalse(
+            harness.transport.requestedPaths.contains("/v1/walls/\(publisherWallId)/releases/\(release1)/manifest")
+        )
+    }
+
+    func testCatalogLatestChangeDoesNotMutateOlderImmutableRelease() async throws {
+        let harness = makeHarness()
+        _ = try await fetchCatalog(harness.controller)
+        let firstEntry = try XCTUnwrap(harness.controller.catalogWalls.first { $0.wallId == publisherWallId })
+        let first = try await installDiscovered(harness.controller, firstEntry)
+        let original = try Data(contentsOf: first.release.fileURL(forAssetId: assetId))
+        harness.transport.catalogJSON = twoWallCatalogJSON(publisherLatest: release2)
+        harness.transport.assetBytes[publisherAssetPath(release1)] = Data("mutated-r000001".utf8)
+        _ = try await fetchCatalog(harness.controller)
+        let updatedEntry = try XCTUnwrap(harness.controller.catalogWalls.first { $0.wallId == publisherWallId })
+        XCTAssertEqual(updatedEntry.latestReleaseId, release2)
+        let second = try await installDiscovered(harness.controller, updatedEntry)
+        XCTAssertEqual(harness.controller.catalogLatestReleaseId, release2)
+        XCTAssertEqual(harness.controller.installedReleaseId, release1)
+        XCTAssertEqual(second.release.releaseId, release1)
+        XCTAssertTrue(second.reusedExistingRelease)
+        XCTAssertEqual(try Data(contentsOf: first.release.fileURL(forAssetId: assetId)), original)
+        XCTAssertEqual(harness.controller.discoveryCurrentReleaseId, release1)
+    }
+
+    func testCameraLoopRemainsNetworkFreeAndDiscoveryDoesNotSelectLocalization() throws {
+        let processor = try String(contentsOf: sourceFile("RockVision/Features/OpenCV/OpenCVFrameProcessor.swift"))
+        XCTAssertFalse(processor.contains("fetchCatalog"))
+        XCTAssertFalse(processor.contains("refreshAndInstall"))
+        XCTAssertFalse(processor.contains("wall_publisher_e2e_01"))
+        XCTAssertTrue(processor.contains("cloudCurrentJiulongfengDevR000001"))
+        XCTAssertFalse(processor.contains("cloudCurrentPublisher"))
+        let matching = try String(contentsOf: sourceFile("RockVision/Features/Matching/MatchingRuntime.swift"))
+        XCTAssertFalse(matching.contains("fetchCatalog"))
+        XCTAssertFalse(matching.contains("CloudAPIClient"))
+        let panel = try String(contentsOf: debugPanelSourceURL())
+        let installRange = panel.range(of: "func installDiscoveredAsync(_ entry: WallCatalogEntry)")!
+        let panelRange = panel.range(of: "struct CloudDebugPanel")!
+        let installBody = String(panel[installRange.lowerBound..<panelRange.lowerBound])
+        XCTAssertFalse(installBody.contains("selectReferenceSource"))
+        XCTAssertFalse(installBody.contains("ReferenceDatabase"))
+        XCTAssertTrue(panel.contains("Use Cloud CURRENT r000001"))
+        XCTAssertTrue(panel.contains("Install Jiulongfeng Dev r000001"))
+        let content = try String(contentsOf: sourceFile("RockVision/App/ContentView.swift"))
+        XCTAssertTrue(content.contains("selectReferenceSourceCloudCurrentJiulongfengDevR000001()"))
+        XCTAssertFalse(content.contains("wall_publisher_e2e_01"))
+    }
+
+    func testExplicitJiulongfengDebugInstallPathUnchanged() throws {
+        let source = try String(contentsOf: debugPanelSourceURL())
+        XCTAssertTrue(source.contains("Install Jiulongfeng Dev r000001"))
+        let installRange = source.range(of: "func installJiulongfengDev()")!
+        let refreshRange = source.range(of: "func refreshLocal()")!
+        let installBody = String(source[installRange.lowerBound..<refreshRange.lowerBound])
+        XCTAssertTrue(installBody.contains("installRelease("))
+        XCTAssertTrue(installBody.contains("Self.jiulongfengDevWallId"))
+        XCTAssertTrue(installBody.contains("Self.jiulongfengDevReleaseId"))
+        XCTAssertFalse(installBody.contains("fetchCatalog"))
+        XCTAssertFalse(installBody.contains("refreshAndInstall"))
+    }
+
+    func testSyntheticWallIsNeverAutomaticallySelectedAsLocalizationSource() throws {
+        let processor = OpenCVFrameProcessor()
+        #if DEBUG
+        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "bundleDevelopmentFixture")
+        #else
+        throw XCTSkip("Only meaningful in DEBUG test builds.")
+        #endif
+    }
+
+    private func fetchCatalog(_ controller: CloudDebugController) async throws -> WallCatalog {
+        let catalog = await controller.fetchCatalogAsync()
+        return try XCTUnwrap(catalog)
+    }
+
+    private func installDiscovered(
+        _ controller: CloudDebugController,
+        _ entry: WallCatalogEntry
+    ) async throws -> CloudInstallResult {
+        let result = await controller.installDiscoveredAsync(entry)
+        return try XCTUnwrap(result)
+    }
+
+    private struct Harness {
+        var controller: CloudDebugController
+        var service: CloudAssetService
+        var store: CloudReleaseStore
+        var transport: MockCloudTransport
+    }
+
+    private func makeHarness() -> Harness {
+        let transport = MockCloudTransport()
+        transport.catalogJSON = twoWallCatalogJSON(publisherLatest: release1)
+        transport.manifestJSONByWall[exampleWallId] = manifestJSON(wallId: exampleWallId, bytes: exampleBytes)
+        transport.manifestJSONByWall[publisherWallId] = manifestJSON(wallId: publisherWallId, bytes: publisherBytes)
+        transport.manifestJSONByRelease["\(jiulongfengWallId)/\(release1)"] =
+            manifestJSON(wallId: jiulongfengWallId, bytes: jiulongfengBytes)
+        transport.assetBytes[assetPath(wallId: exampleWallId, releaseId: release1)] = exampleBytes
+        transport.assetBytes[publisherAssetPath(release1)] = publisherBytes
+        transport.assetBytes[assetPath(wallId: jiulongfengWallId, releaseId: release1)] = jiulongfengBytes
+        let store = CloudReleaseStore(rootURL: uniqueRoot())
+        let service = CloudAssetService(
+            client: CloudAPIClient(configuration: .custom(URL(string: "https://cloud.test")!), transport: transport),
+            store: store
+        )
+        return Harness(
+            controller: CloudDebugController(service: service),
+            service: service,
+            store: store,
+            transport: transport
+        )
+    }
+
+    private func twoWallCatalogJSON(publisherLatest: String) -> Data {
+        Data(
+            """
+            {"schema":"\(CloudAssetSchema.catalog)","walls":[{"wallId":"\(exampleWallId)","name":"Example Wall","latestReleaseId":"\(release1)"},{"wallId":"\(publisherWallId)","name":"CragPal Publisher E2E Test Wall","latestReleaseId":"\(publisherLatest)"}]}
+            """.utf8
+        )
+    }
+
+    private func manifestJSON(wallId: String, bytes: Data) -> Data {
+        let sha = CloudIntegrity.sha256Hex(bytes)
+        return Data(
+            """
+            {"schema":"\(CloudAssetSchema.manifest)","wallId":"\(wallId)","releaseId":"\(release1)","createdAt":"2026-09-02T15:30:00Z","assets":[{"assetId":"\(assetId)","type":"reference_map","required":true,"sha256":"\(sha)","bytes":\(bytes.count)}]}
+            """.utf8
+        )
+    }
+
+    private func assetPath(wallId: String, releaseId: String) -> String {
+        "/v1/walls/\(wallId)/releases/\(releaseId)/assets/\(assetId)"
+    }
+
+    private func publisherAssetPath(_ releaseId: String) -> String {
+        assetPath(wallId: publisherWallId, releaseId: releaseId)
+    }
+
+    private func uniqueRoot() -> URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent("cloud-d5-\(UUID().uuidString)", isDirectory: true)
+    }
+
+    private func debugPanelSourceURL() -> URL {
+        sourceFile("RockVision/Features/Cloud/CloudDebugPanel.swift")
+    }
+
+    private func sourceFile(_ relative: String) -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent(relative)
     }
 }

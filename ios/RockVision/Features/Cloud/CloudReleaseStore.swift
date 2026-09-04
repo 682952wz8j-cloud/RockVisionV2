@@ -77,6 +77,19 @@ final class CloudReleaseStore: @unchecked Sendable {
         try? currentRelease(wallId: wallId)
     }
 
+    /// Wall-scoped CURRENT pointers only. There is no global CURRENT.
+    func localCurrentReleases() -> [LocalValidatedRelease] {
+        lock.lock()
+        defer { lock.unlock() }
+        let wallsRoot = rootURL.appendingPathComponent("walls", isDirectory: true)
+        guard let names = try? fileManager.contentsOfDirectory(atPath: wallsRoot.path) else {
+            return []
+        }
+        return names.compactMap { name in
+            try? loadCurrentLocked(wallId: name)
+        }
+    }
+
     func inspectImmutableRelease(wallId: String, releaseId: String) -> ImmutableReleaseInspection {
         lock.lock()
         defer { lock.unlock() }

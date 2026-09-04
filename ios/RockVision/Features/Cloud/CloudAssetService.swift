@@ -27,6 +27,10 @@ final class CloudAssetService: @unchecked Sendable {
         store.currentReleaseIfPresent(wallId: wallId)
     }
 
+    func localCurrentReleases() -> [LocalValidatedRelease] {
+        store.localCurrentReleases()
+    }
+
     func localAssetURL(wallId: String, assetId: String) throws -> URL {
         try store.validatedAssetURL(wallId: wallId, assetId: assetId)
     }
