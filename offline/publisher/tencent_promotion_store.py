@@ -1,15 +1,30 @@
-"""Tencent COS catalog promotion adapter.
+"""Tencent COS immutable promotion-record adapter.
 
-GET any published object. Conditional PUT is catalog-only (If-Match /
-If-None-Match). No delete. No bucket listing. No runtime TENCENT_* identity.
+GET published objects. Create-only PUT for promotion records using
+x-cos-forbid-overwrite=true. No ETag precondition headers. No catalog
+write. No delete. No prefix listing. No runtime TENCENT_* identity.
+
+Phase D0.5 proved Tencent PUT ETag preconditions are not a safe
+lost-update primitive. This adapter does not use them.
 """
 
 from __future__ import annotations
 
 from .config import PublisherConfig
-from .keys import CATALOG_KEY
-from .store import ConcurrentModification, ConditionalObject, PublisherStoreError
+from .keys import CATALOG_KEY, PROMOTIONS_PREFIX
+from .store import ObjectAlreadyExists, PublisherStoreError
 from .tencent_store import _map_missing_or_error, _cos_error_code, _cos_status
+
+_FORBID_OVERWRITE_PARAM = "ForbidOverwrite"
+_FORBID_OVERWRITE_HEADER = "x-cos-forbid-overwrite"
+_ALREADY_EXISTS_CODES = frozenset(
+    {
+        "FileAlreadyExists",
+        "ObjectAlreadyExists",
+        "Conflict",
+        "ForbidOverwrite",
+    }
+)
 
 
 class TencentPromotionStore:
@@ -40,42 +55,45 @@ class TencentPromotionStore:
                 return None
             raise mapped from exc
 
-    def get_conditional(self, key: str) -> ConditionalObject | None:
+    def put_if_absent(self, key: str, data: bytes) -> None:
+        if key == CATALOG_KEY or key.endswith("/catalog.json"):
+            raise PublisherStoreError("promotion store must not write catalog.json")
+        if not key.startswith(PROMOTIONS_PREFIX):
+            raise PublisherStoreError("put_if_absent is promotion-record-only")
+        _ensure_forbid_overwrite_mapping()
         try:
-            response = self._client.get_object(Bucket=self._bucket, Key=key)
-            data = response["Body"].get_raw_stream().read()
+            self._client.put_object(
+                Bucket=self._bucket,
+                Key=key,
+                Body=data,
+                ForbidOverwrite="true",
+            )
         except Exception as exc:
-            mapped = _map_missing_or_error(exc)
-            if mapped is None:
-                return None
-            raise mapped from exc
-        etag = response.get("ETag")
-        if not isinstance(etag, str) or not etag:
-            raise PublisherStoreError("catalog response missing ETag")
-        return ConditionalObject(data=data, etag=etag)
-
-    def put_if_match(self, key: str, data: bytes, *, expected_etag: str | None) -> None:
-        if key != CATALOG_KEY:
-            raise PublisherStoreError("conditional put is catalog-only")
-        kwargs = {"Bucket": self._bucket, "Key": key, "Body": data}
-        if expected_etag is None:
-            kwargs["IfNoneMatch"] = "*"
-        else:
-            kwargs["IfMatch"] = expected_etag
-        try:
-            self._client.put_object(**kwargs)
-        except Exception as exc:
-            if _is_precondition_failed(exc):
-                raise ConcurrentModification("catalog precondition failed") from exc
+            if _is_already_exists(exc):
+                raise ObjectAlreadyExists("promotion record already exists") from exc
             mapped = _map_missing_or_error(exc)
             if mapped is None:
                 raise PublisherStoreError("cos put returned missing") from exc
             raise mapped from exc
 
 
-def _is_precondition_failed(exc: Exception) -> bool:
+def _ensure_forbid_overwrite_mapping() -> None:
+    """cos-python-sdk-v5 maplist omits the documented forbid-overwrite header.
+
+    Register the mapping so the signed put_object path sends
+    x-cos-forbid-overwrite: true. This is not an ETag precondition.
+    """
+    try:
+        from qcloud_cos import cos_comm
+    except ImportError:
+        return
+    if _FORBID_OVERWRITE_PARAM not in cos_comm.maplist:
+        cos_comm.maplist[_FORBID_OVERWRITE_PARAM] = _FORBID_OVERWRITE_HEADER
+
+
+def _is_already_exists(exc: Exception) -> bool:
     status = _cos_status(exc)
     code = _cos_error_code(exc)
-    if status == 412:
+    if status == 409:
         return True
-    return code in {"PreconditionFailed", "FileAlreadyExists"}
+    return code in _ALREADY_EXISTS_CODES

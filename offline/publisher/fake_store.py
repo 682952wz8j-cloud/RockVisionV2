@@ -2,31 +2,27 @@
 
 from __future__ import annotations
 
-import hashlib
-
-from .keys import CATALOG_KEY
-from .store import ConcurrentModification, ConditionalObject, PublisherStoreError
+from .keys import CATALOG_KEY, PROMOTIONS_PREFIX
+from .store import ObjectAlreadyExists, PublisherStoreError
 
 
 class FakeObjectStore:
     """Records GET/PUT. Refuses to mutate differing existing bytes. No list/delete.
 
-    Catalog promotion uses put_if_match (ETag compare-and-swap). Immutable
-    release objects still use put_bytes and never overwrite differing bytes.
+    Promotion records use put_if_absent (x-cos-forbid-overwrite equivalent).
+    Immutable release objects still use put_bytes and never overwrite differing bytes.
     """
 
     def __init__(self) -> None:
         self.objects: dict[str, bytes] = {}
-        self.etags: dict[str, str] = {}
         self.calls: list[tuple[str, str]] = []
         self.gets: list[str] = []
         self.puts: list[str] = []
-        self.conditional_puts: list[str] = []
+        self.absent_puts: list[str] = []
         self.overwrite_attempts: list[str] = []
         self.get_errors: dict[str, Exception] = {}
         self.put_errors: dict[str, Exception] = {}
         self.corrupt_after_put: set[str] = set()
-        self.precondition_failures: set[str] = set()
 
     def get_bytes(self, key: str) -> bytes | None:
         self.calls.append(("GET", key))
@@ -34,14 +30,6 @@ class FakeObjectStore:
         if key in self.get_errors:
             raise self.get_errors[key]
         return self.objects.get(key)
-
-    def get_conditional(self, key: str) -> ConditionalObject | None:
-        data = self.get_bytes(key)
-        if data is None:
-            return None
-        etag = self.etags.get(key) or self._etag_for(data)
-        self.etags[key] = etag
-        return ConditionalObject(data=data, etag=etag)
 
     def put_bytes(self, key: str, data: bytes) -> None:
         self.calls.append(("PUT", key))
@@ -54,38 +42,27 @@ class FakeObjectStore:
             return
         stored = data + b"\x00" if key in self.corrupt_after_put else data
         self.objects[key] = stored
-        self.etags[key] = self._etag_for(stored)
 
-    def put_if_match(self, key: str, data: bytes, *, expected_etag: str | None) -> None:
-        if key != CATALOG_KEY:
-            raise PublisherStoreError("conditional put is catalog-only")
-        self.calls.append(("PUT_IF_MATCH", key))
-        self.conditional_puts.append(key)
-        self.puts.append(key)
+    def put_if_absent(self, key: str, data: bytes) -> None:
+        if key == CATALOG_KEY or key.endswith("/catalog.json"):
+            raise PublisherStoreError("immutable create must not write catalog.json")
+        if not key.startswith(PROMOTIONS_PREFIX):
+            raise PublisherStoreError("put_if_absent is promotion-record-only")
+        self.calls.append(("PUT_IF_ABSENT", key))
+        self.absent_puts.append(key)
         if key in self.put_errors:
             raise self.put_errors[key]
-        if key in self.precondition_failures:
-            raise ConcurrentModification("precondition failed")
         existing = self.objects.get(key)
-        current_etag = self.etags.get(key)
-        if expected_etag is None:
-            if existing is not None:
-                raise ConcurrentModification("catalog already exists")
-        else:
-            if existing is None or current_etag != expected_etag:
-                raise ConcurrentModification("catalog etag mismatch")
+        if existing is not None:
+            self.overwrite_attempts.append(key)
+            raise ObjectAlreadyExists("promotion record already exists")
         stored = data + b"\x00" if key in self.corrupt_after_put else data
         self.objects[key] = stored
-        self.etags[key] = self._etag_for(stored)
+        self.puts.append(key)
 
-    def mutate(self, key: str, data: bytes) -> None:
-        """Out-of-band concurrent writer for tests. Not a publisher API."""
-        self.objects[key] = data
-        self.etags[key] = self._etag_for(data)
-
-    @staticmethod
-    def _etag_for(data: bytes) -> str:
-        return '"' + hashlib.md5(data).hexdigest() + '"'
+    def keys_with_prefix(self, prefix: str) -> list[str]:
+        """In-memory prefix scan for tests. Not a COS service listing call."""
+        return sorted(key for key in self.objects if key.startswith(prefix))
 
 
 def raise_store_error(message: str = "cos request failed") -> PublisherStoreError:

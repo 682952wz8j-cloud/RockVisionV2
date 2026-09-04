@@ -9,7 +9,7 @@ This adapter is unused by unit tests and unused in Phase C real writes.
 from __future__ import annotations
 
 from .config import PublisherConfig
-from .keys import assert_not_catalog_key
+from .keys import assert_not_catalog_key, assert_not_promotion_key
 from .store import PublisherStoreError
 
 _NOT_FOUND_CODES = frozenset({"NoSuchKey", "NoSuchResource", "NoSuchVersion"})
@@ -56,6 +56,7 @@ class TencentPublisherStore:
 
     def put_bytes(self, key: str, data: bytes) -> None:
         assert_not_catalog_key(key)
+        assert_not_promotion_key(key)
         try:
             self._client.put_object(Bucket=self._bucket, Key=key, Body=data)
         except Exception as exc:

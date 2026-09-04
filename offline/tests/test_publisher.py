@@ -35,6 +35,7 @@ from offline.publisher.keys import (
     published_asset_key,
     published_catalog_key,
     published_manifest_key,
+    published_promotion_key,
     published_release_prefix,
 )
 from offline.publisher.pipeline import publish_localization_package
@@ -468,9 +469,11 @@ class PublisherFakeCosTests(unittest.TestCase):
             adapter.get_bytes(CATALOG_KEY)
         with self.assertRaises(Exception):
             adapter.put_bytes(CATALOG_KEY, b"{}")
+        with self.assertRaises(Exception):
+            adapter.put_bytes(published_promotion_key(WALL, RELEASE), b"{}")
         self.assertFalse(hasattr(adapter, "delete_object"))
         self.assertFalse(hasattr(adapter, "list_objects"))
-        self.assertTrue(inspect.ismethod(adapter.get_bytes) or callable(adapter.get_bytes))
+        self.assertFalse(hasattr(adapter, "put_if_match"))
 
     def test_default_env_file_is_outside_repo(self) -> None:
         self.assertFalse(str(DEFAULT_ENV_FILE).startswith(str(ROOT)))

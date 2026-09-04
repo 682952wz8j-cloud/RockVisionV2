@@ -481,12 +481,16 @@ can take one already-validated production package and write
 `published/<wallId>/<releaseId>/` (assets first, manifest last). Catalog
 is unchanged. Catalog promotion is a **separate** command
 (`./rockvision promote-localization-release <wallId> <releaseId> --name "<display name>" --approve`).
-`PUBLISHED` ≠ `CATALOG_DISCOVERABLE`. Promotion revalidates the remote
-release independently and compare-and-swaps `published/catalog.json`.
-Fake-COS publisher and catalog-promotion E2E are required and passing.
-**Real catalog write = NO. Real wall published = NO.** Publisher CAM is
-separate from the backend runtime read identity. Stage / Gate status
-above is unchanged.
+It creates an immutable `published/promotions/<wallId>/<releaseId>.json`
+record after independent remote release revalidation. It does **not**
+mutate `published/catalog.json`. `PUBLISHED` ≠ `PROMOTION_RECORD_CREATED`
+≠ `CATALOG_DISCOVERABLE`. A real Tencent COS D0.5 probe proved PUT
+`If-Match` / `If-None-Match` cannot be used as catalog CAS; the
+redesigned path uses `x-cos-forbid-overwrite` instead.
+Fake-COS publisher, promotion-record, and catalog-projection tests are
+required and passing. **Real promotion write = NO. Real wall published = NO.**
+Publisher CAM is separate from the backend runtime read identity. Stage /
+Gate status above is unchanged.
 
 Production Stage 3 may bind one explicit `wall_build/<runId>` via
 `./rockvision reference-match <wall_id> --run-id <runId>`. A synthetic

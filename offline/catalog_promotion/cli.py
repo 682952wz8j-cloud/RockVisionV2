@@ -1,7 +1,8 @@
-"""High-friction CLI for catalog promotion.
+"""High-friction CLI for immutable promotion records.
 
 Requires exact wallId, exact releaseId, --name, and --approve.
 Does not infer latest. Does not rewrite immutable releases.
+Does not write published/catalog.json.
 """
 
 from __future__ import annotations
@@ -9,6 +10,7 @@ from __future__ import annotations
 import os
 
 from offline.publisher.config import PublisherConfigError, load_publisher_config, redact_text, resolve_env_file
+from offline.publisher.keys import PublisherKeyError, published_promotion_key
 from offline.publisher.store import PromotionStore
 from offline.publisher.tencent_promotion_store import TencentPromotionStore
 
@@ -40,13 +42,16 @@ def run_promote_localization_release(
         _print_result(result, env)
         return 1
 
-    print("PRODUCTION LOCALIZATION RELEASE CATALOG PROMOTION")
-    print("Mutable catalog only. Immutable release objects are not rewritten.")
+    print("PRODUCTION LOCALIZATION RELEASE PROMOTION")
+    print("Immutable promotion record. published/catalog.json is not written.")
     print(f"wallId: {wall_id}")
     print(f"releaseId: {release_id}")
     print(f"name: {name}")
     print("PROMOTION_APPROVED: YES")
-    print("CATALOG_KEY: published/catalog.json")
+    try:
+        print(f"PROMOTION_KEY: {published_promotion_key(wall_id, release_id)}")
+    except PublisherKeyError:
+        print("PROMOTION_KEY: (invalid wallId or releaseId)")
 
     if store is None:
         try:
@@ -75,8 +80,9 @@ def _print_result(result: PromotionResult, environ: dict[str, str]) -> None:
         line += f" reasonCode: {result.reason_code}"
     print(redact_text(line, environ))
     print(f"REMOTE_RELEASE_VALIDATED: {_yn(result.remote_release_validated)}")
+    print(f"PROMOTION_RECORD_CREATED: {_yn(result.promotion_record_created)}")
     print(f"CATALOG_DISCOVERABLE: {_yn(result.catalog_discoverable)}")
-    print(f"catalogPuts: {len(result.puts)}")
+    print(f"promotionPuts: {len(result.puts)}")
 
 
 def _yn(value: bool) -> str:

@@ -9,6 +9,7 @@ from __future__ import annotations
 from offline.localization_package.package_schema import is_release_id, is_safe_id
 
 CATALOG_KEY = "published/catalog.json"
+PROMOTIONS_PREFIX = "published/promotions/"
 
 
 class PublisherKeyError(ValueError):
@@ -37,9 +38,21 @@ def published_asset_key(wall_id: str, release_id: str, asset_id: str) -> str:
     return f"published/{wall_id}/{release_id}/assets/{asset_id}"
 
 
+def published_promotion_key(wall_id: str, release_id: str) -> str:
+    _require_wall_id(wall_id)
+    _require_release_id(release_id)
+    return f"{PROMOTIONS_PREFIX}{wall_id}/{release_id}.json"
+
+
 def assert_not_catalog_key(key: str) -> str:
     if key == CATALOG_KEY or key.endswith("/catalog.json"):
         raise PublisherKeyError("publisher must not touch published/catalog.json")
+    return key
+
+
+def assert_not_promotion_key(key: str) -> str:
+    if key.startswith(PROMOTIONS_PREFIX):
+        raise PublisherKeyError("publisher must not write promotion records")
     return key
 
 

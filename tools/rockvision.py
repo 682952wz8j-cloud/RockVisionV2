@@ -84,8 +84,9 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     promote_cmd = sub.add_parser(
         "promote-localization-release",
         help=(
-            "Promote one already-published immutable release into published/catalog.json. "
-            "Requires exact wallId, exact releaseId, --name, and --approve. Does not rewrite releases."
+            "Promote one already-published immutable release by creating "
+            "published/promotions/<wallId>/<releaseId>.json. Requires exact wallId, "
+            "exact releaseId, --name, and --approve. Does not rewrite releases or catalog.json."
         ),
     )
     promote_cmd.add_argument("wall_id")
@@ -93,12 +94,12 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     promote_cmd.add_argument(
         "--name",
         required=True,
-        help="Display name for a new catalog wall. Must exactly equal the existing name for an already-listed wall.",
+        help="Display name for a new wall. Must exactly equal the established name when prior promotion records exist.",
     )
     promote_cmd.add_argument(
         "--approve",
         action="store_true",
-        help="Explicit human authorization to mutate catalog. Without this flag, no COS writes.",
+        help="Explicit human authorization to create an immutable promotion record. Without this flag, no COS writes.",
     )
     verify_cmd = sub.add_parser(
         "verify",

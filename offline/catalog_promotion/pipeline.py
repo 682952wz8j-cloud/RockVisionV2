@@ -1,7 +1,8 @@
-"""Fail-closed catalog promotion.
+"""Fail-closed immutable promotion records.
 
-Validates an already-published immutable release, then compare-and-swap
-published/catalog.json. Never rewrites assets or manifests.
+Validates an already-published immutable release, then creates
+published/promotions/<wallId>/<releaseId>.json with forbid-overwrite.
+Never rewrites assets, manifests, or published/catalog.json.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 from offline.localization_package.cloud_manifest import CloudManifestError, decode_cloud_manifest_candidate
 from offline.localization_package.package_schema import is_release_id, is_safe_id
@@ -20,15 +22,15 @@ from offline.localization_package.schema import (
     ReasonCode as PackageReason,
 )
 
-from offline.publisher.keys import CATALOG_KEY, published_asset_key, published_manifest_key
-from offline.publisher.store import ConcurrentModification, PromotionStore, PublisherStoreError
+from offline.publisher.keys import PROMOTIONS_PREFIX, published_asset_key, published_manifest_key, published_promotion_key
+from offline.publisher.store import ObjectAlreadyExists, PromotionStore, PublisherStoreError
 
-from .catalog import (
-    CatalogError,
-    decode_catalog,
-    empty_catalog,
-    encode_catalog,
-    release_ordinal,
+from .record import (
+    PromotionRecordError,
+    decode_promotion_record,
+    encode_promotion_record,
+    promotion_identity,
+    promotion_record,
 )
 from .schema import PromotionState, ReasonCode, TERMINAL_SUCCESS
 
@@ -44,6 +46,7 @@ class PromotionResult:
     name: str | None = None
     promotion_approved: bool = False
     remote_release_validated: bool = False
+    promotion_record_created: bool = False
     catalog_discoverable: bool = False
     puts: list[str] = field(default_factory=list)
     reason_codes: list[str] = field(default_factory=list)
@@ -60,6 +63,7 @@ def promote_localization_release(
     name: str,
     approve: bool,
     store: PromotionStore | None,
+    promoted_at: str | None = None,
 ) -> PromotionResult:
     base = PromotionResult(
         state=PromotionState.PROMOTION_NOT_AUTHORIZED.value,
@@ -82,89 +86,114 @@ def promote_localization_release(
         return _fail(base, PromotionState.COS_ERROR, ReasonCode.STORE_REQUIRED)
 
     try:
-        _validate_remote_release(store, wall_id, release_id)
+        manifest_sha = _validate_remote_release(store, wall_id, release_id)
     except _PromotionFail as exc:
         return _fail(base, PromotionState.REMOTE_RELEASE_INVALID, exc.reason)
     except PublisherStoreError:
-        logger.warning("catalog promotion remote release GET failed")
+        logger.warning("promotion remote release GET failed")
         return _fail(base, PromotionState.COS_ERROR, ReasonCode.COS_ERROR)
     base.remote_release_validated = True
 
+    key = published_promotion_key(wall_id, release_id)
     try:
-        current = store.get_conditional(CATALOG_KEY)
+        existing = store.get_bytes(key)
     except PublisherStoreError:
-        logger.warning("catalog promotion catalog GET failed")
+        logger.warning("promotion record GET failed")
         return _fail(base, PromotionState.COS_ERROR, ReasonCode.COS_ERROR)
 
-    if current is None:
-        catalog = empty_catalog()
-        expected_etag: str | None = None
-    else:
-        if not current.etag:
-            return _fail(base, PromotionState.CATALOG_INVALID, ReasonCode.CATALOG_ETAG_MISSING)
-        expected_etag = current.etag
-        try:
-            payload = json.loads(current.data.decode("utf-8"))
-            catalog = decode_catalog(payload)
-        except json.JSONDecodeError:
-            return _fail(base, PromotionState.CATALOG_INVALID, ReasonCode.CATALOG_INVALID)
-        except UnicodeDecodeError:
-            return _fail(base, PromotionState.CATALOG_INVALID, ReasonCode.CATALOG_INVALID)
-        except CatalogError as exc:
-            reason = (
-                ReasonCode.CATALOG_SCHEMA_UNSUPPORTED
-                if exc.code == "CATALOG_SCHEMA_UNSUPPORTED"
-                else ReasonCode.CATALOG_INVALID
-            )
-            return _fail(base, PromotionState.CATALOG_INVALID, reason)
+    candidate = promotion_record(
+        wall_id=wall_id,
+        release_id=release_id,
+        name=name,
+        promoted_at=promoted_at or _utc_now(),
+        release_manifest_sha256=manifest_sha,
+    )
+    if existing is not None:
+        return _existing_record_result(base, existing, candidate)
 
     try:
-        candidate = _apply_promotion(catalog, wall_id=wall_id, name=name, release_id=release_id)
+        _assert_name_consistent(store, wall_id=wall_id, name=name)
     except _PromotionFail as exc:
-        state = {
-            ReasonCode.CATALOG_NAME_CONFLICT: PromotionState.CATALOG_NAME_CONFLICT,
-            ReasonCode.CATALOG_RELEASE_REGRESSION: PromotionState.CATALOG_RELEASE_REGRESSION,
-            ReasonCode.CATALOG_INVALID: PromotionState.CATALOG_INVALID,
-        }.get(exc.reason, PromotionState.CATALOG_INVALID)
-        return _fail(base, state, exc.reason)
+        return _fail(base, PromotionState.PROMOTION_NAME_CONFLICT, exc.reason)
 
-    if current is not None and candidate == catalog:
-        base.state = PromotionState.ALREADY_CATALOG_DISCOVERABLE.value
-        base.reason_code = None
-        base.catalog_discoverable = True
-        return base
-
-    candidate_bytes = encode_catalog(candidate)
-
+    candidate_bytes = encode_promotion_record(candidate)
     try:
-        store.put_if_match(CATALOG_KEY, candidate_bytes, expected_etag=expected_etag)
-        base.puts.append(CATALOG_KEY)
-    except ConcurrentModification:
-        return _fail(base, PromotionState.CATALOG_CONCURRENT_MODIFICATION, ReasonCode.CATALOG_CONCURRENT_MODIFICATION)
+        store.put_if_absent(key, candidate_bytes)
+        base.puts.append(key)
+    except ObjectAlreadyExists:
+        try:
+            raced = store.get_bytes(key)
+        except PublisherStoreError:
+            return _fail(base, PromotionState.COS_ERROR, ReasonCode.COS_ERROR)
+        if raced is None:
+            return _fail(base, PromotionState.IMMUTABLE_PROMOTION_CONFLICT, ReasonCode.IMMUTABLE_PROMOTION_CONFLICT)
+        return _existing_record_result(base, raced, candidate)
     except PublisherStoreError:
-        logger.warning("catalog promotion conditional PUT failed")
+        logger.warning("promotion immutable create failed")
         return _fail(base, PromotionState.COS_ERROR, ReasonCode.COS_ERROR)
 
     try:
-        remote = store.get_bytes(CATALOG_KEY)
+        remote = store.get_bytes(key)
     except PublisherStoreError:
-        logger.warning("catalog promotion post-write GET failed")
+        logger.warning("promotion post-write GET failed")
         return _fail(base, PromotionState.COS_ERROR, ReasonCode.COS_ERROR)
     if remote is None or remote != candidate_bytes or _sha256(remote) != _sha256(candidate_bytes):
-        return _fail(base, PromotionState.CATALOG_VERIFY_FAILED, ReasonCode.CATALOG_VERIFY_FAILED)
+        return _fail(base, PromotionState.PROMOTION_VERIFY_FAILED, ReasonCode.PROMOTION_VERIFY_FAILED)
     try:
-        verified = decode_catalog(json.loads(remote.decode("utf-8")))
-    except (UnicodeDecodeError, json.JSONDecodeError, CatalogError):
-        return _fail(base, PromotionState.CATALOG_VERIFY_FAILED, ReasonCode.CATALOG_VERIFY_FAILED)
-    if not _entry_matches(verified, wall_id=wall_id, name=name, release_id=release_id):
-        return _fail(base, PromotionState.CATALOG_VERIFY_FAILED, ReasonCode.CATALOG_VERIFY_FAILED)
-    if not _unrelated_preserved(catalog, verified, wall_id):
-        return _fail(base, PromotionState.CATALOG_VERIFY_FAILED, ReasonCode.CATALOG_VERIFY_FAILED)
+        verified = decode_promotion_record(json.loads(remote.decode("utf-8")), wall_id=wall_id, release_id=release_id)
+    except (UnicodeDecodeError, json.JSONDecodeError, PromotionRecordError):
+        return _fail(base, PromotionState.PROMOTION_VERIFY_FAILED, ReasonCode.PROMOTION_VERIFY_FAILED)
+    if promotion_identity(verified) != promotion_identity(candidate):
+        return _fail(base, PromotionState.PROMOTION_VERIFY_FAILED, ReasonCode.PROMOTION_VERIFY_FAILED)
 
-    base.state = PromotionState.CATALOG_DISCOVERABLE.value
+    base.state = PromotionState.PROMOTION_RECORD_CREATED.value
     base.reason_code = None
-    base.catalog_discoverable = True
+    base.promotion_record_created = True
+    base.catalog_discoverable = False
     return base
+
+
+def _existing_record_result(base: PromotionResult, existing: bytes, candidate: dict) -> PromotionResult:
+    try:
+        payload = json.loads(existing.decode("utf-8"))
+        record = decode_promotion_record(payload, wall_id=base.wall_id, release_id=base.release_id)
+    except (UnicodeDecodeError, json.JSONDecodeError, PromotionRecordError) as exc:
+        reason = ReasonCode.PROMOTION_RECORD_INVALID
+        if isinstance(exc, PromotionRecordError) and exc.code == "PROMOTION_SCHEMA_UNSUPPORTED":
+            reason = ReasonCode.PROMOTION_SCHEMA_UNSUPPORTED
+        elif isinstance(exc, PromotionRecordError) and exc.code == "PROMOTION_IDENTITY_CONFLICT":
+            reason = ReasonCode.PROMOTION_IDENTITY_CONFLICT
+        return _fail(base, PromotionState.IMMUTABLE_PROMOTION_CONFLICT, reason)
+    if promotion_identity(record) == promotion_identity(candidate):
+        base.state = PromotionState.ALREADY_PROMOTED_IDENTICAL.value
+        base.reason_code = None
+        base.promotion_record_created = True
+        base.catalog_discoverable = False
+        return base
+    return _fail(base, PromotionState.IMMUTABLE_PROMOTION_CONFLICT, ReasonCode.IMMUTABLE_PROMOTION_CONFLICT)
+
+
+def _assert_name_consistent(store: PromotionStore, *, wall_id: str, name: str) -> None:
+    keys_fn = getattr(store, "keys_with_prefix", None)
+    if keys_fn is None:
+        return
+    prefix = f"{PROMOTIONS_PREFIX}{wall_id}/"
+    names: set[str] = set()
+    for key in keys_fn(prefix):
+        raw = store.get_bytes(key)
+        if raw is None:
+            continue
+        try:
+            record = decode_promotion_record(json.loads(raw.decode("utf-8")), wall_id=wall_id)
+        except (UnicodeDecodeError, json.JSONDecodeError, PromotionRecordError) as exc:
+            if isinstance(exc, PromotionRecordError) and exc.code == "PROMOTION_SCHEMA_UNSUPPORTED":
+                raise _PromotionFail(ReasonCode.PROMOTION_SCHEMA_UNSUPPORTED) from exc
+            raise _PromotionFail(ReasonCode.PROMOTION_RECORD_INVALID) from exc
+        names.add(str(record["name"]))
+    if not names:
+        return
+    if len(names) > 1 or name not in names:
+        raise _PromotionFail(ReasonCode.PROMOTION_NAME_CONFLICT)
 
 
 class _PromotionFail(Exception):
@@ -204,7 +233,7 @@ def _manifest_reason(exc: CloudManifestError) -> ReasonCode:
     return ReasonCode.REMOTE_MANIFEST_INVALID
 
 
-def _validate_remote_release(store: PromotionStore, wall_id: str, release_id: str) -> None:
+def _validate_remote_release(store: PromotionStore, wall_id: str, release_id: str) -> str:
     raw = store.get_bytes(published_manifest_key(wall_id, release_id))
     if raw is None:
         raise _PromotionFail(ReasonCode.REMOTE_MANIFEST_MISSING)
@@ -224,44 +253,11 @@ def _validate_remote_release(store: PromotionStore, wall_id: str, release_id: st
             raise _PromotionFail(ReasonCode.REMOTE_ASSET_BYTES_MISMATCH)
         if _sha256(remote) != item["sha256"]:
             raise _PromotionFail(ReasonCode.REMOTE_ASSET_SHA_MISMATCH)
+    return _sha256(raw)
 
 
-def _apply_promotion(catalog: dict, *, wall_id: str, name: str, release_id: str) -> dict:
-    walls = [dict(item) for item in catalog["walls"]]
-    matches = [item for item in walls if item.get("wallId") == wall_id]
-    if len(matches) > 1:
-        raise _PromotionFail(ReasonCode.CATALOG_INVALID)
-    if not matches:
-        walls.append({"wallId": wall_id, "name": name, "latestReleaseId": release_id})
-        out = dict(catalog)
-        out["schema"] = catalog["schema"]
-        out["walls"] = walls
-        return out
-    entry = matches[0]
-    existing_name = entry.get("name")
-    if existing_name != name:
-        raise _PromotionFail(ReasonCode.CATALOG_NAME_CONFLICT)
-    existing_release = str(entry.get("latestReleaseId") or "")
-    if release_ordinal(release_id) < release_ordinal(existing_release):
-        raise _PromotionFail(ReasonCode.CATALOG_RELEASE_REGRESSION)
-    entry["latestReleaseId"] = release_id
-    out = dict(catalog)
-    out["schema"] = catalog["schema"]
-    out["walls"] = walls
-    return out
-
-
-def _entry_matches(catalog: dict, *, wall_id: str, name: str, release_id: str) -> bool:
-    found = [item for item in catalog["walls"] if item.get("wallId") == wall_id]
-    if len(found) != 1:
-        return False
-    return found[0].get("name") == name and found[0].get("latestReleaseId") == release_id
-
-
-def _unrelated_preserved(before: dict, after: dict, wall_id: str) -> bool:
-    before_others = [item for item in before["walls"] if item.get("wallId") != wall_id]
-    after_others = [item for item in after["walls"] if item.get("wallId") != wall_id]
-    return before_others == after_others
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _sha256(data: bytes) -> str:
@@ -274,4 +270,5 @@ def _fail(result: PromotionResult, state: PromotionState, reason: ReasonCode) ->
     if reason.value not in result.reason_codes:
         result.reason_codes.append(reason.value)
     result.catalog_discoverable = False
+    result.promotion_record_created = False
     return result

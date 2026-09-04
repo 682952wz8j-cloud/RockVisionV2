@@ -9,6 +9,7 @@ Schema names:
 
 - Catalog: `cragpal.wall-catalog.v1`
 - Manifest: `cragpal.wall-manifest.v1`
+- Promotion record: `cragpal.wall-promotion.v1`
 
 The RockVision repository, bundle identifiers, and internal Stage/Gate
 names are unchanged.
@@ -30,8 +31,12 @@ or SecretKey.
 
 ## Release binding
 
-`GET /v1/walls/{wall_id}/manifest` may resolve `catalog.latestReleaseId`
-and return that release's manifest.
+`GET /v1/walls` currently reads legacy `published/catalog.json`. It will
+eventually project immutable promotion records into
+`cragpal.wall-catalog.v1`. Convenience `GET /v1/walls/{wall_id}/manifest`
+will then resolve the projected `latestReleaseId`. Release-scoped
+manifest and asset routes remain exact `(wallId, releaseId)` lookups
+and do not require catalog membership.
 
 `GET /v1/walls/{wall_id}/releases/{release_id}/manifest` returns that
 exact immutable release. It does **not** read `catalog.json`, does **not**
@@ -222,12 +227,16 @@ opaque blob and is **not** a Stage 3 ReferenceDatabase.
 }
 ```
 
-`published/catalog.json` is **mutable shared state**. Discoverability is
-not implied by publication. Promotion is a separate operator command
-that compare-and-swaps this object after independently revalidating the
-already-published immutable release. Schema remains
-`cragpal.wall-catalog.v1`. Do not introduce a silent v2. Runtime GET
-behavior is unchanged.
+`published/catalog.json` is **legacy/bootstrap data**, not the
+authority for new promotions. Discoverability is a projection of
+append-only immutable promotion records
+(`published/promotions/<wallId>/<releaseId>.json`, schema
+`cragpal.wall-promotion.v1`). A real Tencent COS D0.5 probe proved PUT
+`If-Match` / `If-None-Match` cannot protect a mutable catalog against
+lost updates; CragPal therefore does not use ETag compare-and-swap.
+Schema of the public catalog view remains `cragpal.wall-catalog.v1`.
+Do not introduce a silent v2. Runtime GET behavior is unchanged in
+this phase.
 
 ## Example manifest
 

@@ -6,10 +6,10 @@ This document defines the local package contract and the separate
 Publisher v1 authorization boundary. Local `PACKAGE_READY` does **not**
 authorize COS upload. Publisher v1 can publish one already-validated
 production package only after explicit `--approve`. It does **not**
-promote catalog, change iOS, consume a new Sim(3) Cloud type, or
-authorize Route AR. Catalog promotion is a **separate** explicit
-`--approve` command. A published release is not catalog-discoverable
-until that command succeeds. No real wall has been catalog-promoted.
+write promotion records, change iOS, consume a new Sim(3) Cloud type, or
+authorize Route AR. Promotion is a **separate** explicit `--approve`
+command that creates an immutable promotion record. That is not yet
+runtime catalog discoverability. No real wall has been promoted.
 
 ## What this is
 
@@ -38,7 +38,7 @@ Keep these identities separate:
 | **Localization Package** | this contract (local candidate only) |
 | Publish Approval | explicit `--approve` only; not implied by `PACKAGE_READY` |
 | Published Release | Publisher v1 can write `published/<wallId>/<releaseId>/`; catalog is unchanged |
-| Catalog Promotion | separate `promote-localization-release`; Publisher v1 never writes `published/catalog.json` |
+| Catalog Promotion | separate `promote-localization-release`; writes immutable `published/promotions/<wallId>/<releaseId>.json` only |
 | Route AR Package | explicitly excluded |
 
 **BUILD ≠ PUBLISHED.** Copying files into `offline/packages/` is
@@ -245,7 +245,7 @@ Keep these distinct:
 | `PACKAGE_READY` | mandatory **local provenance** checks passed |
 | `PUBLISH_APPROVED` | explicit human `--approve` on the publisher CLI |
 | `PUBLISHED` | remote manifest verified and all referenced remote assets verified |
-| `CATALOG_DISCOVERABLE` | catalog promotion after independent remote release revalidation |
+| `CATALOG_DISCOVERABLE` | backend projection of promotion records; not implied by a promotion PUT |
 
 Gate 3C `build_reference_matching` always ends successful freeze with
 `stage=compatibility_human_review`, `gateResult=NEEDS REVIEW`,
@@ -271,8 +271,9 @@ PACKAGE_READY
 → PUBLISHED
 ```
 
-`PUBLISHED` ≠ `CATALOG_DISCOVERABLE`. Catalog promotion is a separate
-explicit operation. Publisher v1 remains unable to mutate catalog.
+`PUBLISHED` ≠ `CATALOG_DISCOVERABLE`. Discoverability is a later
+projection of immutable promotion records. Publisher v1 never writes
+catalog or promotion records.
 
 CLI:
 
@@ -324,20 +325,25 @@ Publisher CAM is `CragPal_Asset_Publisher` via `CRAGPAL_PUBLISHER_*`
 backend runtime read identity (`TENCENT_*` / `/etc/rockvision/cos.env`).
 Unit tests use a fake COS store. Publisher v1 never writes catalog.
 
-## Catalog Promotion v1
+## Catalog Promotion (immutable records)
 
 Catalog promotion is a **separate explicit operation** after immutable
-release publication. It does not rewrite assets or manifests.
+release publication. It does not rewrite assets, manifests, or
+`published/catalog.json`.
 
 ```text
 PACKAGE_READY
 → PUBLISH_APPROVED
 → PUBLISHED
 → PROMOTION_APPROVED
+→ PROMOTION_RECORD_CREATED
 → CATALOG_DISCOVERABLE
 ```
 
-These states must never be collapsed. `PUBLISHED` ≠ `CATALOG_DISCOVERABLE`.
+These states must never be collapsed. `PUBLISHED` ≠
+`PROMOTION_RECORD_CREATED`. `PROMOTION_RECORD_CREATED` ≠
+`CATALOG_DISCOVERABLE` until the backend projects promotion records
+into `cragpal.wall-catalog.v1`.
 
 CLI:
 
@@ -351,8 +357,8 @@ inferred. `--name` is required. Without `--approve`:
 `./rockvision build` never publishes or promotes. Publisher v1 never
 invokes promotion.
 
-Before any catalog mutation, promotion independently proves the target
-immutable release exists and is valid remotely:
+Before any promotion-record write, promotion independently proves the
+target immutable release exists and is valid remotely:
 
 1. GET `published/<wallId>/<releaseId>/manifest.json`
 2. validate schema, `wallId`, `releaseId`, and the required localization
@@ -361,47 +367,72 @@ immutable release exists and is valid remotely:
 3. GET every declared asset and verify remote bytes + SHA-256
 
 A previous local Publisher report is not sufficient.
-`REMOTE_RELEASE_VALIDATED = YES` is required before catalog mutation.
+`REMOTE_RELEASE_VALIDATED = YES` is required before creating a
+promotion record. The record stores `releaseManifestSha256` of that
+validated remote manifest.
 
-Catalog key and schema are unchanged (`published/catalog.json`,
-`cragpal.wall-catalog.v1`). Unrelated entries are preserved. No v2
-schema. Backend/iOS catalog semantics are unchanged.
+Canonical object:
 
-New wall: add exactly one `{wallId, name, latestReleaseId}` using the
-explicit `--name`. Existing wall: `--name` must exactly equal the
-catalog name or `CATALOG_NAME_CONFLICT`. `latestReleaseId` may move
-forward only (`rNNNNNN` integer ordinal). Backward is
-`CATALOG_RELEASE_REGRESSION`. Identical already-promoted release is
-`ALREADY_CATALOG_DISCOVERABLE` with **zero PUTs**.
+```text
+published/promotions/<wallId>/<releaseId>.json
+```
 
-Catalog is mutable shared state. Promotion is fail-closed
-compare-and-swap: read catalog + ETag, construct candidate, conditional
-PUT only if the remote catalog is still that version (`If-Match`, or
-`If-None-Match: *` when creating a missing catalog). Concurrent change
-is `CATALOG_CONCURRENT_MODIFICATION`. A successful PUT response is not
-proof; promotion GETs the catalog again and verifies schema, target
-entry, unrelated entries, remote bytes, and SHA-256 before
-`CATALOG_DISCOVERABLE`.
+Schema: `cragpal.wall-promotion.v1`. One wall/release pair is exactly
+one immutable record. Create uses Tencent `x-cos-forbid-overwrite: true`.
+Existing identical identity → `ALREADY_PROMOTED_IDENTICAL`, zero write.
+Existing differing bytes → `IMMUTABLE_PROMOTION_CONFLICT`. No overwrite.
 
-Phase D implementation/tests use fake COS only. Real catalog mutation,
-real-wall promotion, and CAM changes are a later phase.
+`published/catalog.json` is **legacy/bootstrap**. It is not the
+publication authority for new promotions and is not written by this
+path. `cragpal.wall-catalog.v1` is a **deterministic projection**:
 
-### Future Publisher CAM permission delta (not applied in this phase)
+```text
+immutable release
++
+immutable promotion record
+→ catalog view
+```
+
+For each `wallId`, projection requires a consistent display name and
+sets `latestReleaseId` to the highest valid `rNNNNNN` ordinal. Older
+promotion records may coexist. Concurrent different releases are both
+preserved. Conflicting names fail closed. Output wall order is
+deterministic (`wallId` sorted).
+
+Subsequent backend migration (not this phase): `GET /v1/walls` will
+project promotion records into `cragpal.wall-catalog.v1` instead of
+reading mutable `published/catalog.json`. Convenience
+`GET /v1/walls/{wallId}/manifest` will use the projected
+`latestReleaseId`. Release-scoped manifest routes stay unchanged.
+
+### Phase D0.5 finding — do not use PUT ETag preconditions
+
+A real Tencent COS probe (Phase D0.5) proved PUT `If-Match` /
+`If-None-Match` **cannot** be used as CragPal catalog lost-update
+protection:
+
+- stale `If-Match` was accepted and overwrote current bytes
+- `If-None-Match: *` against an existing object was accepted
+
+CragPal therefore uses append-only immutable promotion records and
+`x-cos-forbid-overwrite`, not a mutable shared catalog object and not
+ETag compare-and-swap. Do not claim Tencent CAS support.
+
+### Future Publisher CAM permission delta (not applied this phase)
 
 Runtime backend CAM remains read-only. Do not broaden it.
 
-Catalog promotion belongs to the Publisher/admin identity
+Promotion belongs to the Publisher/admin identity
 (`CragPal_Asset_Publisher` / `CRAGPAL_PUBLISHER_*`). Minimum additional
-object permissions later required for catalog conditional write, on top
-of existing immutable-release `GetObject`/`PutObject` for
-`published/<wallId>/<releaseId>/*`:
+object permissions later required, on top of existing immutable-release
+`GetObject`/`PutObject` for `published/<wallId>/<releaseId>/*`:
 
-- `cos:GetObject` on `published/catalog.json` (bytes + ETag)
-- `cos:PutObject` on `published/catalog.json` (the only catalog write)
+- `cos:GetObject` on `published/promotions/*`
+- `cos:PutObject` on `published/promotions/*` (application sends
+  `x-cos-forbid-overwrite: true`)
 
-`If-Match` / `If-None-Match` are request headers, not CAM actions.
-Still forbidden: `cos:DeleteObject`, `ListBucket`, bucket ACL/config,
-runtime `TENCENT_*` credentials, server credentials in the repo.
+No `cos:DeleteObject`. No mutable `published/catalog.json` write is
+required for the redesigned path. No runtime `TENCENT_*` credentials.
 
 This phase does **not** change real Tencent CAM.
 
@@ -415,7 +446,8 @@ This phase does **not** change real Tencent CAM.
 - Jinshidong positioning quality is not proven.
 - Historical Sim3/freeze without provenance stay readable and
   not production `PACKAGE_READY`.
-- Publisher v1 is implemented. Catalog promotion v1 is implemented
-  against fake COS only. Real catalog mutation and real-wall promotion
-  remain blocked.
+- Publisher v1 is implemented. Immutable promotion records and catalog
+  projection are implemented against fake COS only. Real promotion-record
+  writes and backend projection remain blocked. Legacy
+  `published/catalog.json` is untouched.
 - iOS does not load Cloud `S_wall_colmap`.

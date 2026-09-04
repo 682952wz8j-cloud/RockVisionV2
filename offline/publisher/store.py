@@ -5,7 +5,6 @@ GET and PUT only. No bucket listing. No delete. No overwrite of differing bytes.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Protocol
 
 
@@ -13,14 +12,8 @@ class PublisherStoreError(RuntimeError):
     """Fail-closed COS/store failure. Not an immutable-release conflict."""
 
 
-class ConcurrentModification(PublisherStoreError):
-    """Conditional write precondition failed. Remote object changed."""
-
-
-@dataclass(frozen=True)
-class ConditionalObject:
-    data: bytes
-    etag: str
+class ObjectAlreadyExists(PublisherStoreError):
+    """Immutable create was rejected because the key already exists."""
 
 
 class ObjectStore(Protocol):
@@ -32,13 +25,10 @@ class ObjectStore(Protocol):
 
 
 class PromotionStore(Protocol):
-    """GET any published object. Conditional PUT is catalog-only."""
+    """GET published objects. Immutable create is promotion-record-only."""
 
     def get_bytes(self, key: str) -> bytes | None:
         """Return object bytes, or None if the key does not exist."""
 
-    def get_conditional(self, key: str) -> ConditionalObject | None:
-        """Return bytes plus opaque ETag, or None if missing."""
-
-    def put_if_match(self, key: str, data: bytes, *, expected_etag: str | None) -> None:
-        """Compare-and-swap. expected_etag None means the object must be absent."""
+    def put_if_absent(self, key: str, data: bytes) -> None:
+        """Create only if missing. Never overwrite. Real COS: x-cos-forbid-overwrite."""
