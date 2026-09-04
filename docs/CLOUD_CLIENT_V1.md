@@ -31,7 +31,10 @@ The client only builds:
 
 `/v1/walls/{wallId}/assets/{assetId}` is not used.
 
-Convenience `fetchManifest(wallId:)` uses catalog `latestReleaseId`.
+Convenience `fetchManifest(wallId:)` uses catalog `latestReleaseId`
+from `GET /v1/walls`. The backend owns projection of promotion records
+and the transitional legacy merge. The App does not enumerate
+`published/promotions/`.
 Explicit `fetchManifest(wallId:releaseId:)` does not consult the catalog.
 Debug/test may install a known immutable development release this way.
 That is **not** catalog discovery and does **not** switch camera

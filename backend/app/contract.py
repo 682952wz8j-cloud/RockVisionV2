@@ -6,6 +6,8 @@ import re
 
 CATALOG_SCHEMA = "cragpal.wall-catalog.v1"
 MANIFEST_SCHEMA = "cragpal.wall-manifest.v1"
+PROMOTION_SCHEMA = "cragpal.wall-promotion.v1"
+PROMOTIONS_PREFIX = "published/promotions/"
 
 SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 RELEASE_ID_RE = re.compile(r"^r[0-9]{6}$")
@@ -50,6 +52,36 @@ def require_release_id(release_id: str) -> str:
 
 def published_catalog_key() -> str:
     return "published/catalog.json"
+
+
+def published_promotions_prefix() -> str:
+    return PROMOTIONS_PREFIX
+
+
+def published_promotion_key(wall_id: str, release_id: str) -> str:
+    require_wall_id(wall_id)
+    require_release_id(release_id)
+    return f"{PROMOTIONS_PREFIX}{wall_id}/{release_id}.json"
+
+
+def parse_published_promotion_key(key: str) -> tuple[str, str]:
+    """Accept only published/promotions/<wallId>/<releaseId>.json."""
+    if not isinstance(key, str) or not key.startswith(PROMOTIONS_PREFIX):
+        raise ContractError("unexpected promotion object key")
+    rest = key[len(PROMOTIONS_PREFIX) :]
+    parts = rest.split("/")
+    if len(parts) != 2 or not parts[1].endswith(".json"):
+        raise ContractError("unexpected promotion object key")
+    wall_id, filename = parts
+    release_id = filename[: -len(".json")]
+    expected = published_promotion_key(wall_id, release_id)
+    if key != expected:
+        raise ContractError("unexpected promotion object key")
+    return wall_id, release_id
+
+
+def empty_catalog() -> dict:
+    return {"schema": CATALOG_SCHEMA, "walls": []}
 
 
 def published_manifest_key(wall_id: str, release_id: str) -> str:

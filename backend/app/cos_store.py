@@ -5,17 +5,22 @@ from __future__ import annotations
 import json
 import os
 
+from .catalog_projection import merge_legacy_and_projected, project_promotions
 from .contract import (
+    ContractError,
     assert_manifest_identity,
+    empty_catalog,
+    parse_published_promotion_key,
     published_asset_key,
     published_catalog_key,
     published_manifest_key,
+    published_promotions_prefix,
     require_asset_id,
     require_release_id,
     require_wall_id,
     validate_catalog,
-    ContractError,
 )
+from .promotion import decode_promotion_record
 from .store import NotFound, StorageFailure, StorageUnavailable
 
 REQUIRED_ENV = (
@@ -75,7 +80,9 @@ class CosStore:
         return payload
 
     def catalog(self) -> dict:
-        return validate_catalog(self._get_json(published_catalog_key()))
+        legacy = self._read_legacy_catalog()
+        records = self._read_promotion_records()
+        return merge_legacy_and_projected(legacy, project_promotions(records))
 
     def latest_release_id(self, wall_id: str) -> str:
         require_wall_id(wall_id)
@@ -103,6 +110,62 @@ class CosStore:
         if asset_id not in known:
             raise NotFound(f"unknown assetId {asset_id}")
         return self._get_object_bytes(published_asset_key(wall_id, release_id, asset_id))
+
+    def _read_legacy_catalog(self) -> dict:
+        try:
+            payload = self._get_json(published_catalog_key())
+        except NotFound:
+            return empty_catalog()
+        return validate_catalog(payload)
+
+    def _read_promotion_records(self) -> list[dict]:
+        keys = self._list_promotion_keys()
+        records: list[dict] = []
+        for key in keys:
+            wall_id, release_id = parse_published_promotion_key(key)
+            try:
+                payload = self._get_json(key)
+            except NotFound as exc:
+                raise ContractError("listed promotion record is missing") from exc
+            records.append(decode_promotion_record(payload, wall_id=wall_id, release_id=release_id))
+        return records
+
+    def _list_promotion_keys(self) -> list[str]:
+        prefix = published_promotions_prefix()
+        keys: list[str] = []
+        marker = ""
+        while True:
+            try:
+                response = self._client.list_objects(
+                    Bucket=self._bucket,
+                    Prefix=prefix,
+                    Marker=marker,
+                    MaxKeys=1000,
+                )
+            except Exception as exc:
+                raise _map_cos_exception(exc, prefix) from exc
+            contents = response.get("Contents") or []
+            if isinstance(contents, dict):
+                contents = [contents]
+            page_keys: list[str] = []
+            for item in contents:
+                if not isinstance(item, dict):
+                    raise ContractError("promotion listing is malformed")
+                key = item.get("Key")
+                if not isinstance(key, str) or not key:
+                    raise ContractError("promotion listing is malformed")
+                if key.endswith("/"):
+                    continue
+                page_keys.append(key)
+            keys.extend(page_keys)
+            truncated = response.get("IsTruncated")
+            if truncated in (True, "true", "True"):
+                marker = response.get("NextMarker") or (page_keys[-1] if page_keys else "")
+                if not marker:
+                    raise StorageFailure("cos list truncated without marker")
+                continue
+            break
+        return sorted(keys)
 
 
 def _map_cos_exception(exc: Exception, key: str) -> Exception:

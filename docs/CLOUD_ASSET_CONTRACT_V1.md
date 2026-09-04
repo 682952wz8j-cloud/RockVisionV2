@@ -31,12 +31,22 @@ or SecretKey.
 
 ## Release binding
 
-`GET /v1/walls` currently reads legacy `published/catalog.json`. It will
-eventually project immutable promotion records into
-`cragpal.wall-catalog.v1`. Convenience `GET /v1/walls/{wall_id}/manifest`
-will then resolve the projected `latestReleaseId`. Release-scoped
+`GET /v1/walls` is a **backend-projected** `cragpal.wall-catalog.v1` view:
+
+```text
+immutable promotion records
++
+legacy catalog entries (transitional)
+→ merged catalog view
+→ GET /v1/walls
+```
+
+Convenience `GET /v1/walls/{wall_id}/manifest` resolves `latestReleaseId`
+from that same merged view, then fetches
+`published/{wallId}/{latestReleaseId}/manifest.json`. Release-scoped
 manifest and asset routes remain exact `(wallId, releaseId)` lookups
-and do not require catalog membership.
+and do not require catalog membership. iOS does not enumerate promotion
+keys. This repository implementation is not a production deploy.
 
 `GET /v1/walls/{wall_id}/releases/{release_id}/manifest` returns that
 exact immutable release. It does **not** read `catalog.json`, does **not**
@@ -231,12 +241,35 @@ opaque blob and is **not** a Stage 3 ReferenceDatabase.
 authority for new promotions. Discoverability is a projection of
 append-only immutable promotion records
 (`published/promotions/<wallId>/<releaseId>.json`, schema
-`cragpal.wall-promotion.v1`). A real Tencent COS D0.5 probe proved PUT
-`If-Match` / `If-None-Match` cannot protect a mutable catalog against
-lost updates; CragPal therefore does not use ETag compare-and-swap.
-Schema of the public catalog view remains `cragpal.wall-catalog.v1`.
-Do not introduce a silent v2. Runtime GET behavior is unchanged in
-this phase.
+`cragpal.wall-promotion.v1`) **merged** with remaining legacy catalog
+entries. Merge semantics:
+
+- wall only in legacy → keep the legacy entry
+- wall only in promotions → use the promotion-projected entry
+- wall in both, same name → promotion `latestReleaseId` is authoritative
+  (highest `rNNNNNN` among promotion records for that wall)
+- wall in both, different names → fail closed
+
+A real Tencent COS D0.5 probe proved PUT `If-Match` / `If-None-Match`
+cannot protect a mutable catalog against lost updates; CragPal therefore
+does not use ETag compare-and-swap. Schema of the public catalog view
+remains `cragpal.wall-catalog.v1`. Do not introduce a silent v2.
+
+Once every retained wall has canonical immutable promotion records, a
+later explicit migration may retire the legacy catalog fallback. Do not
+drop `wall_example_01` silently while it exists only in the legacy
+catalog.
+
+Runtime production GET still reads live COS with the previous backend
+until this code is deployed. Repository tests prove the merge on fakes
+only. Production deploy is a separate phase.
+
+Runtime listing of `published/promotions/` requires a later CAM delta
+(not applied here): `cos:GetObject` on `published/promotions/*` and
+prefix-constrained `cos:GetBucket` / ListBucket on `published/promotions/`.
+If listing is denied, the backend fail-closes (502). It does **not**
+silently serve a legacy-only catalog as if promotions were empty.
+Publisher CAM is never used by the backend.
 
 ## Example manifest
 

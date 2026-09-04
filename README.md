@@ -488,9 +488,11 @@ mutate `published/catalog.json`. `PUBLISHED` ≠ `PROMOTION_RECORD_CREATED`
 `If-Match` / `If-None-Match` cannot be used as catalog CAS; the
 redesigned path uses `x-cos-forbid-overwrite` instead.
 Fake-COS publisher, promotion-record, and catalog-projection tests are
-required and passing. **Real promotion write = NO. Real wall published = NO.**
-Publisher CAM is separate from the backend runtime read identity. Stage /
-Gate status above is unchanged.
+required and passing. A real synthetic promotion record exists for
+`wall_publisher_e2e_01` / `r000001`. Backend merged catalog projection is
+implemented in Git only and is **not** production-deployed.
+**Real wall published = NO.** Publisher CAM is separate from the backend
+runtime read identity. Stage / Gate status above is unchanged.
 
 Production Stage 3 may bind one explicit `wall_build/<runId>` via
 `./rockvision reference-match <wall_id> --run-id <runId>`. A synthetic

@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 
+from .catalog_projection import merge_legacy_and_projected, project_promotions
 from .contract import (
     CATALOG_SCHEMA,
     MANIFEST_SCHEMA,
@@ -14,6 +15,7 @@ from .contract import (
     require_wall_id,
     validate_catalog,
 )
+from .promotion import decode_promotion_record
 from .store import NotFound
 
 EXAMPLE_WALL_ID = "wall_example_01"
@@ -73,8 +75,12 @@ class MemoryStore:
         catalog: dict,
         manifests: dict[tuple[str, str], dict],
         assets: dict[tuple[str, str, str], bytes],
+        promotions: list[dict] | None = None,
     ):
         self._catalog = validate_catalog(copy.deepcopy(catalog))
+        self._promotions = [
+            decode_promotion_record(copy.deepcopy(item)) for item in (promotions or [])
+        ]
         self._manifests: dict[tuple[str, str], dict] = {}
         for (wall_id, release_id), payload in manifests.items():
             require_wall_id(wall_id)
@@ -117,11 +123,11 @@ class MemoryStore:
         )
 
     def catalog(self) -> dict:
-        return copy.deepcopy(self._catalog)
+        return merge_legacy_and_projected(self._catalog, project_promotions(self._promotions))
 
     def latest_release_id(self, wall_id: str) -> str:
         require_wall_id(wall_id)
-        for item in self._catalog["walls"]:
+        for item in self.catalog()["walls"]:
             if item["wallId"] == wall_id:
                 return item["latestReleaseId"]
         raise NotFound(f"unknown wallId {wall_id}")

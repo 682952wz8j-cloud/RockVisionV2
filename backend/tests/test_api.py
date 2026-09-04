@@ -24,6 +24,8 @@ from app.contract import (
     published_asset_key,
     published_catalog_key,
     published_manifest_key,
+    published_promotion_key,
+    published_promotions_prefix,
     validate_manifest,
     ContractError,
 )
@@ -68,7 +70,10 @@ class FakeCosClient:
     def __init__(self):
         self.objects: dict[str, bytes] = {}
         self.errors: dict[str, Exception] = {}
+        self.list_errors: dict[str, Exception] = {}
         self.accessed_keys: list[str] = []
+        self.listed_prefixes: list[str] = []
+        self.write_attempts: list[str] = []
 
     def get_object(self, Bucket, Key):
         self.accessed_keys.append(Key)
@@ -81,6 +86,33 @@ class FakeCosClient:
                 404,
             )
         return {"Body": _FakeCosBody(self.objects[Key])}
+
+    def list_objects(self, Bucket, Prefix="", Marker="", MaxKeys=1000, **kwargs):
+        self.listed_prefixes.append(Prefix)
+        if Prefix in self.list_errors:
+            raise self.list_errors[Prefix]
+        keys = sorted(key for key in self.objects if key.startswith(Prefix) and key > Marker)
+        page = keys[:MaxKeys]
+        truncated = len(keys) > MaxKeys
+        result = {
+            "Name": Bucket,
+            "Prefix": Prefix,
+            "Marker": Marker,
+            "MaxKeys": MaxKeys,
+            "IsTruncated": "true" if truncated else "false",
+            "Contents": [{"Key": key} for key in page],
+        }
+        if truncated and page:
+            result["NextMarker"] = page[-1]
+        return result
+
+    def put_object(self, **kwargs):
+        self.write_attempts.append("put_object")
+        raise AssertionError("backend must not PUT")
+
+    def delete_object(self, **kwargs):
+        self.write_attempts.append("delete_object")
+        raise AssertionError("backend must not DeleteObject")
 
 
 def _cos_example_client() -> FakeCosClient:
@@ -410,6 +442,11 @@ class PathSafetyTests(unittest.TestCase):
 
     def test_backend_owned_keys_are_not_caller_input(self) -> None:
         self.assertEqual(published_catalog_key(), "published/catalog.json")
+        self.assertEqual(published_promotions_prefix(), "published/promotions/")
+        self.assertEqual(
+            published_promotion_key(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID),
+            "published/promotions/wall_example_01/r000001.json",
+        )
         self.assertEqual(
             published_manifest_key(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID),
             "published/wall_example_01/r000001/manifest.json",
@@ -522,19 +559,18 @@ class PublicSurfaceTests(unittest.TestCase):
 
 
 class CosErrorMappingTests(unittest.TestCase):
-    def test_explicit_cos_404_maps_to_not_found(self) -> None:
+    def test_missing_legacy_catalog_with_no_promotions_returns_empty_view(self) -> None:
         client = FakeCosClient()
-        client.errors[published_catalog_key()] = CosServiceError(
-            "GET",
-            {"code": "NoSuchKey", "message": "missing", "resource": "x", "requestid": "", "traceid": ""},
-            404,
-        )
         store = CosStore(client=client, bucket="example-bucket")
-        with self.assertRaises(NotFound):
-            store.catalog()
+        payload = store.catalog()
+        self.assertEqual(payload["schema"], CATALOG_SCHEMA)
+        self.assertEqual(payload["walls"], [])
         response = _client(store).get("/v1/walls")
-        self.assertEqual(response.status_code, 404)
-        self.assertNotIn("NoSuchKey", response.text)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["walls"], [])
+        self.assertTrue(client.listed_prefixes)
+        self.assertEqual(set(client.listed_prefixes), {published_promotions_prefix()})
+        self.assertEqual(client.write_attempts, [])
 
     def test_cos_auth_failure_does_not_map_to_404(self) -> None:
         client = FakeCosClient()

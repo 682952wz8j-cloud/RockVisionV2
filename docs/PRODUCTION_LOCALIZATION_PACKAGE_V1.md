@@ -399,11 +399,12 @@ promotion records may coexist. Concurrent different releases are both
 preserved. Conflicting names fail closed. Output wall order is
 deterministic (`wallId` sorted).
 
-Subsequent backend migration (not this phase): `GET /v1/walls` will
-project promotion records into `cragpal.wall-catalog.v1` instead of
-reading mutable `published/catalog.json`. Convenience
-`GET /v1/walls/{wallId}/manifest` will use the projected
-`latestReleaseId`. Release-scoped manifest routes stay unchanged.
+Subsequent backend migration (this phase, repository only): `GET /v1/walls`
+projects promotion records into `cragpal.wall-catalog.v1` and **merges**
+them with remaining legacy `published/catalog.json` entries. Convenience
+`GET /v1/walls/{wallId}/manifest` uses the merged `latestReleaseId`.
+Release-scoped manifest routes stay unchanged. Production backend is
+**not** deployed in this phase.
 
 ### Phase D0.5 finding — do not use PUT ETag preconditions
 
@@ -418,21 +419,30 @@ CragPal therefore uses append-only immutable promotion records and
 `x-cos-forbid-overwrite`, not a mutable shared catalog object and not
 ETag compare-and-swap. Do not claim Tencent CAS support.
 
-### Future Publisher CAM permission delta (not applied this phase)
+### Future runtime CAM permission delta (not applied this phase)
 
-Runtime backend CAM remains read-only. Do not broaden it.
+Runtime backend CAM remains read-only `TENCENT_*`. Do not use Publisher
+CAM in the backend. Do not broaden CAM in this phase.
 
-Promotion belongs to the Publisher/admin identity
-(`CragPal_Asset_Publisher` / `CRAGPAL_PUBLISHER_*`). Minimum additional
-object permissions later required, on top of existing immutable-release
-`GetObject`/`PutObject` for `published/<wallId>/<releaseId>/*`:
+Minimum additional object permissions later required for production
+projection, on top of existing immutable-release `GetObject` for
+`published/<wallId>/<releaseId>/*` and `published/catalog.json`:
+
+- `cos:GetObject` on `published/promotions/*`
+- prefix-constrained listing (`cos:GetBucket` / ListBucket) on
+  `published/promotions/`
+
+Without listing, the backend cannot discover promotion keys and must
+fail closed rather than pretend promotions are empty. No
+`cos:DeleteObject`. No backend `PutObject` on catalog, promotions, or
+releases.
+
+Publisher/admin identity (`CragPal_Asset_Publisher` /
+`CRAGPAL_PUBLISHER_*`) remains the only writer of promotion records:
 
 - `cos:GetObject` on `published/promotions/*`
 - `cos:PutObject` on `published/promotions/*` (application sends
   `x-cos-forbid-overwrite: true`)
-
-No `cos:DeleteObject`. No mutable `published/catalog.json` write is
-required for the redesigned path. No runtime `TENCENT_*` credentials.
 
 This phase does **not** change real Tencent CAM.
 
@@ -446,8 +456,9 @@ This phase does **not** change real Tencent CAM.
 - Jinshidong positioning quality is not proven.
 - Historical Sim3/freeze without provenance stay readable and
   not production `PACKAGE_READY`.
-- Publisher v1 is implemented. Immutable promotion records and catalog
-  projection are implemented against fake COS only. Real promotion-record
-  writes and backend projection remain blocked. Legacy
-  `published/catalog.json` is untouched.
+- Publisher v1 is implemented. Immutable promotion records exist for the
+  synthetic wall `wall_publisher_e2e_01` / `r000001`. Backend catalog
+  projection + legacy merge is implemented in repository tests only.
+  Production backend still reads the previous catalog path until a later
+  deploy. Legacy `published/catalog.json` is untouched.
 - iOS does not load Cloud `S_wall_colmap`.
