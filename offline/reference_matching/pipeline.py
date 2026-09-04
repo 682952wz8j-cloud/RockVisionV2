@@ -33,9 +33,12 @@ from .constants import (
 from .extract import extract_all_reference_images, load_extracted_cache
 from .opencv_env import load_pinned_opencv, provenance_payload
 from .serialize import apply_s_wall_colmap, freeze_artifact, load_frozen
+from .production_run import ProductionStage3BindError, resolve_production_stage3_inputs, wall_build_run_dir
 
 
-def output_dir(root: Path, wall_id: str) -> Path:
+def output_dir(root: Path, wall_id: str, *, run_dir: Path | None = None) -> Path:
+    if run_dir is not None:
+        return run_dir / "reference_matching" / ASSOCIATION_RADIUS_NAME
     return root / "offline" / "work" / wall_id / "reference_matching" / ASSOCIATION_RADIUS_NAME
 
 
@@ -57,13 +60,42 @@ def _merge_hist(total: dict, part: dict) -> None:
         total[key] = int(total.get(key, 0)) + int(value)
 
 
-def build_reference_matching(wall_id: str, root: Path) -> dict:
-    dest = output_dir(root, wall_id)
+def build_reference_matching(wall_id: str, root: Path, *, run_id: str | None = None) -> dict:
+    production = run_id is not None
+    bind = None
+    if production:
+        try:
+            bind = resolve_production_stage3_inputs(root, wall_id, run_id)
+        except ProductionStage3BindError as exc:
+            safe_id = run_id if run_id and ".." not in run_id and "/" not in run_id and "\\" not in run_id else "_rejected_run"
+            dest = output_dir(root, wall_id, run_dir=wall_build_run_dir(root, wall_id, safe_id))
+            dest.mkdir(parents=True, exist_ok=True)
+            payload = {
+                "wallId": wall_id,
+                "runId": run_id,
+                "gate": "3C",
+                "stage": "production_run_bind",
+                "gateResult": "STOP",
+                "productionBound": True,
+                "legacyFallback": False,
+                "errors": [str(exc)],
+                "reasonCode": exc.code,
+                "outputDirectory": str(dest),
+            }
+            write_json(dest / "gate3c_stop.json", payload)
+            return payload
+        dest = output_dir(root, wall_id, run_dir=bind.run_dir)
+        sparse = bind.model_dir
+        sim3_path = bind.sim3_path
+        sim3 = bind.sim3
+    else:
+        dest = output_dir(root, wall_id)
+        sparse = root / "offline" / "work" / wall_id / "colmap" / "sparse" / "0"
+        sim3_path = root / "offline" / "work" / wall_id / "metric_registration" / "S_wall_colmap.json"
+        sim3 = None
     dest.mkdir(parents=True, exist_ok=True)
     incoming = wall_incoming(root, wall_id)
     before = snapshot_hashes(incoming)
-    sparse = root / "offline" / "work" / wall_id / "colmap" / "sparse" / "0"
-    sim3_path = root / "offline" / "work" / wall_id / "metric_registration" / "S_wall_colmap.json"
     errors: list[str] = []
 
     provenance = provenance_payload(root)
@@ -71,10 +103,13 @@ def build_reference_matching(wall_id: str, root: Path) -> dict:
         errors.append(provenance.get("error") or "OpenCV provenance STOP")
         payload = {
             "wallId": wall_id,
+            "runId": run_id,
             "gate": "3C",
             "stage": "provenance",
             "gateResult": "STOP",
             "humanReviewRequired": True,
+            "productionBound": production,
+            "legacyFallback": False if production else None,
             "errors": errors,
             "opencv": provenance,
             "incomingUnchanged": snapshot_hashes(incoming) == before,
@@ -82,7 +117,8 @@ def build_reference_matching(wall_id: str, root: Path) -> dict:
         write_json(dest / "gate3c_stop.json", payload)
         return payload
 
-    sim3 = load_sim3(sim3_path)
+    if not production:
+        sim3 = load_sim3(sim3_path)
     if str(sim3.get("status")).upper() != "VALIDATED":
         errors.append(f"S_wall_colmap status is {sim3.get('status')}, expected VALIDATED")
     reconstruction = load_reconstruction(sparse)
@@ -295,6 +331,9 @@ def build_reference_matching(wall_id: str, root: Path) -> dict:
         opencv_provenance=opencv_runtime,
         sim3=sim3,
         extra={"artifactDiskFiles": ["descriptors.bin", "landmarks.json", "association_report.json", "database_stats.json", "freeze.json"]},
+        production_bound=production,
+        wall_build_run_id=None if bind is None else bind.run_id,
+        colmap_model_fingerprint=None if bind is None else bind.model_fingerprint,
     )
     freeze["artifactDiskBytes"] = int(sum((dest / name).stat().st_size for name in freeze["artifactDiskFiles"] if (dest / name).is_file()))
     write_json(dest / "freeze.json", freeze)
@@ -353,11 +392,14 @@ def build_reference_matching(wall_id: str, root: Path) -> dict:
     after = snapshot_hashes(incoming)
     payload = {
         "wallId": wall_id,
+        "runId": run_id,
         "gate": "3C",
         "stage": "compatibility_human_review",
         "gateResult": "NEEDS REVIEW",
         "humanReviewRequired": True,
         "stopBeforeSwift": True,
+        "productionBound": production,
+        "legacyFallback": False if production else None,
         "incomingUnchanged": before == after,
         "opencv": opencv_runtime,
         "referenceDatabase": {

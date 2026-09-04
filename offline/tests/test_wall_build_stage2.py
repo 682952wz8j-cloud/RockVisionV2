@@ -107,7 +107,7 @@ def _pass_recon(wall_id, root, *, sources=None, dest=None):
     }
 
 
-def _pass_register(wall_id, root, *, sources=None, dest=None, colmap_dir=None):
+def _pass_register(wall_id, root, *, sources=None, dest=None, colmap_dir=None, run_id=None):
     dest.mkdir(parents=True, exist_ok=True)
     (dest / "S_wall_colmap.json").write_text("{}\n", encoding="utf-8")
     return {
@@ -178,6 +178,7 @@ class WallBuildStage2ProductionTests(unittest.TestCase):
         self.assertEqual(report["stageStatuses"]["METRIC_REGISTRATION"]["status"], StageStatus.AUTO_PASS.value)
         reg.assert_called_once()
         self.assertIn("METRIC_REGISTRATION", report["executableStageAllowlist"])
+        self.assertEqual(reg.call_args.kwargs.get("run_id"), Path(report["runOutputDir"]).name)
 
     def test_c_uses_sources_from_selection(self) -> None:
         _report, _recon, _reg, src_fn, _match, _pnp = self._run_mocked()
@@ -218,7 +219,7 @@ class WallBuildStage2ProductionTests(unittest.TestCase):
         self.assertTrue(report["productionBuildStage2Enabled"])
 
     def test_g_identity_failure_prevents_metric_fit(self) -> None:
-        def fail_register(wall_id, root, *, sources=None, dest=None, colmap_dir=None):
+        def fail_register(wall_id, root, *, sources=None, dest=None, colmap_dir=None, run_id=None):
             dest.mkdir(parents=True, exist_ok=True)
             return {
                 "gateResult": "DEVELOPMENT_GATE_REVIEW_REQUIRED",

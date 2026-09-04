@@ -26,21 +26,27 @@ def assess_sim3_asset(path: Path) -> tuple[list[ReasonCode], dict]:
     return codes, payload
 
 
-def assess_sim3_identity(payload: dict, *, wall_id: str, model_fingerprint: str | None) -> list[ReasonCode]:
-    """Fail closed unless the Sim3 JSON itself names wall + COLMAP fingerprint.
+def assess_sim3_identity(
+    payload: dict,
+    *,
+    wall_id: str,
+    run_id: str | None,
+    model_fingerprint: str | None,
+) -> list[ReasonCode]:
+    """Fail closed unless the Sim3 JSON itself names wall + run + COLMAP fingerprint.
 
-    Current S_wall_colmap.json does not contain these fields. Do not infer
-    them from directories, filenames, or timestamps.
+    Do not infer them from directories, filenames, or timestamps.
     """
     codes: list[ReasonCode] = []
-    sim3_wall = payload.get("wallId")
-    if sim3_wall != wall_id:
+    if payload.get("wallId") != wall_id:
         codes.append(ReasonCode.WALL_ID_MISMATCH)
-    fingerprint = payload.get("modelFingerprint")
+    if payload.get("wallBuildRunId") != run_id:
+        codes.append(ReasonCode.SIM3_WALL_BUILD_RUN_MISMATCH)
+    fingerprint = payload.get("colmapModelFingerprint") or payload.get("modelFingerprint")
     if not isinstance(fingerprint, str) or not fingerprint:
         codes.append(ReasonCode.COLMAP_SOURCE_IDENTITY_NOT_PROVEN)
     elif not isinstance(model_fingerprint, str) or fingerprint != model_fingerprint:
-        codes.append(ReasonCode.COLMAP_SOURCE_IDENTITY_NOT_PROVEN)
+        codes.append(ReasonCode.SIM3_MODEL_FINGERPRINT_MISMATCH)
     return codes
 
 

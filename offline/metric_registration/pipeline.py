@@ -161,6 +161,7 @@ def register(
     sources=None,
     dest: Path | None = None,
     colmap_dir: Path | None = None,
+    run_id: str | None = None,
 ) -> dict:
     incoming = wall_incoming(root, wall_id)
     dest = dest or output_dir(root, wall_id)
@@ -194,6 +195,7 @@ def register(
             errors,
             sources=sources,
             colmap_dir=colmap_dir,
+            run_id=run_id,
         )
     except Exception as exc:
         logs.append(traceback.format_exc())
@@ -231,6 +233,7 @@ def _run(
     *,
     sources=None,
     colmap_dir: Path | None = None,
+    run_id: str | None = None,
 ) -> dict:
     generic = sources is not None
     legacy_height = bool(
@@ -608,6 +611,17 @@ def _run(
     sim3["status"] = validation
     sim3["gateResult"] = gate
     sim3["gpsRuntimePolicy"] = GPS_RUNTIME_POLICY
+    if (
+        run_id
+        and identity
+        and identity.get("wallId") == wall_id
+        and isinstance(identity.get("modelFingerprint"), str)
+        and identity.get("modelFingerprint")
+    ):
+        sim3["wallId"] = wall_id
+        sim3["wallBuildRunId"] = run_id
+        sim3["colmapModelFingerprint"] = identity["modelFingerprint"]
+        sim3["modelFingerprint"] = identity["modelFingerprint"]
     write_json(dest / "S_wall_colmap.json", sim3)
 
     return {

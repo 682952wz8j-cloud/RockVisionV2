@@ -325,12 +325,85 @@ class SerializationTests(unittest.TestCase):
 
         frozen = load_frozen(dest)
         self.assertEqual(frozen["rows"][0]["point3DID"], 99)
+        self.assertTrue(frozen["landmarks"]["developmentFixtureOnly"])
+        self.assertTrue(frozen["landmarks"]["notAWallPackage"])
+        self.assertEqual(frozen["freeze"]["wallId"], "wall_fixture")
+        self.assertNotIn("wallBuildRunId", frozen["freeze"])
+        self.assertNotIn("colmapModelFingerprint", frozen["freeze"])
         from offline.reference_matching.match import MatchRecord, provenance_for
 
         record = MatchRecord(query_index=0, reason=MATCH_ACCEPTED, point3d_id=99, reference_row=0, distance=0.1, ratio=0.2)
         prov = provenance_for(record, frozen["rows"])
         self.assertEqual(prov["referenceImageName"], "DJI_TEST.JPG")
         self.assertEqual(prov["referenceImageID"], 4)
+
+    def test_production_bound_freeze_records_verified_identity_and_flags(self) -> None:
+        dest = self.tmp / "baseline_2px"
+        desc = np.stack([_desc(1.0)])
+        rows = [
+            {
+                "index": 0,
+                "referenceImageID": 4,
+                "referenceImageName": "DJI_TEST.JPG",
+                "referenceKeypointX": 12.0,
+                "referenceKeypointY": 34.0,
+                "point3DID": 99,
+                "colmapXYZ": [1.0, 2.0, 3.0],
+                "wallLocalXYZ": [4.0, 5.0, 6.0],
+            }
+        ]
+        freeze = freeze_artifact(
+            dest,
+            wall_id="wall_fixture",
+            descriptors=desc,
+            rows=rows,
+            reference_images=[{"id": 4, "name": "DJI_TEST.JPG"}],
+            association_report={"accepted": 1},
+            database_stats={"sift": {"descriptorDim": 128}},
+            opencv_provenance={"commit": PINNED_OPENCV_COMMIT},
+            sim3={"status": "VALIDATED", "name": "S_wall_colmap", "convention": "x"},
+            extra={"wallBuildRunId": "spoofed_run", "colmapModelFingerprint": "spoofed_fp"},
+            production_bound=True,
+            wall_build_run_id="wb_verified_run",
+            colmap_model_fingerprint="verified_fingerprint",
+        )
+        self.assertEqual(freeze["wallId"], "wall_fixture")
+        self.assertEqual(freeze["wallBuildRunId"], "wb_verified_run")
+        self.assertEqual(freeze["colmapModelFingerprint"], "verified_fingerprint")
+        from offline.reference_matching.serialize import load_frozen
+
+        frozen = load_frozen(dest)
+        self.assertFalse(frozen["landmarks"]["developmentFixtureOnly"])
+        self.assertFalse(frozen["landmarks"]["notAWallPackage"])
+        self.assertEqual(freeze["descriptorsSha256"], frozen["freeze"]["descriptorsSha256"])
+        self.assertEqual(freeze["landmarksSha256"], frozen["freeze"]["landmarksSha256"])
+
+    def test_production_bound_freeze_requires_verified_identity(self) -> None:
+        dest = self.tmp / "baseline_2px"
+        with self.assertRaises(ArtifactError):
+            freeze_artifact(
+                dest,
+                wall_id="wall_fixture",
+                descriptors=np.stack([_desc(1.0)]),
+                rows=[
+                    {
+                        "index": 0,
+                        "referenceImageID": 4,
+                        "referenceImageName": "DJI_TEST.JPG",
+                        "referenceKeypointX": 1.0,
+                        "referenceKeypointY": 2.0,
+                        "point3DID": 1,
+                        "colmapXYZ": [0.0, 0.0, 0.0],
+                        "wallLocalXYZ": [0.0, 0.0, 0.0],
+                    }
+                ],
+                reference_images=[],
+                association_report={},
+                database_stats={},
+                opencv_provenance={},
+                sim3={"status": "VALIDATED"},
+                production_bound=True,
+            )
 
     def test_existing_s_wall_colmap_transform(self) -> None:
         path = ROOT / "offline" / "work" / "wall_jiulongfeng_01" / "metric_registration" / "S_wall_colmap.json"

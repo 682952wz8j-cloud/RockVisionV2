@@ -114,6 +114,7 @@ def validate_package_dir(root: Path) -> PackageValidationResult:
                 assess_sim3_identity(
                     sim3_payload,
                     wall_id=wall_id,
+                    run_id=package["sourceBuild"]["runId"],
                     model_fingerprint=fingerprint if isinstance(fingerprint, str) else None,
                 )
             )
@@ -288,14 +289,15 @@ def _manifest_matches_package(manifest: dict, package: dict) -> list[ReasonCode]
 
 
 def _stage3_reference_map_binding(package: dict, freeze: dict | None, identity: dict | None) -> list[ReasonCode]:
-    """Fail closed unless freeze.json explicitly binds runId + COLMAP fingerprint.
+    """Fail closed unless freeze.json explicitly binds wall + runId + COLMAP fingerprint.
 
-    Current Gate 3C freeze.json does not contain these fields. Do not infer
-    from wallId, directories, timestamps, or filenames.
+    Do not infer from directories, timestamps, or filenames. Historical freeze
+    files without these fields are STAGE3_REFERENCE_MAP_BINDING_NOT_PROVEN.
     """
     declared = package.get("stage3", {}).get("freezeIdentity") or {}
     freeze_fp = None if freeze is None else freeze.get("colmapModelFingerprint")
     freeze_run = None if freeze is None else freeze.get("wallBuildRunId")
+    freeze_wall = None if freeze is None else freeze.get("wallId")
     identity_fp = None if identity is None else identity.get("modelFingerprint")
     run_id = package["sourceBuild"]["runId"]
     proven = (
@@ -305,16 +307,23 @@ def _stage3_reference_map_binding(package: dict, freeze: dict | None, identity: 
         and bool(freeze_run)
         and isinstance(identity_fp, str)
         and bool(identity_fp)
+        and isinstance(freeze_wall, str)
+        and bool(freeze_wall)
     )
     if not proven:
         return [ReasonCode.STAGE3_REFERENCE_MAP_BINDING_NOT_PROVEN]
-    if freeze_fp != identity_fp or freeze_run != run_id:
-        return [ReasonCode.STAGE3_REFERENCE_MAP_BINDING_MISMATCH]
+    codes: list[ReasonCode] = []
+    if freeze_wall != package["wallId"]:
+        codes.append(ReasonCode.WALL_ID_MISMATCH)
+    if freeze_fp != identity_fp:
+        codes.append(ReasonCode.FREEZE_MODEL_FINGERPRINT_MISMATCH)
+    if freeze_run != run_id:
+        codes.append(ReasonCode.FREEZE_WALL_BUILD_RUN_MISMATCH)
     if declared.get("colmapModelFingerprint") not in (None, freeze_fp):
-        return [ReasonCode.STAGE3_REFERENCE_MAP_BINDING_MISMATCH]
+        codes.append(ReasonCode.STAGE3_REFERENCE_MAP_BINDING_MISMATCH)
     if declared.get("wallBuildRunId") not in (None, freeze_run):
-        return [ReasonCode.STAGE3_REFERENCE_MAP_BINDING_MISMATCH]
-    return []
+        codes.append(ReasonCode.STAGE3_REFERENCE_MAP_BINDING_MISMATCH)
+    return codes
 
 
 def _freeze_asset_binding(package: dict, freeze: dict | None) -> list[ReasonCode]:

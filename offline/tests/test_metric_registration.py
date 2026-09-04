@@ -257,6 +257,47 @@ class GeometryAndSerializeTests(unittest.TestCase):
         loaded = load_sim3(tmp)
         self.assertEqual(loaded["scale"], 2.0)
         self.assertEqual(loaded["translationMeters"], [1.0, 2.0, 3.0])
+        self.assertNotIn("wallBuildRunId", payload)
+
+    def test_sim3_provenance_metadata_does_not_change_transform(self) -> None:
+        rotation = np.eye(3)
+        translation = np.array([1.0, 2.0, 3.0])
+        base = sim3_payload(
+            scale=2.0,
+            rotation=rotation,
+            translation=translation,
+            origin={"origin": [0, 0, 0], "source": "test", "relativePath": "m.xml", "srs": "EPSG:32650"},
+            fit_count=3,
+            holdout_count=1,
+            inlier_count=3,
+            threshold_m=0.05,
+            fit_metrics={"median": 0.1},
+            holdout_metrics={"median": 0.2},
+            solver_meta={"seed": 20260823, "iterations": 2000},
+        )
+        stamped = dict(base)
+        stamped["wallId"] = "wall_fixture"
+        stamped["wallBuildRunId"] = "wb_run"
+        stamped["colmapModelFingerprint"] = "abc"
+        stamped["modelFingerprint"] = "abc"
+        self.assertEqual(stamped["scale"], base["scale"])
+        self.assertEqual(stamped["rotationMatrix"], base["rotationMatrix"])
+        self.assertEqual(stamped["translationMeters"], base["translationMeters"])
+        self.assertEqual(stamped["matrix4x4"]["values"], base["matrix4x4"]["values"])
+        tmp = Path(tempfile.mkdtemp()) / "S_wall_colmap.json"
+        write_json(tmp, stamped)
+        loaded = load_sim3(tmp)
+        self.assertEqual(loaded["scale"], 2.0)
+        self.assertEqual(loaded["wallBuildRunId"], "wb_run")
+
+    def test_historical_sim3_without_provenance_remains_readable(self) -> None:
+        path = ROOT / "offline" / "work" / "wall_jiulongfeng_01" / "metric_registration" / "S_wall_colmap.json"
+        if not path.is_file():
+            self.skipTest("historical S_wall_colmap.json not present")
+        loaded = load_sim3(path)
+        self.assertEqual(loaded["status"], "VALIDATED")
+        self.assertNotIn("wallBuildRunId", loaded)
+        self.assertNotIn("colmapModelFingerprint", loaded)
 
 
 if __name__ == "__main__":

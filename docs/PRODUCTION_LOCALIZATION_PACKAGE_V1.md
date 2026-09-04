@@ -144,34 +144,41 @@ Production package validation requires:
 
 Parsing reuses `offline.metric_registration.serialize.load_sim3`.
 
-Current on-disk `S_wall_colmap.json` does not carry `wallId` or
-`modelFingerprint`. Those fields are required here. Absence fails
-closed (`WALL_ID_MISMATCH` / `COLMAP_SOURCE_IDENTITY_NOT_PROVEN`).
-Do not infer them from paths.
+New `wall_build` metric-registration writes stamp `wallId`,
+`wallBuildRunId`, and `colmapModelFingerprint` (same value as Stage 2
+`modelFingerprint`). Historical on-disk `S_wall_colmap.json` may omit
+those fields: it remains parseable and fails production package
+validation closed (`WALL_ID_MISMATCH` /
+`SIM3_WALL_BUILD_RUN_MISMATCH` / `COLMAP_SOURCE_IDENTITY_NOT_PROVEN` /
+`SIM3_MODEL_FINGERPRINT_MISMATCH`). Do not infer identity from paths.
 
 ## Stage 3 ↔ Reference Map cross-binding
 
-This is the major provenance gap.
+Production Stage 3 generation binds an **explicit** validated
+`wall_build/<runId>`:
 
-Current Gate 3C `freeze.json` records descriptor/landmark hashes. It
-does **not** record `wallBuildRunId` or `colmapModelFingerprint`.
-Stage 3 generation reads the legacy work tree, not `wall_build/<runId>/`.
+```text
+./rockvision reference-match <wall_id> --run-id <runId>
+```
 
-Unless `evidence/freeze.json` **explicitly** contains both:
+No latest-run selection. No fallback to
+`offline/work/<wallId>/colmap` or `metric_registration` in production
+mode. Without `--run-id`, the existing development/legacy path remains.
 
-- `colmapModelFingerprint` equal to Stage 2 `modelFingerprint`
-- `wallBuildRunId` equal to `sourceBuild.runId`
+A production-bound freeze records `wallId`, `wallBuildRunId`, and
+`colmapModelFingerprint` from the selected run’s
+`colmap_source_identity.json` after re-hashing the live model
+(`modelFingerprint` is reused, not replaced). New `S_wall_colmap.json`
+writes from `wall_build` stamp the same identity. Historical Sim3/freeze
+files remain readable and stay `NOT production PACKAGE_READY` if those
+fields are absent.
 
-the package cannot become `PACKAGE_READY`. Reason code:
+The package validator requires equality across package, Stage 2
+identity, Sim3, freeze, and landmarks. Paths are not proof.
 
-`STAGE3_REFERENCE_MAP_BINDING_NOT_PROVEN`
-
-Do not close this gap by trusting `wallId`, directory proximity,
-timestamps, or filenames.
-
-A synthetic freeze that includes those fields can exercise the
-`PACKAGE_READY` path. That does **not** claim the current generator
-emits them.
+This does **not** mark any real wall `PACKAGE_READY`. Jiulongfeng
+DevelopmentFixture remains development-only. Jinshidong remains
+`POSITIONING_QUALITY_NOT_PROVEN`.
 
 ## Local cloud-manifest candidate
 
@@ -197,14 +204,13 @@ is a later phase. This local contract is ahead of current iOS
 consumption. Do not claim the Cloud E2E on Jiulongfeng Dev proves Cloud
 Sim(3) delivery.
 
-## Remaining blockers before a publisher (Phase B+)
+## Remaining blockers before a real PACKAGE_READY wall
 
-- Stage 3 freeze still cannot prove the same COLMAP model / Stage 2 run
-  as the package unless new freeze fields are added (out of scope here).
-- Current `S_wall_colmap.json` cannot prove wall / COLMAP identity from
-  its own fields.
-- Jiulongfeng Stage 3 fixture is `developmentFixtureOnly` /
-  `notAWallPackage`.
+- No real wall has been run through production `--run-id` Stage 3 yet.
+- Jiulongfeng DevelopmentFixture remains `developmentFixtureOnly` /
+  `notAWallPackage` and is byte-frozen.
 - Jinshidong positioning quality is not proven.
+- Historical Sim3/freeze without provenance stay readable and
+  not production `PACKAGE_READY`.
 - No publisher, no COS write, no catalog, no release allocation.
 - iOS does not load Cloud `S_wall_colmap`.

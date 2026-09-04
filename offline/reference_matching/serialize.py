@@ -91,6 +91,9 @@ def freeze_artifact(
     opencv_provenance: dict,
     sim3: dict,
     extra: dict | None = None,
+    production_bound: bool = False,
+    wall_build_run_id: str | None = None,
+    colmap_model_fingerprint: str | None = None,
 ) -> dict:
     dest.mkdir(parents=True, exist_ok=True)
     desc_path = dest / "descriptors.bin"
@@ -98,12 +101,15 @@ def freeze_artifact(
     write_rvs1(desc_path, descriptors)
     if len(rows) != len(descriptors):
         raise ArtifactError("landmarks length != descriptor rows")
+    if production_bound:
+        if not wall_build_run_id or not colmap_model_fingerprint:
+            raise ArtifactError("production-bound freeze requires verified runId and modelFingerprint")
     landmarks = {
         "schema": LANDMARKS_SCHEMA,
         "schemaId": ARTIFACT_SCHEMA,
         "wallId": wall_id,
-        "developmentFixtureOnly": True,
-        "notAWallPackage": True,
+        "developmentFixtureOnly": not production_bound,
+        "notAWallPackage": not production_bound,
         "xyzFrameId": "colmap_reconstruction_rhs_opencv_units",
         "sift": database_stats.get("sift"),
         "matchingHints": {
@@ -138,8 +144,14 @@ def freeze_artifact(
         "landmarksSha256": sha256_file(landmarks_path),
         "descriptorsBytes": int(desc_path.stat().st_size),
         "landmarksBytes": int(landmarks_path.stat().st_size),
+        "wallId": wall_id,
         **(extra or {}),
     }
+    # Verified Stage 2 identity always wins over caller extra.
+    if wall_build_run_id:
+        freeze["wallBuildRunId"] = wall_build_run_id
+    if colmap_model_fingerprint:
+        freeze["colmapModelFingerprint"] = colmap_model_fingerprint
     write_json(dest / "freeze.json", freeze)
     return freeze
 

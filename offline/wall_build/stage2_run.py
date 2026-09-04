@@ -181,6 +181,7 @@ def run_production_stage2(
         sources=sources,
         dest=metric_dir,
         colmap_dir=colmap_dir,
+        run_id=dest.name,
     )
     validated = payload.get("validationStatus") == "VALIDATED" and "scale" in payload
     gate = str(payload.get("gateResult") or "FAIL")

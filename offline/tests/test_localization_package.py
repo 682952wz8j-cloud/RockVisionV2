@@ -58,6 +58,8 @@ def _sim3(*, status: str = "VALIDATED", wall_id: str = WALL, fingerprint: str = 
             "values": [[scale, 0.0, 0.0, 0.0], [0.0, scale, 0.0, 0.0], [0.0, 0.0, scale, 0.0], [0.0, 0.0, 0.0, 1.0]],
         },
         "wallId": wall_id,
+        "wallBuildRunId": RUN_ID,
+        "colmapModelFingerprint": fingerprint,
         "modelFingerprint": fingerprint,
     }
 
@@ -100,6 +102,7 @@ def _candidate(*, bind_stage3: bool = True, environment: str = ENVIRONMENT_PRODU
         "bytes": len(sim3),
     }
     freeze = {
+        "wallId": WALL,
         "descriptorsPath": "descriptors.bin",
         "landmarksPath": "landmarks.json",
         "descriptorsSha256": desc_spec["sha256"],
@@ -499,6 +502,80 @@ class LocalizationPackageValidationTests(unittest.TestCase):
         result = validate_package_dir(root)
         self.assertIn(ReasonCode.WALL_ID_MISMATCH.value, result.reason_codes)
         self.assertFalse(result.ok)
+
+    def test_sim3_run_mismatch_fails(self) -> None:
+        package, manifest, assets, evidence = _candidate()
+        sim3 = _sim3()
+        sim3["wallBuildRunId"] = "wb_other_run"
+        raw = json.dumps(sim3, indent=2, ensure_ascii=False).encode("utf-8") + b"\n"
+        assets["s-wall-colmap"] = raw
+        package["metricTransform"]["sha256"] = _sha(raw)
+        package["metricTransform"]["bytes"] = len(raw)
+        manifest["assets"][2]["sha256"] = _sha(raw)
+        manifest["assets"][2]["bytes"] = len(raw)
+        root = _write(self.tmp, package, manifest, assets, evidence)
+        result = validate_package_dir(root)
+        self.assertIn(ReasonCode.SIM3_WALL_BUILD_RUN_MISMATCH.value, result.reason_codes)
+        self.assertFalse(result.ok)
+
+    def test_sim3_model_fingerprint_mismatch_fails(self) -> None:
+        package, manifest, assets, evidence = _candidate()
+        sim3 = _sim3()
+        other = hashlib.sha256(b"other-model").hexdigest()
+        sim3["colmapModelFingerprint"] = other
+        sim3["modelFingerprint"] = other
+        raw = json.dumps(sim3, indent=2, ensure_ascii=False).encode("utf-8") + b"\n"
+        assets["s-wall-colmap"] = raw
+        package["metricTransform"]["sha256"] = _sha(raw)
+        package["metricTransform"]["bytes"] = len(raw)
+        manifest["assets"][2]["sha256"] = _sha(raw)
+        manifest["assets"][2]["bytes"] = len(raw)
+        root = _write(self.tmp, package, manifest, assets, evidence)
+        result = validate_package_dir(root)
+        self.assertIn(ReasonCode.SIM3_MODEL_FINGERPRINT_MISMATCH.value, result.reason_codes)
+
+    def test_freeze_run_mismatch_fails(self) -> None:
+        root, _ = self._ready()
+        _rewrite_json(evidence_path(root, "freeze.json"), lambda payload: payload.update({"wallBuildRunId": "wb_other"}))
+        result = validate_package_dir(root)
+        self.assertIn(ReasonCode.FREEZE_WALL_BUILD_RUN_MISMATCH.value, result.reason_codes)
+
+    def test_freeze_model_fingerprint_mismatch_fails(self) -> None:
+        root, _ = self._ready()
+        _rewrite_json(
+            evidence_path(root, "freeze.json"),
+            lambda payload: payload.update({"colmapModelFingerprint": hashlib.sha256(b"other").hexdigest()}),
+        )
+        result = validate_package_dir(root)
+        self.assertIn(ReasonCode.FREEZE_MODEL_FINGERPRINT_MISMATCH.value, result.reason_codes)
+
+    def test_historical_sim3_missing_provenance_cannot_qualify(self) -> None:
+        package, manifest, assets, evidence = _candidate()
+        sim3 = _sim3()
+        for key in ("wallId", "wallBuildRunId", "colmapModelFingerprint", "modelFingerprint"):
+            sim3.pop(key, None)
+        raw = json.dumps(sim3, indent=2, ensure_ascii=False).encode("utf-8") + b"\n"
+        assets["s-wall-colmap"] = raw
+        package["metricTransform"]["sha256"] = _sha(raw)
+        package["metricTransform"]["bytes"] = len(raw)
+        manifest["assets"][2]["sha256"] = _sha(raw)
+        manifest["assets"][2]["bytes"] = len(raw)
+        root = _write(self.tmp, package, manifest, assets, evidence)
+        result = validate_package_dir(root)
+        self.assertTrue(
+            {
+                ReasonCode.WALL_ID_MISMATCH.value,
+                ReasonCode.SIM3_WALL_BUILD_RUN_MISMATCH.value,
+                ReasonCode.COLMAP_SOURCE_IDENTITY_NOT_PROVEN.value,
+            }.issubset(set(result.reason_codes))
+        )
+        self.assertNotEqual(result.package_state, STATE_PACKAGE_READY)
+
+    def test_historical_freeze_missing_provenance_cannot_qualify(self) -> None:
+        root, _ = self._ready(bind_stage3=False)
+        result = validate_package_dir(root)
+        self.assertIn(ReasonCode.STAGE3_REFERENCE_MAP_BINDING_NOT_PROVEN.value, result.reason_codes)
+        self.assertNotEqual(result.package_state, STATE_PACKAGE_READY)
 
 
 if __name__ == "__main__":

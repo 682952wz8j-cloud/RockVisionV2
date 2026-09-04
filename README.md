@@ -474,6 +474,11 @@ promotion. Stage 2 Build ≠ Stage 3 Generation ≠ Localization Package.
 `LOCALIZATION_READY` does not imply `ROUTE_AR_READY`. BUILD ≠ PUBLISHED
 remains in force. No COS write. Stage / Gate status above is unchanged.
 
+Production Stage 3 may bind one explicit `wall_build/<runId>` via
+`./rockvision reference-match <wall_id> --run-id <runId>`. That is not
+a published release and does not mark Jiulongfeng or Jinshidong
+`PACKAGE_READY`.
+
 **Identified status statements in those docs are stale; definitions are
 not.** Stage / Gate / `S_wall_colmap` **current status** is this README.
 Only the identified status lines below are outdated. Architecture and

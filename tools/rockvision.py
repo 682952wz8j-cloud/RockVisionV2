@@ -35,6 +35,12 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
         help="Gate 3C: OpenCV reference SIFT, 2px association, freeze artifact, same-image/LOO (stops before Swift)",
     )
     match_cmd.add_argument("wall_id")
+    match_cmd.add_argument(
+        "--run-id",
+        dest="run_id",
+        default=None,
+        help="Production Stage 3: exact wall_build/<runId>. No latest. No legacy fallback.",
+    )
     pnp_cmd = sub.add_parser("pnp", help="Gate 3D: pinned OpenCV 4.14.0 single-frame PnP (offline)")
     pnp_cmd.add_argument("--self-test", action="store_true")
     pnp_cmd.add_argument("--session", help="Field Test samples.jsonl (not gate3b_20260824_155143)")
@@ -90,7 +96,7 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     if args.command == "reference-match":
         from offline.reference_matching.cli import run_reference_match
 
-        return run_reference_match(args.wall_id, repo)
+        return run_reference_match(args.wall_id, repo, run_id=args.run_id)
     if args.command == "pnp":
         from offline.pnp.cli import run_pnp
 
