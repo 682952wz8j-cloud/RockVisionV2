@@ -366,6 +366,7 @@ Details: [incoming/README.md](incoming/README.md).
 | [docs/DEVELOPMENT_GATES.md](docs/DEVELOPMENT_GATES.md) | Gate discipline; live status at top; Gate 0–11 body is early plan numbering |
 | [docs/CLOUD_ASSET_CONTRACT_V1.md](docs/CLOUD_ASSET_CONTRACT_V1.md) | CragPal Cloud Asset API v1 client contract (not production publishing) |
 | [docs/CLOUD_CLIENT_V1.md](docs/CLOUD_CLIENT_V1.md) | iOS Cloud Asset Client v1 (cache/install only; not Stage 5) |
+| [docs/PRODUCTION_LOCALIZATION_PACKAGE_V1.md](docs/PRODUCTION_LOCALIZATION_PACKAGE_V1.md) | Local Production Localization Package contract (not published) |
 | [incoming/README.md](incoming/README.md) | How to add a wall (raw drop) |
 
 ---
@@ -461,6 +462,17 @@ Install Jiulongfeng Dev `r000001` via explicit `wallId`+`releaseId`
 (catalog-independent). A further explicit Debug action selects that
 validated local CURRENT as the localization reference. Camera default
 on launch remains Bundle `DevelopmentFixture`.
+
+## Production Localization Package v1 (local contract)
+
+Local, unpublished package contract only. See
+[`docs/PRODUCTION_LOCALIZATION_PACKAGE_V1.md`](docs/PRODUCTION_LOCALIZATION_PACKAGE_V1.md).
+
+This is **not** a Wall Package, **not** a Route AR Package, **not**
+publish approval, **not** a published release, and **not** catalog
+promotion. Stage 2 Build ≠ Stage 3 Generation ≠ Localization Package.
+`LOCALIZATION_READY` does not imply `ROUTE_AR_READY`. BUILD ≠ PUBLISHED
+remains in force. No COS write. Stage / Gate status above is unchanged.
 
 **Identified status statements in those docs are stale; definitions are
 not.** Stage / Gate / `S_wall_colmap` **current status** is this README.

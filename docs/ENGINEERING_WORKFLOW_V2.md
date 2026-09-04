@@ -149,6 +149,7 @@ These modules are the current verify suite:
 - `offline.tests.test_wall_build_stage2`
 - `offline.tests.test_reference_matching`
 - `offline.tests.test_pnp`
+- `offline.tests.test_localization_package`
 - `offline.tests.test_engineering_workflow`
 
 Several of those already encode production-lock and frozen-artifact

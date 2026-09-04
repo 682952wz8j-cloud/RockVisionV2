@@ -56,6 +56,7 @@ class EngineeringWorkflowV2Tests(unittest.TestCase):
             "offline.tests.test_wall_build_stage2",
             "offline.tests.test_reference_matching",
             "offline.tests.test_pnp",
+            "offline.tests.test_localization_package",
             "offline.tests.test_engineering_workflow",
         }
         self.assertEqual(set(DEFAULT_UNITTEST_MODULES), expected)
