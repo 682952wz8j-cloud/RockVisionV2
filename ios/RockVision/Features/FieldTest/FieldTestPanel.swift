@@ -138,11 +138,13 @@ struct FieldTestPanel: View {
             hashVerified: routeBinding.hashVerified,
             boundPointCount: routeBinding.routeARWorldPointCount,
             rendered: routePlan.wouldRender,
-            visibleSegmentCount: routePlan.segmentCount
+            visibleSegmentCount: routePlan.segmentCount,
+            matching: matching,
+            pnp: pnp
         )
     }
 
-    /// Stage 3 diagnostics stay computed from live snapshots; Gate 4B HUD does not render them.
+    /// Full historical Stage 3 mapping stays computed; only Unique 3D / PnP inliers / PnP are shown.
     var retainedDiagnosticRows: [Gate4BPhysicalValidationHUD.StatusRow] {
         Gate4BPhysicalValidationHUD.diagnosticRows(
             processing: "960×720",

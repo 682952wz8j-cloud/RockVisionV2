@@ -30,6 +30,9 @@ enum Gate4BPhysicalValidationHUD {
         "Tracking",
         "Localization",
         "Confirm",
+        "Unique 3D",
+        "PnP inliers",
+        "PnP",
         "T_ARWorld_Wall",
         "Wall axes",
         "Markers",
@@ -40,7 +43,7 @@ enum Gate4BPhysicalValidationHUD {
         "Segments"
     ]
 
-    static let hiddenDiagnosticTitles = [
+    static let mappedDiagnosticTitles = [
         "Processing",
         "Valid",
         "Matching",
@@ -59,6 +62,12 @@ enum Gate4BPhysicalValidationHUD {
         "obs-depth sanity"
     ]
 
+    /// Historical Stage 3 rows that stay mapped but are not shown, except Unique 3D / PnP
+    /// which are also promoted into the live evidence HUD.
+    static let hiddenDiagnosticTitles = mappedDiagnosticTitles.filter {
+        $0 != "Unique 3D" && $0 != "PnP"
+    }
+
     static func visibleRows(
         scene: String,
         tracking: String,
@@ -71,13 +80,17 @@ enum Gate4BPhysicalValidationHUD {
         hashVerified: Bool = false,
         boundPointCount: Int = 0,
         rendered: Bool = false,
-        visibleSegmentCount: Int = 0
+        visibleSegmentCount: Int = 0,
+        matching: MatchingRuntimeSnapshot = MatchingRuntimeSnapshot(),
+        pnp: PnPRuntimeSnapshot = PnPRuntimeSnapshot()
     ) -> [StatusRow] {
-        [
+        let evidence = stage3EvidenceRows(matching: matching, pnp: pnp)
+        return [
             StatusRow(title: "Scene", value: scene),
             StatusRow(title: "Tracking", value: tracking),
             StatusRow(title: "Localization", value: localization),
-            StatusRow(title: "Confirm", value: confirmationWindow),
+            StatusRow(title: "Confirm", value: confirmationWindow)
+        ] + evidence + [
             StatusRow(title: "T_ARWorld_Wall", value: wallTransformLabel(alignment)),
             StatusRow(title: "Wall axes", value: axesLabel(wallAxes)),
             StatusRow(title: "Markers", value: wallMarkers),
@@ -89,7 +102,19 @@ enum Gate4BPhysicalValidationHUD {
         ]
     }
 
-    /// Stage 3 diagnostic rows remain mapped from live snapshots but are not shown.
+    /// Minimum Stage 3 evidence rows. Source-agnostic; uses published snapshots only.
+    static func stage3EvidenceRows(
+        matching: MatchingRuntimeSnapshot,
+        pnp: PnPRuntimeSnapshot
+    ) -> [StatusRow] {
+        [
+            StatusRow(title: "Unique 3D", value: matching.acceptedUniquePoint3D),
+            StatusRow(title: "PnP inliers", value: pnp.inliers),
+            StatusRow(title: "PnP", value: pnp.status)
+        ]
+    }
+
+    /// Full historical Stage 3 mapping. Unique 3D and PnP are also shown live; the rest stay hidden.
     static func diagnosticRows(
         processing: String,
         valid: String,

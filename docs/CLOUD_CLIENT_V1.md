@@ -88,14 +88,26 @@ each type. The client resolves by semantic `type`, then uses the
 concrete opaque `assetId` with `localAssetURL`. `assetId` is not a
 filename.
 
-This does **not** mean a real Cloud-hosted Stage 3 package has been
-consumed for localization. `wall_example_01` / `r000001` / 38-byte
-`reference-map` (`type: reference_map`) is not a ReferenceDatabase.
+`wall_example_01` / `r000001` / 38-byte `reference-map`
+(`type: reference_map`) is not a ReferenceDatabase.
+
 A DEVELOPMENT_TEST_ONLY COS release (`wall_jiulongfeng_01_dev` /
-`r000001`) may be installed through the explicit release path. That is
-**EXPLICIT CLOUD RELEASE INSTALLATION READY**, not Cloud-hosted
-ReferenceDatabase localization. Camera default remains the Bundle
-`DevelopmentFixture`.
+`r000001`) is installed through the explicit release path (not catalog
+discovery) and may be selected as the localization source by an
+explicit Debug action. Camera default remains the Bundle
+`DevelopmentFixture`. Cloud failure does not fall back to Bundle.
+The camera / matching loop stays network-free after CURRENT is local.
+
+**CLOUD_HOSTED_STAGE3_LOCALIZATION_E2E = PASS** (2026-09-04,
+DEVELOPMENT_TEST_ONLY). Real-device Debug Cloud CURRENT
+`wall_jiulongfeng_01_dev` / `r000001`: Unique 3D 618, PnP inliers 451,
+PnP status `candidate`, Confirm 3/3, Localization `localized`,
+`T_ARWorld_Wall` valid, route rendered YES. This proves Cloud-hosted
+Stage 3 reference assets can drive the existing real-device
+localization pipeline. Localization math is unchanged. This does
+**not** mean Jiulongfeng is production published, Jinshidong production
+Reference Map is valid, a production wall package exists, Stage 5
+PASS, Gate 5D-B PASS, or social/cloud production launch.
 
 Offline localization uses previously downloaded local assets, never live
 Cloud requests.

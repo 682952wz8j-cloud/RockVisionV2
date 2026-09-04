@@ -413,7 +413,8 @@ for Cloud Asset API v1. Visual localization / AR / Stage 5 are unchanged.
 | Catalog / convenience manifest / release-scoped manifest / asset GET | implemented |
 | bytes + SHA-256 verify, atomic CURRENT | implemented |
 | Offline use of previous CURRENT | implemented |
-| Reference asset source bridge (Bundle or validated Cloud CURRENT) | implemented (not Cloud localization E2E) |
+| Reference asset source bridge (Bundle or validated Cloud CURRENT) | implemented |
+| Cloud-hosted Stage 3 localization E2E | **PASS** (DEVELOPMENT_TEST_ONLY, 2026-09-04) |
 | Production wall package / Jinshidong publish | **not authorized** |
 | Stage 5 / Gate 5D | **unchanged** |
 
@@ -421,19 +422,32 @@ for Cloud Asset API v1. Visual localization / AR / Stage 5 are unchanged.
 and **not** Stage 5 PASS. BUILD ≠ PUBLISHED remains in force.
 
 Localization input may resolve a Bundle development fixture **or** a
-validated local Cloud CURRENT release. Cloud is not in the per-frame
-loop.
+validated local Cloud CURRENT release. Default remains Bundle
+`DevelopmentFixture`. Cloud CURRENT is an explicit Debug selection.
+Cloud is not in the per-frame loop. Cloud mode does not fall back to
+Bundle.
 
 Cloud Asset Contract v1 Stage 3 vocabulary
 (`reference_descriptors_rvs1`, `reference_landmarks_json`) is frozen.
-That does **not** mean a Cloud-hosted ReferenceDatabase has been
-published. Current status:
+That does **not** mean a production Cloud-hosted ReferenceDatabase has
+been published, and it does **not** put the development release in the
+production catalog. Current status:
 
 - Cloud distribution infrastructure = PASS
 - Cloud Client v1 = PASS
 - Cloud → local validated asset bridge = implemented
-- Explicit Cloud release installation = **READY** (not a real-device PASS)
-- Cloud-hosted real ReferenceDatabase localization = **NOT PROVEN**
+- Explicit Cloud release installation = **READY**
+- Cloud-hosted Stage 3 localization E2E = **PASS** (DEVELOPMENT_TEST_ONLY, 2026-09-04)
+
+Real-device evidence (2026-09-04), Debug Cloud CURRENT
+`wall_jiulongfeng_01_dev` / `r000001` already installed locally:
+Unique 3D 618, PnP inliers 451, PnP `candidate`, Confirm 3/3,
+Localization `localized`, `T_ARWorld_Wall` valid, route rendered YES.
+This proves Cloud-hosted Stage 3 reference assets can drive the
+existing real-device localization pipeline. Localization math is
+unchanged. This is **not** Jiulongfeng production publish, **not**
+Jinshidong production Reference Map validity, **not** a production wall
+package, **not** Stage 5 PASS, and **not** Gate 5D-B PASS.
 
 The 38-byte `reference-map` fixture is not a Stage 3 ReferenceDatabase.
 
@@ -444,8 +458,9 @@ IP exception from Release. Production endpoint is `https://api.cragpal.com`.
 Debug UI only: Fetch Catalog / Download for `wall_example_01` (API E2E
 fixture text, **not** a real Reference Map). Separate Debug action:
 Install Jiulongfeng Dev `r000001` via explicit `wallId`+`releaseId`
-(catalog-independent). That install does **not** switch camera
-localization to Cloud.
+(catalog-independent). A further explicit Debug action selects that
+validated local CURRENT as the localization reference. Camera default
+on launch remains Bundle `DevelopmentFixture`.
 
 **Identified status statements in those docs are stale; definitions are
 not.** Stage / Gate / `S_wall_colmap` **current status** is this README.

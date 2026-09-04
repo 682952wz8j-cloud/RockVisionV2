@@ -22,6 +22,9 @@ final class Gate4BPhysicalValidationHUDTests: XCTestCase {
         XCTAssertEqual(rows.first { $0.title == "Tracking" }?.value, "normal")
         XCTAssertEqual(rows.first { $0.title == "Localization" }?.value, "localized")
         XCTAssertEqual(rows.first { $0.title == "Confirm" }?.value, "3/3")
+        XCTAssertEqual(rows.first { $0.title == "Unique 3D" }?.value, "—")
+        XCTAssertEqual(rows.first { $0.title == "PnP inliers" }?.value, "—")
+        XCTAssertEqual(rows.first { $0.title == "PnP" }?.value, "inactive")
         XCTAssertEqual(rows.first { $0.title == "T_ARWorld_Wall" }?.value, "valid")
         XCTAssertEqual(rows.first { $0.title == "Wall axes" }?.value, "visible")
         XCTAssertEqual(rows.first { $0.title == "Markers" }?.value, "4/4")
@@ -312,10 +315,121 @@ final class Gate4BPhysicalValidationHUDTests: XCTestCase {
             sift: sift,
             pnp: pnp
         )
-        XCTAssertEqual(rows.map(\.title), Gate4BPhysicalValidationHUD.hiddenDiagnosticTitles)
+        XCTAssertEqual(rows.map(\.title), Gate4BPhysicalValidationHUD.mappedDiagnosticTitles)
         XCTAssertEqual(rows.first { $0.title == "Query kp" }?.value, "12")
+        XCTAssertEqual(rows.first { $0.title == "Unique 3D" }?.value, "7")
+        XCTAssertEqual(rows.first { $0.title == "PnP" }?.value, "ok")
+        XCTAssertEqual(rows.first { $0.title == "RANSAC inliers" }?.value, "30")
         XCTAssertEqual(rows.first { $0.title == "C_wall" }?.value, "1,2,3")
         XCTAssertEqual(rows.first { $0.title == "obs-depth sanity" }?.value, "ok")
+    }
+
+    func testStage3EvidenceRowsUseExistingSnapshots() {
+        var matching = MatchingRuntimeSnapshot()
+        matching.acceptedUniquePoint3D = "11"
+        matching.acceptedAfterRatio = "20"
+        matching.queryKeypoints = "80"
+        var pnp = PnPRuntimeSnapshot()
+        pnp.inliers = "28"
+        pnp.status = "candidate"
+        pnp.localization = "idle"
+        pnp.inlierRatio = "0.70"
+        pnp.reproj = "0.50 px"
+        let rows = Gate4BPhysicalValidationHUD.stage3EvidenceRows(matching: matching, pnp: pnp)
+        XCTAssertEqual(rows.map(\.title), ["Unique 3D", "PnP inliers", "PnP"])
+        XCTAssertEqual(rows.first { $0.title == "Unique 3D" }?.value, matching.acceptedUniquePoint3D)
+        XCTAssertEqual(rows.first { $0.title == "PnP inliers" }?.value, pnp.inliers)
+        XCTAssertEqual(rows.first { $0.title == "PnP" }?.value, pnp.status)
+        XCTAssertNotEqual(rows.first { $0.title == "PnP" }?.value, pnp.localization)
+        XCTAssertFalse(rows.contains { $0.title == "Query kp" })
+        XCTAssertFalse(rows.contains { $0.title == "Accepted" })
+        XCTAssertFalse(rows.contains { $0.title == "Inlier ratio" })
+        XCTAssertFalse(rows.contains { $0.title == "Reproj" })
+        XCTAssertFalse(rows.contains { $0.title == "RANSAC inliers" })
+    }
+
+    func testVisibleHUDKeepsConfirmationStateAndMinimumStage3Evidence() {
+        var matching = MatchingRuntimeSnapshot()
+        matching.acceptedUniquePoint3D = "9"
+        var pnp = PnPRuntimeSnapshot()
+        pnp.inliers = "22"
+        pnp.status = "candidate"
+        pnp.localization = "idle"
+        let rows = Gate4BPhysicalValidationHUD.visibleRows(
+            scene: "A",
+            tracking: "normal",
+            localization: "localized",
+            confirmationWindow: "3/3",
+            alignment: "yes 12",
+            wallAxes: "visible",
+            wallMarkers: "4/4",
+            matching: matching,
+            pnp: pnp
+        )
+        XCTAssertEqual(rows.first { $0.title == "Localization" }?.value, "localized")
+        XCTAssertEqual(rows.first { $0.title == "Confirm" }?.value, "3/3")
+        XCTAssertEqual(rows.first { $0.title == "Unique 3D" }?.value, "9")
+        XCTAssertEqual(rows.first { $0.title == "PnP inliers" }?.value, "22")
+        XCTAssertEqual(rows.first { $0.title == "PnP" }?.value, "candidate")
+        XCTAssertNotEqual(rows.first { $0.title == "PnP" }?.value, pnp.localization)
+        let titles = rows.map(\.title)
+        XCTAssertFalse(titles.contains("Query kp"))
+        XCTAssertFalse(titles.contains("Accepted"))
+        XCTAssertFalse(titles.contains("SIFT"))
+        XCTAssertFalse(titles.contains("Match"))
+        XCTAssertFalse(titles.contains("Stage3"))
+        XCTAssertFalse(titles.contains("PnP in"))
+        XCTAssertFalse(titles.contains("RANSAC inliers"))
+        XCTAssertFalse(titles.contains("Inlier ratio"))
+        XCTAssertFalse(titles.contains("Reproj"))
+        XCTAssertFalse(titles.contains("C_wall"))
+        XCTAssertFalse(titles.contains("obs-depth sanity"))
+    }
+
+    func testStage3EvidenceMappingIsSourceAgnostic() throws {
+        var matching = MatchingRuntimeSnapshot()
+        matching.acceptedUniquePoint3D = "15"
+        var pnp = PnPRuntimeSnapshot()
+        pnp.inliers = "31"
+        pnp.status = "candidate"
+        let bundleRows = Gate4BPhysicalValidationHUD.stage3EvidenceRows(matching: matching, pnp: pnp)
+        let cloudRows = Gate4BPhysicalValidationHUD.stage3EvidenceRows(matching: matching, pnp: pnp)
+        XCTAssertEqual(bundleRows, cloudRows)
+        let hud = try String(
+            contentsOfFile: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("RockVision/Features/FieldTest/Gate4BPhysicalValidationHUD.swift")
+                .path,
+            encoding: .utf8
+        )
+        XCTAssertFalse(hud.contains("cloudValidatedRelease"))
+        XCTAssertFalse(hud.contains("developmentFixture"))
+        XCTAssertFalse(hud.contains("wall_jiulongfeng"))
+        let panel = try String(
+            contentsOfFile: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("RockVision/Features/FieldTest/FieldTestPanel.swift")
+                .path,
+            encoding: .utf8
+        )
+        XCTAssertTrue(panel.contains("matching: matching"))
+        XCTAssertTrue(panel.contains("pnp: pnp"))
+        XCTAssertFalse(panel.contains("cloudValidatedRelease"))
+        let content = try String(
+            contentsOfFile: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("RockVision/App/ContentView.swift")
+                .path,
+            encoding: .utf8
+        )
+        XCTAssertTrue(content.contains("localization: openCV.confirmationSnapshot.localization"))
+        XCTAssertTrue(content.contains("confirmationWindow: openCV.confirmationSnapshot.window"))
+        XCTAssertFalse(content.contains("pnpSnapshot.localization"))
+        XCTAssertTrue(content.contains("matching: openCV.matchingSnapshot"))
+        XCTAssertTrue(content.contains("pnp: openCV.pnpSnapshot"))
     }
 
     func testExportSchemaIsGate5DARuntime() throws {
