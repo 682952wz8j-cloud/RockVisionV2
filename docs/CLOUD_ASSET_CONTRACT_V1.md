@@ -69,8 +69,14 @@ These distinctions are required:
 - catalog discoverability ≠ production qualification
 - localization capable ≠ production qualified
 
-Jiulongfeng Dev (`wall_jiulongfeng_01_dev` / `r000001`) remains reachable
-only through the exact-release route. It is not catalog-promoted.
+Jiulongfeng Dev (`wall_jiulongfeng_01_dev` / `r000001`) remains a
+published development release. A real `development_test` promotion
+record is created only by the separate `promote-development-release`
+command after explicit `--approve`. That classification feeds DEBUG_TEST
+discovery only. It does not make the wall production-qualified or
+production-discoverable. Until that real promotion write exists, the
+wall remains reachable through the exact-release route and is not
+catalog-promoted.
 
 ## Release binding
 

@@ -38,7 +38,7 @@ Keep these identities separate:
 | **Localization Package** | this contract (local candidate only) |
 | Publish Approval | explicit `--approve` only; not implied by `PACKAGE_READY` |
 | Published Release | Publisher v1 can write `published/<wallId>/<releaseId>/`; catalog is unchanged |
-| Catalog Promotion | separate `promote-localization-release`; writes immutable `published/promotions/<wallId>/<releaseId>.json` only |
+| Catalog Promotion | separate `promote-localization-release` (production) or `promote-development-release` (`development_test`); writes immutable `published/promotions/<wallId>/<releaseId>.json` only |
 | Route AR Package | explicitly excluded |
 
 **BUILD ≠ PUBLISHED.** Copying files into `offline/packages/` is
@@ -351,13 +351,14 @@ CLI:
 ./rockvision promote-localization-release <wallId> <releaseId> --name "<display name>" --approve
 ```
 
-Exact `wallId` and exact `releaseId` are required. Latest is never
+This production command always writes `environment=production`. Exact
+`wallId` and exact `releaseId` are required. Latest is never
 inferred. `--name` is required. Without `--approve`:
 `PROMOTION_NOT_AUTHORIZED`, zero remote writes.
 `./rockvision build` never publishes or promotes. Publisher v1 never
 invokes promotion.
 
-Before any promotion-record write, promotion independently proves the
+Before any production promotion-record write, promotion independently proves the
 target immutable release exists and is valid remotely:
 
 1. GET `published/<wallId>/<releaseId>/manifest.json`
@@ -370,6 +371,50 @@ A previous local Publisher report is not sufficient.
 `REMOTE_RELEASE_VALIDATED = YES` is required before creating a
 promotion record. The record stores `releaseManifestSha256` of that
 validated remote manifest.
+
+### Development_test promotion (separate command)
+
+Development promotion is an infrastructure/test classification only.
+It does **not** publish assets, does **not** rewrite the immutable
+release, does **not** write `published/catalog.json`, and does **not**
+qualify production.
+
+```text
+PUBLISHED DEVELOPMENT RELEASE
+→ REMOTE DEVELOPMENT RELEASE VALIDATED
+→ DEVELOPMENT PROMOTION APPROVED
+→ IMMUTABLE development_test PROMOTION RECORD
+```
+
+```text
+./rockvision promote-development-release <wallId> <releaseId> --name "<display name>" --approve
+```
+
+`environment` is hardcoded to `development_test`. There is no
+caller-supplied environment argument and no `--allow-dev` flag on the
+production promoter.
+
+Development remote-release qualification requires:
+
+- supported `cragpal.wall-manifest.v1`
+- exact `wallId` / `releaseId`
+- required `reference_descriptors_rvs1` and `reference_landmarks_json`
+- every `required=true` declared asset exists remotely with matching
+  bytes and SHA-256
+
+It does **not** require Cloud `s_wall_colmap_json`. Known
+development-test properties (`developmentFixtureOnly`,
+`notAWallPackage`, Cloud wallId vs embedded landmark wallId mismatch,
+absent Cloud Sim3) do not by themselves fail this path and do not
+become production claims.
+
+`LOCALIZATION_CAPABLE` ≠ `PRODUCTION_QUALIFIED`. After a real
+development_test promotion record exists, backend DEBUG_TEST discovery
+(`GET /v1/debug/walls`) may include the wall. PRODUCTION discovery
+(`GET /v1/walls`) must still exclude it.
+
+Production promotion remains unchanged: full production triple,
+`environment=production` only.
 
 Canonical object:
 
@@ -412,8 +457,10 @@ is the PRODUCTION audience (explicit `environment=production` only).
 Release-scoped manifest routes stay unchanged. Production backend is
 **not** deployed in this phase. The production promoter writes
 `environment=production` only after existing remote qualification
-gates pass. Development-test promotion is a separate unimplemented
-contract, not a `--allow-dev` flag.
+gates pass. Development-test promotion is a separate
+`promote-development-release` command with `environment` fixed to
+`development_test`. It is not a `--allow-dev` flag on the production
+promoter.
 
 ### Phase D0.5 finding — do not use PUT ETag preconditions
 

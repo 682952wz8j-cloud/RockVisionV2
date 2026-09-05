@@ -433,6 +433,7 @@ class ImmutablePromotionFakeStoreTests(unittest.TestCase):
 
         self.assertIn("publish-localization-package", FORBIDDEN_COMMANDS)
         self.assertIn("promote-localization-release", FORBIDDEN_COMMANDS)
+        self.assertIn("promote-development-release", FORBIDDEN_COMMANDS)
 
     def test_put_if_absent_is_promotion_only_and_never_overwrites(self) -> None:
         store = FakeObjectStore()
@@ -661,14 +662,15 @@ class ImmutablePromotionFakeStoreTests(unittest.TestCase):
         self.assertIn("TYPE_DESCRIPTORS", pipeline)
         self.assertIn("TYPE_LANDMARKS", pipeline)
         self.assertIn("TYPE_S_WALL_COLMAP", pipeline)
-        from offline.catalog_promotion.development_promotion import (
-            DevelopmentPromotionNotImplemented,
-            promote_development_test_release,
-        )
+        from offline.catalog_promotion.development_promotion import promote_development_test_release
 
-        with self.assertRaises(DevelopmentPromotionNotImplemented):
-            promote_development_test_release()
         self.assertNotIn("promote_development_test_release", cli)
+        signature = inspect.signature(promote_development_test_release)
+        self.assertNotIn("environment", signature.parameters)
+        development = (PROMOTION_DIR / "development_promotion.py").read_text(encoding="utf-8")
+        self.assertNotIn("allow-dev", development)
+        self.assertIn("DEVELOPMENT_TEST_ENVIRONMENT", development)
+        self.assertNotIn("environment=ENVIRONMENT_PRODUCTION", development)
 
 
 if __name__ == "__main__":

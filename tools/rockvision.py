@@ -101,6 +101,27 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
         action="store_true",
         help="Explicit human authorization to create an immutable promotion record. Without this flag, no COS writes.",
     )
+    promote_dev_cmd = sub.add_parser(
+        "promote-development-release",
+        help=(
+            "Promote one already-published development_test release by creating "
+            "published/promotions/<wallId>/<releaseId>.json with environment=development_test. "
+            "Requires exact wallId, exact releaseId, --name, and --approve. "
+            "Does not qualify production. Does not rewrite releases or catalog.json."
+        ),
+    )
+    promote_dev_cmd.add_argument("wall_id")
+    promote_dev_cmd.add_argument("release_id")
+    promote_dev_cmd.add_argument(
+        "--name",
+        required=True,
+        help="Display name for a new wall. Must exactly equal the established name when prior promotion records exist.",
+    )
+    promote_dev_cmd.add_argument(
+        "--approve",
+        action="store_true",
+        help="Explicit human authorization to create an immutable development_test promotion record. Without this flag, no COS writes.",
+    )
     verify_cmd = sub.add_parser(
         "verify",
         help="Run aggregated deterministic unit tests. Not a Gate PASS, FREEZE, or Stage advance.",
@@ -160,6 +181,15 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
         from offline.catalog_promotion.cli import run_promote_localization_release
 
         return run_promote_localization_release(
+            args.wall_id,
+            args.release_id,
+            name=args.name,
+            approve=args.approve,
+        )
+    if args.command == "promote-development-release":
+        from offline.catalog_promotion.development_cli import run_promote_development_test_release
+
+        return run_promote_development_test_release(
             args.wall_id,
             args.release_id,
             name=args.name,

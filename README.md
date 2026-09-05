@@ -482,7 +482,15 @@ can take one already-validated production package and write
 is unchanged. Catalog promotion is a **separate** command
 (`./rockvision promote-localization-release <wallId> <releaseId> --name "<display name>" --approve`).
 It creates an immutable `published/promotions/<wallId>/<releaseId>.json`
-record after independent remote release revalidation. It does **not**
+record after independent remote release revalidation. Production
+promotion always records `environment=production` and still requires
+Cloud descriptors, landmarks, and `s_wall_colmap_json`. A separate
+command (`./rockvision promote-development-release <wallId> <releaseId> --name "<display name>" --approve`)
+creates `environment=development_test` records for already-published
+development releases. That path does **not** require Cloud Sim3 and
+does **not** qualify production. After a real development_test record
+exists, debug catalog discovery may include the wall; production
+catalog discovery must not. It does **not**
 mutate `published/catalog.json`. `PUBLISHED` ≠ `PROMOTION_RECORD_CREATED`
 ≠ `CATALOG_DISCOVERABLE`. A real Tencent COS D0.5 probe proved PUT
 `If-Match` / `If-None-Match` cannot be used as catalog CAS; the

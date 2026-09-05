@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import inspect
 import json
 import sys
@@ -345,16 +346,38 @@ class SourceBoundaryTests(unittest.TestCase):
         self.assertIn("DEVELOPMENT_PACKAGE_NOT_PUBLISHABLE", publisher)
         self.assertIn("ENVIRONMENT_DEVELOPMENT_TEST", publisher)
 
-    def test_development_promotion_is_separate_unimplemented_contract(self) -> None:
+    def test_development_promotion_is_separate_implemented_contract(self) -> None:
         source = (ROOT / "offline" / "catalog_promotion" / "development_promotion.py").read_text(
             encoding="utf-8"
         )
-        self.assertIn("DevelopmentPromotionNotImplemented", source)
-        self.assertIn("not implemented in D6A", source)
+        self.assertIn("promote_development_test_release", source)
+        self.assertIn("DEVELOPMENT_TEST_ENVIRONMENT", source)
         self.assertNotIn("allow-dev", source)
+        self.assertNotIn("environment=ENVIRONMENT_PRODUCTION", source)
+        self.assertNotIn("DevelopmentPromotionNotImplemented", source)
         cli = (ROOT / "offline" / "catalog_promotion" / "cli.py").read_text(encoding="utf-8")
         self.assertNotIn("promote_development_test_release", cli)
         self.assertNotIn("wall_jiulongfeng_01_dev", cli)
+        tree = ast.parse(source)
+        fn = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == "promote_development_test_release"
+        )
+        arg_names = [arg.arg for arg in [*fn.args.args, *fn.args.kwonlyargs]]
+        self.assertNotIn("environment", arg_names)
+
+    def test_jiulongfeng_like_dev_record_is_debug_only(self) -> None:
+        record = _record(
+            wall_id="wall_jiulongfeng_01_dev",
+            name="Jiulongfeng Development Wall",
+            environment=ENVIRONMENT_DEVELOPMENT_TEST,
+        )
+        production = filter_catalog_for_audience(project_promotions([record]), AUDIENCE_PRODUCTION)
+        debug = filter_catalog_for_audience(project_promotions([record]), AUDIENCE_DEBUG_TEST)
+        self.assertEqual(production["walls"], [])
+        self.assertEqual(debug["walls"][0]["wallId"], "wall_jiulongfeng_01_dev")
+        self.assertEqual(debug["walls"][0]["environment"], ENVIRONMENT_DEVELOPMENT_TEST)
 
 
 if __name__ == "__main__":

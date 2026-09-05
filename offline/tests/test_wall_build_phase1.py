@@ -500,7 +500,13 @@ class WallBuildPhase1Tests(unittest.TestCase):
         )
         self.assertEqual(
             report["forbiddenCommandsNotInvoked"],
-            ["reference-match", "pnp", "publish-localization-package", "promote-localization-release"],
+            [
+                "reference-match",
+                "pnp",
+                "publish-localization-package",
+                "promote-localization-release",
+                "promote-development-release",
+            ],
         )
 
 
