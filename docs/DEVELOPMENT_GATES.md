@@ -19,6 +19,10 @@ If a gate fails, fix **that gate only**. Do not modify downstream systems
 to compensate. Do not change the technology stack to escape a failed
 measurement.
 
+**Active test phase owns the debug HUD.** Show only the controls,
+progress, and PASS/FAIL evidence for the current Gate/Phase. Hide other
+Gates' HUDs; do not delete them. See [`DEBUG_HUD.md`](DEBUG_HUD.md).
+
 V1 is not a starting branch.
 
 ---

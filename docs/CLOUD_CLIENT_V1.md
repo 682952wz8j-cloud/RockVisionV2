@@ -83,6 +83,15 @@ install fails closed and does not overwrite that directory.
 the manifest, the file exists, and bytes + SHA-256 verify. Failed optional
 assets are not exposed.
 
+## Debug HUD (D5)
+
+DEBUG field-test UI follows **active test phase owns the debug HUD**
+([`DEBUG_HUD.md`](DEBUG_HUD.md)). The D5 primary surface is Cloud
+discovery/install only. Historical Cloud debug controls (example
+Download/Update, explicit Jiulongfeng install, Bundle/Cloud reference
+source) remain implemented and must not be deleted; they are hidden
+while `DebugHUDMode.active` is `cloudD5`.
+
 ## Localization input bridge
 
 Cloud distribution → local validated CURRENT release →

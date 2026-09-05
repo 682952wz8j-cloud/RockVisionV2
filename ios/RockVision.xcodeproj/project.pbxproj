@@ -89,6 +89,7 @@
 		A10000000000000100000055 /* CloudAssetClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000055 /* CloudAssetClientTests.swift */; };
 		A10000000000000100000056 /* ReferenceAssetSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000056 /* ReferenceAssetSource.swift */; };
 		A10000000000000100000057 /* ReferenceAssetSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000057 /* ReferenceAssetSourceTests.swift */; };
+		A10000000000000100000058 /* DebugHUDMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000058 /* DebugHUDMode.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -178,6 +179,7 @@
 		A20000000000000100000055 /* CloudAssetClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudAssetClientTests.swift; sourceTree = "<group>"; };
 		A20000000000000100000056 /* ReferenceAssetSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceAssetSource.swift; sourceTree = "<group>"; };
 		A20000000000000100000057 /* ReferenceAssetSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceAssetSourceTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000058 /* DebugHUDMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugHUDMode.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -268,6 +270,7 @@
 				A20000000000000100000005 /* DebugOverlayView.swift */,
 				A20000000000000100000017 /* KeypointOverlayView.swift */,
 				A2000000000000010000003F /* WallAlignmentDebugOverlay.swift */,
+				A20000000000000100000058 /* DebugHUDMode.swift */,
 			);
 			path = DebugOverlay;
 			sourceTree = "<group>";
@@ -578,6 +581,7 @@
 				A10000000000000100000052 /* CloudReleaseInstaller.swift in Sources */,
 				A10000000000000100000053 /* CloudAssetService.swift in Sources */,
 				A10000000000000100000054 /* CloudDebugPanel.swift in Sources */,
+				A10000000000000100000058 /* DebugHUDMode.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

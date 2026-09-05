@@ -1,0 +1,24 @@
+---
+description: Active test phase owns the debug HUD. Hide other Gates' HUDs; do not delete them.
+globs: ios/RockVision/App/**/*.swift,ios/RockVision/Features/**/*Panel.swift,ios/RockVision/Features/**/*HUD.swift,ios/RockVision/Features/DebugOverlay/**/*.swift
+alwaysApply: false
+---
+
+# Debug HUD scoping
+
+ACTIVE TEST PHASE OWNS THE DEBUG HUD.
+
+For each Gate / Phase field test, show only:
+
+1. controls required to perform the current test
+2. state required to understand current test progress
+3. evidence required to determine PASS / FAIL
+
+Hide HUDs and controls that belong only to other Gates/Phases. Do not
+delete their implementation. Do not mix historical diagnostics into
+every field-test UI.
+
+Use `DebugHUDMode` (`cloudD5`, `gate4b`, `stage3`, `stage5`). D5 Cloud
+UI is DEBUG-only, not production UI.
+
+See `docs/DEBUG_HUD.md`.

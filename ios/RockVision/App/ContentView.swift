@@ -23,34 +23,46 @@ struct ContentView: View {
                 VStack {
                     HStack {
                         Spacer()
-                        CloudDebugPanel(
-                            controller: cloudDebug,
-                            cameraProvenance: openCV.referenceAssetProvenance,
-                            onSelectReferenceSourceBundle: { openCV.selectReferenceSourceBundleDevelopmentFixture() },
-                            onSelectReferenceSourceCloudCurrent: { openCV.selectReferenceSourceCloudCurrentJiulongfengDevR000001() }
-                        )
+                        if DebugHUDMode.active.showsCloudD5HUD {
+                            CloudDebugPanel(
+                                controller: cloudDebug,
+                                presentation: .d5Discovery
+                            )
+                            .frame(maxHeight: geo.size.height * 0.78, alignment: .top)
+                        } else if DebugHUDMode.active.showsFullCloudDebugHUD {
+                            CloudDebugPanel(
+                                controller: cloudDebug,
+                                presentation: .fullDebug,
+                                cameraProvenance: openCV.referenceAssetProvenance,
+                                onSelectReferenceSourceBundle: { openCV.selectReferenceSourceBundleDevelopmentFixture() },
+                                onSelectReferenceSourceCloudCurrent: { openCV.selectReferenceSourceCloudCurrentJiulongfengDevR000001() }
+                            )
+                            .frame(maxHeight: geo.size.height * 0.78, alignment: .top)
+                        }
                     }
                     Spacer()
                 }
                 .ignoresSafeArea(edges: .top)
-                FieldTestPanel(
-                    controller: fieldTest,
-                    tracking: sessionHost.snapshot.trackingState,
-                    localization: openCV.confirmationSnapshot.localization,
-                    confirmationWindow: openCV.confirmationSnapshot.window,
-                    alignment: openCV.alignmentSnapshot.status == "yes"
-                        ? "yes \(openCV.alignmentSnapshot.frame)"
-                        : "none",
-                    wallAxes: openCV.wallDebugSnapshot.visible == "yes"
-                        ? openCV.wallDebugSnapshot.axisLengths
-                        : "hidden",
-                    wallMarkers: openCV.wallDebugSnapshot.markers,
-                    routeBinding: openCV.runtimeRouteBinding,
-                    routePlan: openCV.routeRenderPlan,
-                    sift: openCV.siftSnapshot,
-                    matching: openCV.matchingSnapshot,
-                    pnp: openCV.pnpSnapshot
-                )
+                if DebugHUDMode.active.showsGate4BHUD {
+                    FieldTestPanel(
+                        controller: fieldTest,
+                        tracking: sessionHost.snapshot.trackingState,
+                        localization: openCV.confirmationSnapshot.localization,
+                        confirmationWindow: openCV.confirmationSnapshot.window,
+                        alignment: openCV.alignmentSnapshot.status == "yes"
+                            ? "yes \(openCV.alignmentSnapshot.frame)"
+                            : "none",
+                        wallAxes: openCV.wallDebugSnapshot.visible == "yes"
+                            ? openCV.wallDebugSnapshot.axisLengths
+                            : "hidden",
+                        wallMarkers: openCV.wallDebugSnapshot.markers,
+                        routeBinding: openCV.runtimeRouteBinding,
+                        routePlan: openCV.routeRenderPlan,
+                        sift: openCV.siftSnapshot,
+                        matching: openCV.matchingSnapshot,
+                        pnp: openCV.pnpSnapshot
+                    )
+                }
             }
             .onAppear {
                 sessionHost.frameConsumer = openCV

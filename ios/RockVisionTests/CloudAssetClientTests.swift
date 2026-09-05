@@ -1174,3 +1174,98 @@ final class CloudCatalogDiscoveryInstallTests: XCTestCase {
             .appendingPathComponent(relative)
     }
 }
+
+final class CloudDebugHUDScopeTests: XCTestCase {
+    func testDebugActiveModeIsCloudD5InDebugBuilds() {
+        #if DEBUG
+        XCTAssertEqual(DebugHUDMode.active, .cloudD5)
+        XCTAssertTrue(DebugHUDMode.active.showsCloudD5HUD)
+        XCTAssertFalse(DebugHUDMode.active.showsGate4BHUD)
+        #else
+        XCTAssertEqual(DebugHUDMode.active, .gate4b)
+        XCTAssertTrue(DebugHUDMode.active.showsGate4BHUD)
+        XCTAssertFalse(DebugHUDMode.active.showsCloudD5HUD)
+        #endif
+        XCTAssertFalse(DebugHUDMode.cloudD5.showsGate4BHUD)
+        XCTAssertTrue(DebugHUDMode.gate4b.showsGate4BHUD)
+    }
+
+    func testD5ModeDoesNotRenderGate4BHUD() throws {
+        let content = try String(contentsOf: sourceFile("RockVision/App/ContentView.swift"))
+        XCTAssertTrue(content.contains("DebugHUDMode.active.showsCloudD5HUD"))
+        XCTAssertTrue(content.contains("presentation: .d5Discovery"))
+        XCTAssertTrue(content.contains("if DebugHUDMode.active.showsGate4BHUD"))
+        let d5Range = content.range(of: "if DebugHUDMode.active.showsCloudD5HUD")!
+        let gateRange = content.range(of: "if DebugHUDMode.active.showsGate4BHUD")!
+        let d5Block = String(content[d5Range.lowerBound..<gateRange.lowerBound])
+        XCTAssertTrue(d5Block.contains("CloudDebugPanel"))
+        XCTAssertFalse(d5Block.contains("FieldTestPanel"))
+        XCTAssertFalse(d5Block.contains("Gate 4B"))
+        let gateBlock = String(content[gateRange.lowerBound...])
+        XCTAssertTrue(gateBlock.contains("FieldTestPanel("))
+    }
+
+    func testD5PrimaryHUDExposesFetchCatalogAndInstallWithoutHistoricalControls() throws {
+        let panel = try String(contentsOf: sourceFile("RockVision/Features/Cloud/CloudDebugPanel.swift"))
+        let d5Range = panel.range(of: "private var d5DiscoveryHUD")!
+        let fullRange = panel.range(of: "private var fullDebugHUD")!
+        let d5 = String(panel[d5Range.lowerBound..<fullRange.lowerBound])
+        XCTAssertTrue(d5.contains("Cloud — D5 Discovery"))
+        XCTAssertTrue(d5.contains("Fetch Catalog"))
+        XCTAssertTrue(d5.contains("Fetched catalog"))
+        XCTAssertTrue(d5.contains("cloudButton(\"Install\")"))
+        XCTAssertTrue(d5.contains("local CURRENTs"))
+        XCTAssertTrue(d5.contains("controller.installDiscovered(entry)"))
+        XCTAssertFalse(d5.contains("Download / Update"))
+        XCTAssertFalse(d5.contains("Install Jiulongfeng Dev r000001"))
+        XCTAssertFalse(d5.contains("Use Bundle Fixture"))
+        XCTAssertFalse(d5.contains("Use Cloud CURRENT r000001"))
+        XCTAssertFalse(d5.contains("Reference source"))
+        XCTAssertFalse(d5.contains("explicit wallId"))
+        XCTAssertFalse(d5.contains("installJiulongfengDev"))
+        XCTAssertFalse(d5.contains("downloadExample"))
+        XCTAssertFalse(d5.contains("selectReferenceSource"))
+    }
+
+    func testExplicitJiulongfengControlsRemainImplementedOutsideD5HUD() throws {
+        let panel = try String(contentsOf: sourceFile("RockVision/Features/Cloud/CloudDebugPanel.swift"))
+        XCTAssertTrue(panel.contains("func installJiulongfengDev()"))
+        XCTAssertTrue(panel.contains("func downloadExample()"))
+        XCTAssertTrue(panel.contains("Install Jiulongfeng Dev r000001"))
+        XCTAssertTrue(panel.contains("Use Bundle Fixture"))
+        XCTAssertTrue(panel.contains("Use Cloud CURRENT r000001"))
+        let fullRange = panel.range(of: "private var fullDebugHUD")!
+        let full = String(panel[fullRange.lowerBound...])
+        XCTAssertTrue(full.contains("controller.installJiulongfengDev"))
+        XCTAssertTrue(full.contains("onSelectReferenceSourceCloudCurrent"))
+        let content = try String(contentsOf: sourceFile("RockVision/App/ContentView.swift"))
+        XCTAssertTrue(content.contains("selectReferenceSourceCloudCurrentJiulongfengDevR000001()"))
+        XCTAssertTrue(content.contains("selectReferenceSourceBundleDevelopmentFixture()"))
+        XCTAssertTrue(content.contains("presentation: .fullDebug"))
+    }
+
+    func testCloudInstallAndStage345SemanticsUnchanged() throws {
+        let service = try String(contentsOf: sourceFile("RockVision/Features/Cloud/CloudAssetService.swift"))
+        XCTAssertTrue(service.contains("func refreshAndInstall(wallId: String)"))
+        XCTAssertTrue(service.contains("installer.installPublishedRelease(wallId: wallId)"))
+        XCTAssertTrue(service.contains("func installRelease(wallId: String, releaseId: String)"))
+        let installer = try String(contentsOf: sourceFile("RockVision/Features/Cloud/CloudReleaseInstaller.swift"))
+        XCTAssertTrue(installer.contains("func installPublishedRelease(wallId: String)"))
+        XCTAssertTrue(installer.contains("client.fetchManifest(wallId: wallId)"))
+        let processor = try String(contentsOf: sourceFile("RockVision/Features/OpenCV/OpenCVFrameProcessor.swift"))
+        XCTAssertTrue(processor.contains("selectReferenceSourceCloudCurrentJiulongfengDevR000001"))
+        XCTAssertFalse(processor.contains("wall_publisher_e2e_01"))
+        let hud = try String(contentsOf: sourceFile("RockVision/Features/FieldTest/Gate4BPhysicalValidationHUD.swift"))
+        XCTAssertTrue(hud.contains("Gate 4B — Physical Validation"))
+        XCTAssertTrue(hud.contains("Start Measurement"))
+        let overlay = try String(contentsOf: sourceFile("RockVision/Features/DebugOverlay/WallAlignmentDebugOverlay.swift"))
+        XCTAssertTrue(overlay.contains("WallAlignmentDebugOverlay"))
+    }
+
+    private func sourceFile(_ relative: String) -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent(relative)
+    }
+}

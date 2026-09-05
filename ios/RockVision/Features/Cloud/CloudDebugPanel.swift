@@ -203,13 +203,81 @@ final class CloudDebugController: ObservableObject {
     }
 }
 
+enum CloudDebugPresentation: Equatable, Sendable {
+    /// D5 catalog discovery / install evidence HUD.
+    case d5Discovery
+    /// Historical Cloud debug surface (example wall, explicit Jiulongfeng, source selection).
+    case fullDebug
+}
+
 struct CloudDebugPanel: View {
     @ObservedObject var controller: CloudDebugController
+    var presentation: CloudDebugPresentation = .d5Discovery
     var cameraProvenance: ReferenceAssetProvenance = .unavailable
     var onSelectReferenceSourceBundle: () -> Void = {}
     var onSelectReferenceSourceCloudCurrent: () -> Void = {}
 
     var body: some View {
+        Group {
+            switch presentation {
+            case .d5Discovery:
+                d5DiscoveryHUD
+            case .fullDebug:
+                fullDebugHUD
+            }
+        }
+        .font(.system(size: 11, weight: .regular, design: .monospaced))
+        .foregroundStyle(.white)
+        .padding(8)
+        .frame(maxWidth: 320, alignment: .leading)
+        .background(Color.black.opacity(0.62), in: RoundedRectangle(cornerRadius: 6))
+        .padding(.top, 10)
+        .padding(.trailing, 10)
+        .onAppear { controller.refreshLocal() }
+    }
+
+    private var d5DiscoveryHUD: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Cloud — D5 Discovery")
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                Text(controller.status)
+                Text("local CURRENTs: \(controller.localCurrentSummary)")
+                if !controller.lastError.isEmpty {
+                    Text(controller.lastError)
+                        .foregroundStyle(.red)
+                }
+                cloudButton("Fetch Catalog", action: controller.fetchCatalog)
+                if !controller.catalogWalls.isEmpty {
+                    Text("Fetched catalog")
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    ForEach(controller.catalogWalls, id: \.wallId) { entry in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entry.name)
+                            Text("wallId: \(entry.wallId)")
+                            Text("CATALOG LATEST: \(entry.latestReleaseId)")
+                            cloudButton("Install") {
+                                controller.installDiscovered(entry)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+                if controller.discoveredWallId != "—" {
+                    Text("discovered wallId: \(controller.discoveredWallId)")
+                    Text("discovered name: \(controller.discoveredName)")
+                    Text("CATALOG LATEST: \(controller.catalogLatestReleaseId)")
+                    Text("INSTALLED CURRENT: \(controller.installedReleaseId)")
+                    Text("discovery phase: \(controller.discoveryPhase)")
+                    Text("reused: \(controller.discoveryReused)")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+    }
+
+    private var fullDebugHUD: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Cloud Client v1")
                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
@@ -251,7 +319,7 @@ struct CloudDebugPanel: View {
             }
             if !controller.catalogWalls.isEmpty {
                 Text("Fetched catalog")
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
                 ForEach(controller.catalogWalls, id: \.wallId) { entry in
                     VStack(alignment: .leading, spacing: 2) {
                         Text(entry.name)
@@ -270,23 +338,15 @@ struct CloudDebugPanel: View {
                 cloudButton("Use Cloud CURRENT r000001", action: onSelectReferenceSourceCloudCurrent)
             }
         }
-        .font(.system(size: 10, weight: .regular, design: .monospaced))
-        .foregroundStyle(.white)
-        .padding(8)
-        .frame(maxWidth: 300, alignment: .leading)
-        .background(Color.black.opacity(0.62), in: RoundedRectangle(cornerRadius: 6))
-        .padding(.top, 10)
-        .padding(.trailing, 10)
-        .onAppear { controller.refreshLocal() }
     }
 
     private func cloudButton(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
                 .foregroundStyle(.white)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 5)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
                 .background(Color.white.opacity(0.2), in: RoundedRectangle(cornerRadius: 4))
         }
         .buttonStyle(.plain)
