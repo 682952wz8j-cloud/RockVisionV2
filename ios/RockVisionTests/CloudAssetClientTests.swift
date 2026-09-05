@@ -33,7 +33,7 @@ final class MockCloudTransport: CloudHTTPTransport, @unchecked Sendable {
         if let status = statusByPath[path] {
             return (Data("err".utf8), HTTPURLResponse(url: url, statusCode: status, httpVersion: nil, headerFields: nil)!)
         }
-        if path == "/v1/walls" {
+        if path == "/v1/walls" || path == "/v1/debug/walls" {
             return try ok(catalogJSON ?? Data(), url)
         }
         let parts = path.split(separator: "/").map(String.init)
@@ -47,6 +47,13 @@ final class MockCloudTransport: CloudHTTPTransport, @unchecked Sendable {
                 return try ok(payload, url)
             }
             return (Data(), HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!)
+        }
+        if parts.count == 5,
+           parts[0] == "v1",
+           parts[1] == "debug",
+           parts[2] == "walls",
+           parts[4] == "manifest" {
+            return try ok(manifestJSONByWall[parts[3]] ?? Data(), url)
         }
         if parts.count == 4,
            parts[0] == "v1",
@@ -74,11 +81,22 @@ final class CloudAssetClientTests: XCTestCase {
     private let exampleBytesV2 = Data("cragpal-example-reference-map-v2\n".utf8)
     private let liveFixtureSHA = "02291c0368a9d1b3ce3e02459b50674ef6ab58d00888b9894356ef1f7aa43491"
 
+    private var catalogDiscoveryPath: String {
+        CloudAPIConfiguration.usesDebugCatalogDiscovery ? "/v1/debug/walls" : "/v1/walls"
+    }
+
+    private func convenienceManifestPath(_ wallId: String) -> String {
+        CloudAPIConfiguration.usesDebugCatalogDiscovery
+            ? "/v1/debug/walls/\(wallId)/manifest"
+            : "/v1/walls/\(wallId)/manifest"
+    }
+
     func testCatalogDecodePass() throws {
         let catalog = try CloudAssetContract.decodeCatalog(catalogJSON(latest: release1))
         XCTAssertEqual(catalog.schema, CloudAssetSchema.catalog)
         XCTAssertEqual(catalog.walls.first?.wallId, wallId)
         XCTAssertEqual(catalog.walls.first?.latestReleaseId, release1)
+        XCTAssertEqual(catalog.walls.first?.environment, .unspecified)
     }
 
     func testUnsupportedCatalogSchemaFails() {
@@ -374,14 +392,14 @@ final class CloudAssetClientTests: XCTestCase {
     func testBaseURLIsInjectable() throws {
         let custom = CloudAPIConfiguration.custom(URL(string: "https://example.invalid")!)
         let client = CloudAPIClient(configuration: custom, transport: MockCloudTransport())
-        XCTAssertEqual(try client.catalogURL().absoluteString, "https://example.invalid/v1/walls")
+        XCTAssertEqual(try client.catalogURL().absoluteString, "https://example.invalid\(catalogDiscoveryPath)")
         XCTAssertEqual(CloudAPIConfiguration.production.baseURL, CloudAPIConfiguration.productionHTTPSURL)
         XCTAssertNotEqual(CloudAPIConfiguration.production.baseURL, CloudAPIConfiguration.developmentTemporaryHTTPURL)
     }
 
     func testHTTPStatusIsNotSwallowedAsEmpty() async {
         let transport = MockCloudTransport()
-        transport.statusByPath["/v1/walls"] = 503
+        transport.statusByPath[catalogDiscoveryPath] = 503
         let client = CloudAPIClient(configuration: .custom(URL(string: "https://cloud.test")!), transport: transport)
         do {
             _ = try await client.fetchCatalog()
@@ -589,7 +607,7 @@ final class CloudAssetClientTests: XCTestCase {
             "http://124.223.178.91/v1/walls/wall_example_01/releases/r000001/manifest"
         )
         XCTAssertTrue(url.path.contains("/v1/walls/\(wallId)/releases/\(release1)/manifest"))
-        XCTAssertEqual(try client.manifestURL(wallId: wallId).path, "/v1/walls/\(wallId)/manifest")
+        XCTAssertEqual(try client.manifestURL(wallId: wallId).path, convenienceManifestPath(wallId))
     }
 
     func testExplicitManifestRequestPathDoesNotUseCatalogOrConvenienceRoute() async throws {
@@ -600,8 +618,8 @@ final class CloudAssetClientTests: XCTestCase {
         XCTAssertEqual(manifest.wallId, wallId)
         XCTAssertEqual(manifest.releaseId, release1)
         XCTAssertEqual(transport.requestedPaths, ["/v1/walls/\(wallId)/releases/\(release1)/manifest"])
-        XCTAssertFalse(transport.requestedPaths.contains("/v1/walls"))
-        XCTAssertFalse(transport.requestedPaths.contains("/v1/walls/\(wallId)/manifest"))
+        XCTAssertFalse(transport.requestedPaths.contains(catalogDiscoveryPath))
+        XCTAssertFalse(transport.requestedPaths.contains(convenienceManifestPath(wallId)))
     }
 
     func testConvenienceFetchManifestPathUnchanged() async throws {
@@ -610,7 +628,7 @@ final class CloudAssetClientTests: XCTestCase {
         let client = CloudAPIClient(configuration: .custom(URL(string: "https://cloud.test")!), transport: transport)
         let manifest = try await client.fetchManifest(wallId: wallId)
         XCTAssertEqual(manifest.releaseId, release1)
-        XCTAssertEqual(transport.requestedPaths, ["/v1/walls/\(wallId)/manifest"])
+        XCTAssertEqual(transport.requestedPaths, [convenienceManifestPath(wallId)])
         XCTAssertFalse(transport.requestedPaths.contains("/v1/walls/\(wallId)/releases/\(release1)/manifest"))
     }
 
@@ -667,7 +685,9 @@ final class CloudAssetClientTests: XCTestCase {
         XCTAssertEqual(data, exampleBytes)
         try CloudIntegrity.verify(data: data, descriptor: result.release.manifest.assets[0])
         XCTAssertFalse(transport.requestedPaths.contains("/v1/walls"))
+        XCTAssertFalse(transport.requestedPaths.contains("/v1/debug/walls"))
         XCTAssertFalse(transport.requestedPaths.contains("/v1/walls/\(wallId)/manifest"))
+        XCTAssertFalse(transport.requestedPaths.contains("/v1/debug/walls/\(wallId)/manifest"))
         XCTAssertTrue(transport.requestedPaths.contains("/v1/walls/\(wallId)/releases/\(release1)/manifest"))
         XCTAssertTrue(transport.requestedPaths.contains(assetPath(release1)))
     }
@@ -722,6 +742,7 @@ final class CloudAssetClientTests: XCTestCase {
             XCTAssertEqual(error as? CloudAssetError, .httpStatus(404))
         }
         XCTAssertFalse(transport.requestedPaths.contains("/v1/walls"))
+        XCTAssertFalse(transport.requestedPaths.contains("/v1/debug/walls"))
     }
 
     func testNormalCatalogDoesNotIncludeDevelopmentWall() throws {
@@ -863,6 +884,16 @@ final class CloudCatalogDiscoveryInstallTests: XCTestCase {
     private let publisherBytes = Data("cragpal-publisher-e2e-reference-map-v1\n".utf8)
     private let jiulongfengBytes = Data("cragpal-jiulongfeng-dev-reference-map-v1\n".utf8)
 
+    private var catalogDiscoveryPath: String {
+        CloudAPIConfiguration.usesDebugCatalogDiscovery ? "/v1/debug/walls" : "/v1/walls"
+    }
+
+    private func convenienceManifestPath(_ wallId: String) -> String {
+        CloudAPIConfiguration.usesDebugCatalogDiscovery
+            ? "/v1/debug/walls/\(wallId)/manifest"
+            : "/v1/walls/\(wallId)/manifest"
+    }
+
     func testFetchedCatalogRetainsBothReturnedEntries() async throws {
         let harness = makeHarness()
         let catalog = try await fetchCatalog(harness.controller)
@@ -891,8 +922,8 @@ final class CloudCatalogDiscoveryInstallTests: XCTestCase {
         XCTAssertEqual(harness.controller.installedReleaseId, release1)
         XCTAssertEqual(harness.controller.discoveryCurrentWallId, publisherWallId)
         XCTAssertEqual(harness.controller.discoveryCurrentReleaseId, release1)
-        XCTAssertTrue(harness.transport.requestedPaths.contains("/v1/walls/\(entry.wallId)/manifest"))
-        XCTAssertFalse(harness.transport.requestedPaths.contains("/v1/walls/\(exampleWallId)/manifest"))
+        XCTAssertTrue(harness.transport.requestedPaths.contains(convenienceManifestPath(entry.wallId)))
+        XCTAssertFalse(harness.transport.requestedPaths.contains(convenienceManifestPath(exampleWallId)))
     }
 
     func testDiscoveryInstallUsesConvenienceManifestAndDoesNotSupplyReleaseId() async throws {
@@ -900,8 +931,8 @@ final class CloudCatalogDiscoveryInstallTests: XCTestCase {
         _ = try await fetchCatalog(harness.controller)
         let entry = try XCTUnwrap(harness.controller.catalogWalls.first { $0.wallId == publisherWallId })
         _ = try await installDiscovered(harness.controller, entry)
-        XCTAssertTrue(harness.transport.requestedPaths.contains("/v1/walls"))
-        XCTAssertTrue(harness.transport.requestedPaths.contains("/v1/walls/\(publisherWallId)/manifest"))
+        XCTAssertTrue(harness.transport.requestedPaths.contains(catalogDiscoveryPath))
+        XCTAssertTrue(harness.transport.requestedPaths.contains(convenienceManifestPath(publisherWallId)))
         XCTAssertFalse(
             harness.transport.requestedPaths.contains("/v1/walls/\(publisherWallId)/releases/\(release1)/manifest")
         )
@@ -1020,7 +1051,7 @@ final class CloudCatalogDiscoveryInstallTests: XCTestCase {
         XCTAssertEqual(harness.controller.discoveryReused, "YES")
         XCTAssertEqual(try Data(contentsOf: first.release.fileURL(forAssetId: assetId)), original)
         XCTAssertFalse(harness.transport.requestedPaths.contains { $0.contains("/assets/") })
-        XCTAssertTrue(harness.transport.requestedPaths.contains("/v1/walls/\(publisherWallId)/manifest"))
+        XCTAssertTrue(harness.transport.requestedPaths.contains(convenienceManifestPath(publisherWallId)))
         XCTAssertFalse(
             harness.transport.requestedPaths.contains("/v1/walls/\(publisherWallId)/releases/\(release1)/manifest")
         )
@@ -1165,6 +1196,147 @@ final class CloudCatalogDiscoveryInstallTests: XCTestCase {
 
     private func debugPanelSourceURL() -> URL {
         sourceFile("RockVision/Features/Cloud/CloudDebugPanel.swift")
+    }
+
+    private func sourceFile(_ relative: String) -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent(relative)
+    }
+}
+
+final class CloudCatalogAudienceTests: XCTestCase {
+    func testUnknownExplicitEnvironmentFailsClosed() {
+        let data = Data(
+            """
+            {"schema":"cragpal.wall-catalog.v1","walls":[{"wallId":"wall_prod_01","name":"X","latestReleaseId":"r000001","environment":"prod"}]}
+            """.utf8
+        )
+        XCTAssertThrowsError(try CloudAssetContract.decodeCatalog(data)) { error in
+            XCTAssertEqual(error as? CloudAssetError, .decoding)
+        }
+    }
+
+    func testMissingEnvironmentDecodesAsUnspecifiedNotProduction() throws {
+        let data = Data(
+            """
+            {"schema":"cragpal.wall-catalog.v1","walls":[{"wallId":"wall_example_01","name":"Example Wall","latestReleaseId":"r000001"}]}
+            """.utf8
+        )
+        let catalog = try CloudAssetContract.decodeCatalog(data)
+        XCTAssertEqual(catalog.walls[0].environment, .unspecified)
+        XCTAssertNotEqual(catalog.walls[0].environment, .production)
+        XCTAssertTrue(CloudCatalogAudience.debugTest.admits(catalog.walls[0]))
+        XCTAssertFalse(CloudCatalogAudience.production.admits(catalog.walls[0]))
+    }
+
+    func testClassifiedEnvironmentsRoundTrip() throws {
+        let data = Data(
+            """
+            {"schema":"cragpal.wall-catalog.v1","walls":[{"wallId":"wall_prod_01","name":"Prod","latestReleaseId":"r000001","environment":"production"},{"wallId":"wall_dev_01","name":"Dev","latestReleaseId":"r000002","environment":"development_test"}]}
+            """.utf8
+        )
+        let catalog = try CloudAssetContract.decodeCatalog(data)
+        XCTAssertEqual(catalog.walls[0].environment, .production)
+        XCTAssertEqual(catalog.walls[1].environment, .developmentTest)
+        let encoded = try JSONEncoder().encode(catalog)
+        let again = try CloudAssetContract.decodeCatalog(encoded)
+        XCTAssertEqual(again.walls.map(\.environment), [.production, .developmentTest])
+    }
+
+    func testReleaseAudienceDropsNonProductionEvenIfBackendReturnsThem() throws {
+        let data = Data(
+            """
+            {"schema":"cragpal.wall-catalog.v1","walls":[{"wallId":"wall_prod_01","name":"Prod","latestReleaseId":"r000001","environment":"production"},{"wallId":"wall_dev_01","name":"Dev","latestReleaseId":"r000001","environment":"development_test"},{"wallId":"wall_example_01","name":"Legacy","latestReleaseId":"r000001"}]}
+            """.utf8
+        )
+        let decoded = try CloudAssetContract.decodeCatalog(data)
+        let filtered = CloudCatalogAudience.production.filter(decoded)
+        XCTAssertEqual(filtered.walls.map(\.wallId), ["wall_prod_01"])
+        XCTAssertEqual(filtered.walls[0].environment, .production)
+    }
+
+    func testDebugAudienceAcceptsProductionDevelopmentTestAndUnspecified() throws {
+        let data = Data(
+            """
+            {"schema":"cragpal.wall-catalog.v1","walls":[{"wallId":"wall_prod_01","name":"Prod","latestReleaseId":"r000001","environment":"production"},{"wallId":"wall_dev_01","name":"Dev","latestReleaseId":"r000001","environment":"development_test"},{"wallId":"wall_publisher_e2e_01","name":"CragPal Publisher E2E Test Wall","latestReleaseId":"r000001"}]}
+            """.utf8
+        )
+        let decoded = try CloudAssetContract.decodeCatalog(data)
+        let filtered = CloudCatalogAudience.debugTest.filter(decoded)
+        XCTAssertEqual(
+            filtered.walls.map(\.wallId),
+            ["wall_prod_01", "wall_dev_01", "wall_publisher_e2e_01"]
+        )
+    }
+
+    func testAudienceDoesNotInferFromWallIdSuffixOrDisplayName() throws {
+        let data = Data(
+            """
+            {"schema":"cragpal.wall-catalog.v1","walls":[{"wallId":"wall_pretty_dev","name":"Production Wall","latestReleaseId":"r000001","environment":"development_test"},{"wallId":"wall_live_01","name":"Development Fixture","latestReleaseId":"r000001","environment":"production"}]}
+            """.utf8
+        )
+        let decoded = try CloudAssetContract.decodeCatalog(data)
+        let production = CloudCatalogAudience.production.filter(decoded)
+        XCTAssertEqual(production.walls.map(\.wallId), ["wall_live_01"])
+        XCTAssertFalse(production.walls.contains { $0.wallId.hasSuffix("_dev") })
+        let contract = try String(contentsOf: sourceFile("RockVision/Features/Cloud/CloudAssetContract.swift"))
+        let audienceRange = contract.range(of: "enum CloudCatalogAudience")!
+        let entryRange = contract.range(of: "struct WallCatalogEntry")!
+        let audienceBody = String(contract[audienceRange.lowerBound..<entryRange.lowerBound])
+        XCTAssertFalse(audienceBody.contains("_dev"))
+        XCTAssertFalse(audienceBody.contains("hasSuffix"))
+        XCTAssertFalse(audienceBody.contains("Jiulongfeng"))
+        XCTAssertFalse(audienceBody.contains("wallId.contains"))
+    }
+
+    func testCompileTimeEndpointSelection() throws {
+        let client = CloudAPIClient(
+            configuration: .custom(URL(string: "https://example.invalid")!),
+            transport: MockCloudTransport()
+        )
+        #if DEBUG
+        XCTAssertTrue(CloudAPIConfiguration.usesDebugCatalogDiscovery)
+        XCTAssertEqual(CloudCatalogAudience.current, .debugTest)
+        XCTAssertEqual(try client.catalogURL().path, "/v1/debug/walls")
+        XCTAssertEqual(try client.manifestURL(wallId: "wall_dev_01").path, "/v1/debug/walls/wall_dev_01/manifest")
+        #else
+        XCTAssertFalse(CloudAPIConfiguration.usesDebugCatalogDiscovery)
+        XCTAssertEqual(CloudCatalogAudience.current, .production)
+        XCTAssertEqual(try client.catalogURL().path, "/v1/walls")
+        XCTAssertEqual(try client.manifestURL(wallId: "wall_dev_01").path, "/v1/walls/wall_dev_01/manifest")
+        #endif
+        XCTAssertEqual(
+            try client.releaseManifestURL(wallId: "wall_dev_01", releaseId: "r000001").path,
+            "/v1/walls/wall_dev_01/releases/r000001/manifest"
+        )
+        let source = try String(contentsOf: sourceFile("RockVision/Features/Cloud/CloudAPIClient.swift"))
+        XCTAssertTrue(source.contains("usesDebugCatalogDiscovery"))
+        XCTAssertTrue(source.contains("CloudCatalogAudience.current.filter"))
+        XCTAssertFalse(source.contains("allow-dev"))
+        XCTAssertFalse(source.contains("queryItem"))
+    }
+
+    func testFetchCatalogAppliesCompileTimeAudience() async throws {
+        let transport = MockCloudTransport()
+        transport.catalogJSON = Data(
+            """
+            {"schema":"cragpal.wall-catalog.v1","walls":[{"wallId":"wall_prod_01","name":"Prod","latestReleaseId":"r000001","environment":"production"},{"wallId":"wall_dev_01","name":"Dev","latestReleaseId":"r000001","environment":"development_test"},{"wallId":"wall_example_01","name":"Example Wall","latestReleaseId":"r000001"}]}
+            """.utf8
+        )
+        let client = CloudAPIClient(
+            configuration: .custom(URL(string: "https://cloud.test")!),
+            transport: transport
+        )
+        let catalog = try await client.fetchCatalog()
+        #if DEBUG
+        XCTAssertEqual(catalog.walls.map(\.wallId), ["wall_prod_01", "wall_dev_01", "wall_example_01"])
+        XCTAssertEqual(transport.requestedPaths, ["/v1/debug/walls"])
+        #else
+        XCTAssertEqual(catalog.walls.map(\.wallId), ["wall_prod_01"])
+        XCTAssertEqual(transport.requestedPaths, ["/v1/walls"])
+        #endif
     }
 
     private func sourceFile(_ relative: String) -> URL {

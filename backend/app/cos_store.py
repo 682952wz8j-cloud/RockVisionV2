@@ -5,8 +5,14 @@ from __future__ import annotations
 import json
 import os
 
-from .catalog_projection import merge_legacy_and_projected, project_promotions
+from .catalog_projection import (
+    filter_catalog_for_audience,
+    merge_legacy_and_projected,
+    project_promotions,
+)
 from .contract import (
+    AUDIENCE_DEBUG_TEST,
+    AUDIENCE_PRODUCTION,
     ContractError,
     assert_manifest_identity,
     empty_catalog,
@@ -79,14 +85,26 @@ class CosStore:
             raise ContractError("published document must be an object")
         return payload
 
-    def catalog(self) -> dict:
+    def merged_catalog(self) -> dict:
         legacy = self._read_legacy_catalog()
         records = self._read_promotion_records()
         return merge_legacy_and_projected(legacy, project_promotions(records))
 
+    def catalog(self) -> dict:
+        return filter_catalog_for_audience(self.merged_catalog(), AUDIENCE_PRODUCTION)
+
+    def debug_catalog(self) -> dict:
+        return filter_catalog_for_audience(self.merged_catalog(), AUDIENCE_DEBUG_TEST)
+
     def latest_release_id(self, wall_id: str) -> str:
+        return self._latest_release_id(wall_id, self.catalog())
+
+    def debug_latest_release_id(self, wall_id: str) -> str:
+        return self._latest_release_id(wall_id, self.debug_catalog())
+
+    def _latest_release_id(self, wall_id: str, catalog: dict) -> str:
         require_wall_id(wall_id)
-        for item in self.catalog()["walls"]:
+        for item in catalog["walls"]:
             if item["wallId"] == wall_id:
                 return item["latestReleaseId"]
         raise NotFound(f"unknown wallId {wall_id}")
@@ -94,6 +112,10 @@ class CosStore:
     def manifest(self, wall_id: str) -> dict:
         require_wall_id(wall_id)
         return self.manifest_for_release(wall_id, self.latest_release_id(wall_id))
+
+    def debug_manifest(self, wall_id: str) -> dict:
+        require_wall_id(wall_id)
+        return self.manifest_for_release(wall_id, self.debug_latest_release_id(wall_id))
 
     def manifest_for_release(self, wall_id: str, release_id: str) -> dict:
         require_wall_id(wall_id)

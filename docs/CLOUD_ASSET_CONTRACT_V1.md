@@ -19,31 +19,83 @@ names are unchanged.
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/health` | Process liveness. No COS credentials required. |
-| GET | `/v1/walls` | Published wall catalog only. |
-| GET | `/v1/walls/{wall_id}/manifest` | Convenience: currently published immutable release (`catalog.latestReleaseId`). |
-| GET | `/v1/walls/{wall_id}/releases/{release_id}/manifest` | Immutable explicit release. Does not consult the catalog. |
+| GET | `/v1/walls` | **PRODUCTION** audience catalog. Explicit `environment=production` only. |
+| GET | `/v1/walls/{wall_id}/manifest` | **PRODUCTION** convenience: `latestReleaseId` from the production catalog only. |
+| GET | `/v1/debug/walls` | **DEBUG_TEST** audience catalog. |
+| GET | `/v1/debug/walls/{wall_id}/manifest` | **DEBUG_TEST** convenience: `latestReleaseId` from the debug catalog view. |
+| GET | `/v1/walls/{wall_id}/releases/{release_id}/manifest` | Exact immutable release. Does not consult any catalog. |
 | GET | `/v1/walls/{wall_id}/releases/{release_id}/assets/{asset_id}` | Bytes for one asset in that exact immutable release. |
 
 There is no public `/cos-test` route, no generic `/assets/{asset_path}`
 proxy, and no `GET /v1/walls/{wall_id}/assets/{asset_id}`. The App must
 never construct COS object keys, bucket names, COS hostnames, SecretId,
-or SecretKey.
+or SecretKey. Production `GET /v1/walls` does **not** accept an audience
+query parameter or header. Do not use `/v1/walls?debug=true`.
+
+## Catalog audiences
+
+Canonical persisted environments are exactly:
+
+- `production`
+- `development_test`
+
+Missing `environment` is **unspecified / legacy test compatibility**.
+Missing is **not** production. Unknown explicit values fail closed.
+
+```text
+PRODUCTION DISCOVERY:
+GET /v1/walls
+GET /v1/walls/{wallId}/manifest
+
+DEBUG/TEST DISCOVERY:
+GET /v1/debug/walls
+GET /v1/debug/walls/{wallId}/manifest
+
+EXACT IMMUTABLE RELEASE:
+GET /v1/walls/{wallId}/releases/{releaseId}/manifest
+```
+
+Audience rules:
+
+- PRODUCTION includes only `environment == production`.
+- DEBUG_TEST includes `production`, `development_test`, and unspecified
+  legacy compatibility fixtures (`wall_example_01`,
+  `wall_publisher_e2e_01`).
+- Unknown explicit environment: fail closed.
+
+These distinctions are required:
+
+- exact release accessibility ≠ catalog discoverability
+- catalog discoverability ≠ production qualification
+- localization capable ≠ production qualified
+
+Jiulongfeng Dev (`wall_jiulongfeng_01_dev` / `r000001`) remains reachable
+only through the exact-release route. It is not catalog-promoted.
 
 ## Release binding
 
-`GET /v1/walls` is a **backend-projected** `cragpal.wall-catalog.v1` view:
+`GET /v1/walls` is the **PRODUCTION** projected `cragpal.wall-catalog.v1`
+view:
 
 ```text
 immutable promotion records
 +
 legacy catalog entries (transitional)
 → merged catalog view
-→ GET /v1/walls
+→ PRODUCTION or DEBUG_TEST audience filter
+→ GET /v1/walls  or  GET /v1/debug/walls
 ```
 
 Convenience `GET /v1/walls/{wall_id}/manifest` resolves `latestReleaseId`
-from that same merged view, then fetches
-`published/{wallId}/{latestReleaseId}/manifest.json`. Release-scoped
+from the **PRODUCTION** catalog view, then fetches
+`published/{wallId}/{latestReleaseId}/manifest.json`. A
+`development_test` or unspecified-only wall does not resolve through this
+route.
+
+`GET /v1/debug/walls/{wall_id}/manifest` is the matching debug/test
+convenience route. It uses the DEBUG_TEST catalog view.
+
+Release-scoped
 manifest and asset routes remain exact `(wallId, releaseId)` lookups
 and do not require catalog membership. iOS does not enumerate promotion
 keys. This repository implementation is not a production deploy.
@@ -237,28 +289,34 @@ opaque blob and is **not** a Stage 3 ReferenceDatabase.
 }
 ```
 
+Legacy entries omit `environment`. That is unspecified, not production.
+Classified entries serialize exactly `production` or `development_test`.
+Do not serialize unspecified as production.
+
 `published/catalog.json` is **legacy/bootstrap data**, not the
 authority for new promotions. Discoverability is a projection of
 append-only immutable promotion records
 (`published/promotions/<wallId>/<releaseId>.json`, schema
 `cragpal.wall-promotion.v1`) **merged** with remaining legacy catalog
-entries. Merge semantics:
+entries, then filtered by audience. Merge semantics:
 
 - wall only in legacy → keep the legacy entry
 - wall only in promotions → use the promotion-projected entry
 - wall in both, same name → promotion `latestReleaseId` is authoritative
   (highest `rNNNNNN` among promotion records for that wall)
 - wall in both, different names → fail closed
+- promotion records for the same `wallId` must share one environment;
+  conflicting `production` / `development_test` / unspecified fail closed.
+  Highest `rNNNNNN` cannot cross an environment boundary.
 
 A real Tencent COS D0.5 probe proved PUT `If-Match` / `If-None-Match`
 cannot protect a mutable catalog against lost updates; CragPal therefore
 does not use ETag compare-and-swap. Schema of the public catalog view
 remains `cragpal.wall-catalog.v1`. Do not introduce a silent v2.
 
-Once every retained wall has canonical immutable promotion records, a
-later explicit migration may retire the legacy catalog fallback. Do not
-drop `wall_example_01` silently while it exists only in the legacy
-catalog.
+Unspecified legacy `wall_example_01` remains in the DEBUG_TEST audience
+for compatibility. It is excluded from PRODUCTION discovery. Do not
+rewrite `published/catalog.json` to pretend it is production.
 
 Runtime production GET still reads live COS with the previous backend
 until this code is deployed. Repository tests prove the merge on fakes

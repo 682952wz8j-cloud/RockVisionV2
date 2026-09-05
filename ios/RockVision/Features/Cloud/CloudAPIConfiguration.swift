@@ -18,6 +18,16 @@ struct CloudAPIConfiguration: Equatable, Sendable {
     /// Target production URL. Not claimed live. Do not fall back to a bare HTTP IP.
     static let productionHTTPSURL = URL(string: "https://api.cragpal.com")!
 
+    /// Compile-time catalog audience. Not a user toggle and not inferred from wallId.
+    /// DEBUG discovers `/v1/debug/walls`. Release discovers `/v1/walls`.
+    static var usesDebugCatalogDiscovery: Bool {
+        #if DEBUG
+        true
+        #else
+        false
+        #endif
+    }
+
     var baseURL: URL {
         switch kind {
         case .developmentTemporaryHTTP:

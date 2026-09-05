@@ -9,6 +9,15 @@ MANIFEST_SCHEMA = "cragpal.wall-manifest.v1"
 PROMOTION_SCHEMA = "cragpal.wall-promotion.v1"
 PROMOTIONS_PREFIX = "published/promotions/"
 
+# Canonical persisted environments. Align with localization-package vocabulary.
+# Missing environment is unspecified / legacy compatibility, never production.
+ENVIRONMENT_PRODUCTION = "production"
+ENVIRONMENT_DEVELOPMENT_TEST = "development_test"
+CLASSIFIED_ENVIRONMENTS = frozenset({ENVIRONMENT_PRODUCTION, ENVIRONMENT_DEVELOPMENT_TEST})
+
+AUDIENCE_PRODUCTION = "PRODUCTION"
+AUDIENCE_DEBUG_TEST = "DEBUG_TEST"
+
 SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 RELEASE_ID_RE = re.compile(r"^r[0-9]{6}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -84,6 +93,33 @@ def empty_catalog() -> dict:
     return {"schema": CATALOG_SCHEMA, "walls": []}
 
 
+def classified_environment_from_payload(payload: dict) -> str | None:
+    """Decode additive environment.
+
+    Missing key → unspecified (None). Never treat missing as production.
+    Present unknown / non-canonical value → fail closed.
+    """
+    if "environment" not in payload:
+        return None
+    value = payload["environment"]
+    if value not in CLASSIFIED_ENVIRONMENTS:
+        raise ContractError("invalid environment")
+    return value
+
+
+def catalog_entry(*, wall_id: str, name: str, latest_release_id: str, environment: str | None) -> dict:
+    entry = {
+        "wallId": wall_id,
+        "name": name,
+        "latestReleaseId": latest_release_id,
+    }
+    if environment is not None:
+        if environment not in CLASSIFIED_ENVIRONMENTS:
+            raise ContractError("invalid environment")
+        entry["environment"] = environment
+    return entry
+
+
 def published_manifest_key(wall_id: str, release_id: str) -> str:
     require_wall_id(wall_id)
     require_release_id(release_id)
@@ -128,6 +164,7 @@ def validate_catalog(payload: dict) -> dict:
         if not isinstance(item.get("name"), str) or not item["name"]:
             raise ContractError("catalog wall name is required")
         require_release_id(str(item.get("latestReleaseId") or ""))
+        classified_environment_from_payload(item)
     return payload
 
 

@@ -163,15 +163,25 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["schema"], CATALOG_SCHEMA)
-        self.assertEqual(payload["walls"][0]["wallId"], EXAMPLE_WALL_ID)
-        self.assertEqual(payload["walls"][0]["latestReleaseId"], EXAMPLE_RELEASE_ID)
+        self.assertEqual(payload["walls"], [])
         self.assertNotIn("secretId", str(payload))
         self.assertNotIn("SecretKey", str(payload))
+
+    def test_debug_walls_includes_unspecified_legacy_example(self) -> None:
+        response = _client().get("/v1/debug/walls")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["schema"], CATALOG_SCHEMA)
+        self.assertEqual(payload["walls"][0]["wallId"], EXAMPLE_WALL_ID)
+        self.assertEqual(payload["walls"][0]["latestReleaseId"], EXAMPLE_RELEASE_ID)
+        self.assertNotIn("environment", payload["walls"][0])
 
 
 class ManifestTests(unittest.TestCase):
     def test_known_wall_manifest_returns_r000001(self) -> None:
-        response = _client().get(f"/v1/walls/{EXAMPLE_WALL_ID}/manifest")
+        production = _client().get(f"/v1/walls/{EXAMPLE_WALL_ID}/manifest")
+        self.assertEqual(production.status_code, 404)
+        response = _client().get(f"/v1/debug/walls/{EXAMPLE_WALL_ID}/manifest")
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["schema"], MANIFEST_SCHEMA)
@@ -218,11 +228,18 @@ class ExplicitManifestTests(unittest.TestCase):
         catalog = client.get("/v1/walls")
         self.assertEqual(catalog.status_code, 200)
         wall_ids = [item["wallId"] for item in catalog.json()["walls"]]
-        self.assertEqual(wall_ids, [EXAMPLE_WALL_ID])
+        self.assertEqual(wall_ids, [])
         self.assertNotIn(DEV_WALL_ID, wall_ids)
+        self.assertNotIn(EXAMPLE_WALL_ID, wall_ids)
+
+        debug_catalog = client.get("/v1/debug/walls")
+        debug_ids = [item["wallId"] for item in debug_catalog.json()["walls"]]
+        self.assertEqual(debug_ids, [EXAMPLE_WALL_ID])
+        self.assertNotIn(DEV_WALL_ID, debug_ids)
 
         convenience = client.get(f"/v1/walls/{DEV_WALL_ID}/manifest")
         self.assertEqual(convenience.status_code, 404)
+        self.assertEqual(client.get(f"/v1/debug/walls/{DEV_WALL_ID}/manifest").status_code, 404)
 
         response = client.get(_explicit_manifest_path())
         self.assertEqual(response.status_code, 200)
@@ -330,8 +347,10 @@ class ExplicitManifestTests(unittest.TestCase):
         client = _client()
         catalog = client.get("/v1/walls")
         self.assertEqual(catalog.status_code, 200)
-        self.assertEqual(catalog.json()["walls"][0]["wallId"], EXAMPLE_WALL_ID)
-        convenience = client.get(f"/v1/walls/{EXAMPLE_WALL_ID}/manifest")
+        self.assertEqual(catalog.json()["walls"], [])
+        production_convenience = client.get(f"/v1/walls/{EXAMPLE_WALL_ID}/manifest")
+        self.assertEqual(production_convenience.status_code, 404)
+        convenience = client.get(f"/v1/debug/walls/{EXAMPLE_WALL_ID}/manifest")
         self.assertEqual(convenience.status_code, 200)
         self.assertEqual(convenience.json()["releaseId"], EXAMPLE_RELEASE_ID)
         asset = client.get(_asset_path())
@@ -395,7 +414,7 @@ class ReleaseRaceTests(unittest.TestCase):
     def test_pinned_r000001_survives_latest_changing_to_r000002(self) -> None:
         store = MemoryStore.two_releases(latest_release_id=EXAMPLE_RELEASE_ID)
         client = _client(store)
-        manifest = client.get(f"/v1/walls/{EXAMPLE_WALL_ID}/manifest")
+        manifest = client.get(f"/v1/debug/walls/{EXAMPLE_WALL_ID}/manifest")
         self.assertEqual(manifest.status_code, 200)
         self.assertEqual(manifest.json()["releaseId"], EXAMPLE_RELEASE_ID)
 
@@ -405,7 +424,7 @@ class ReleaseRaceTests(unittest.TestCase):
         self.assertEqual(pinned.content, EXAMPLE_ASSET_BYTES)
         self.assertNotEqual(pinned.content, EXAMPLE_ASSET_BYTES_V2)
 
-        current = client.get(f"/v1/walls/{EXAMPLE_WALL_ID}/manifest")
+        current = client.get(f"/v1/debug/walls/{EXAMPLE_WALL_ID}/manifest")
         self.assertEqual(current.json()["releaseId"], EXAMPLE_RELEASE_ID_2)
 
     def test_requesting_r000002_returns_r000002_bytes(self) -> None:
@@ -554,6 +573,8 @@ class PublicSurfaceTests(unittest.TestCase):
         self.assertIn("/health", routes)
         self.assertIn("/v1/walls", routes)
         self.assertIn("/v1/walls/{wall_id}/manifest", routes)
+        self.assertIn("/v1/debug/walls", routes)
+        self.assertIn("/v1/debug/walls/{wall_id}/manifest", routes)
         self.assertIn("/v1/walls/{wall_id}/releases/{release_id}/manifest", routes)
         self.assertIn("/v1/walls/{wall_id}/releases/{release_id}/assets/{asset_id}", routes)
 
@@ -641,7 +662,7 @@ class CosErrorMappingTests(unittest.TestCase):
             EXAMPLE_ASSET_BYTES_V2
         )
         store = CosStore(client=client, bucket="example-bucket")
-        self.assertEqual(store.manifest(EXAMPLE_WALL_ID)["releaseId"], EXAMPLE_RELEASE_ID_2)
+        self.assertEqual(store.debug_manifest(EXAMPLE_WALL_ID)["releaseId"], EXAMPLE_RELEASE_ID_2)
         self.assertEqual(
             store.asset_bytes(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID, EXAMPLE_ASSET_ID),
             EXAMPLE_ASSET_BYTES,

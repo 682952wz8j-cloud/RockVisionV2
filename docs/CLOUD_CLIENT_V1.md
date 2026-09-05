@@ -22,26 +22,46 @@ ATS allows insecure HTTP **only** for that development IP
 
 ## Routes
 
-The client only builds:
+PRODUCTION discovery (Release / App Store):
 
 - `GET /v1/walls`
 - `GET /v1/walls/{wallId}/manifest`
+
+DEBUG/TEST discovery (DEBUG builds):
+
+- `GET /v1/debug/walls`
+- `GET /v1/debug/walls/{wallId}/manifest`
+
+Exact immutable release (unchanged, not catalog discoverability):
+
 - `GET /v1/walls/{wallId}/releases/{releaseId}/manifest`
 - `GET /v1/walls/{wallId}/releases/{releaseId}/assets/{assetId}`
 
 `/v1/walls/{wallId}/assets/{assetId}` is not used.
 
+Endpoint selection is compile-time `#if DEBUG`, not a user toggle and
+not inferred from `wallId` suffix or display name.
+
+Release clients also drop any catalog entry that is not explicitly
+`environment == production`, even if a misconfigured backend returns it.
+DEBUG may accept `production`, `development_test`, and unspecified
+legacy compatibility fixtures. Unknown explicit environment fails
+closed at decode.
+
 ## Discovery-driven install
 
-Ordinary production-style path:
+Release path:
 
 1. `GET /v1/walls`
 2. choose a fetched catalog entry (`wallId` from that entry)
-3. `GET /v1/walls/{wallId}/manifest` (convenience / published latest)
+3. `GET /v1/walls/{wallId}/manifest` (production convenience)
 4. freeze the **returned** `manifest.releaseId`
 5. download exact immutable assets for that frozen identity
 6. verify bytes + SHA-256
 7. atomically point wall-scoped CURRENT
+
+DEBUG path uses `/v1/debug/walls` and
+`/v1/debug/walls/{wallId}/manifest` for the same sequence.
 
 Catalog `latestReleaseId` is discovery metadata only. The installer does
 not send it. The installation transaction trusts the validated manifest
@@ -50,7 +70,8 @@ identity returned by the convenience endpoint.
 Explicit `GET /v1/walls/{wallId}/releases/{releaseId}/manifest` /
 `installRelease(wallId:releaseId:)` remains debug/test-only (Jiulongfeng
 Dev). That is **not** catalog discovery and does **not** switch camera
-localization off the Bundle development fixture.
+localization off the Bundle development fixture. Exact release
+accessibility is not production qualification.
 
 The backend owns projection of promotion records and the transitional
 legacy merge. The App does not enumerate `published/promotions/`.

@@ -49,10 +49,103 @@ struct WallCatalog: Codable, Equatable, Sendable {
     var walls: [WallCatalogEntry]
 }
 
-struct WallCatalogEntry: Codable, Equatable, Sendable {
+/// Machine-readable catalog environment. Missing JSON key is unspecified.
+/// Unknown explicit values fail closed at decode and are never production.
+enum WallCatalogEnvironment: Equatable, Sendable {
+    case production
+    case developmentTest
+    case unspecified
+
+    static let productionWire = "production"
+    static let developmentTestWire = "development_test"
+
+    var wireValue: String? {
+        switch self {
+        case .production: return Self.productionWire
+        case .developmentTest: return Self.developmentTestWire
+        case .unspecified: return nil
+        }
+    }
+}
+
+/// Semantic catalog audiences. Production never includes unspecified or development_test.
+enum CloudCatalogAudience: Equatable, Sendable {
+    case production
+    case debugTest
+
+    static var current: CloudCatalogAudience {
+        #if DEBUG
+        .debugTest
+        #else
+        .production
+        #endif
+    }
+
+    func admits(_ entry: WallCatalogEntry) -> Bool {
+        switch self {
+        case .production:
+            return entry.environment == .production
+        case .debugTest:
+            switch entry.environment {
+            case .production, .developmentTest, .unspecified:
+                return true
+            }
+        }
+    }
+
+    func filter(_ catalog: WallCatalog) -> WallCatalog {
+        WallCatalog(schema: catalog.schema, walls: catalog.walls.filter(admits))
+    }
+}
+
+struct WallCatalogEntry: Equatable, Sendable {
     var wallId: String
     var name: String
     var latestReleaseId: String
+    var environment: WallCatalogEnvironment
+}
+
+extension WallCatalogEntry: Codable {
+    enum CodingKeys: String, CodingKey {
+        case wallId
+        case name
+        case latestReleaseId
+        case environment
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        wallId = try container.decode(String.self, forKey: .wallId)
+        name = try container.decode(String.self, forKey: .name)
+        latestReleaseId = try container.decode(String.self, forKey: .latestReleaseId)
+        if container.contains(.environment) {
+            let raw = try container.decode(String.self, forKey: .environment)
+            switch raw {
+            case WallCatalogEnvironment.productionWire:
+                environment = .production
+            case WallCatalogEnvironment.developmentTestWire:
+                environment = .developmentTest
+            default:
+                throw DecodingError.dataCorruptedError(
+                    forKey: .environment,
+                    in: container,
+                    debugDescription: "unknown catalog environment"
+                )
+            }
+        } else {
+            environment = .unspecified
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(wallId, forKey: .wallId)
+        try container.encode(name, forKey: .name)
+        try container.encode(latestReleaseId, forKey: .latestReleaseId)
+        if let wire = environment.wireValue {
+            try container.encode(wire, forKey: .environment)
+        }
+    }
 }
 
 struct WallManifest: Codable, Equatable, Sendable {

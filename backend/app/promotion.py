@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from .contract import (
+    CLASSIFIED_ENVIRONMENTS,
     PROMOTION_SCHEMA,
     SHA256_RE,
     ContractError,
+    classified_environment_from_payload,
     is_release_id,
     is_safe_id,
 )
@@ -52,7 +54,30 @@ def decode_promotion_record(
         raise PromotionRecordError("PROMOTION_IDENTITY_CONFLICT", "promotion wallId mismatch")
     if release_id is not None and rec_release != release_id:
         raise PromotionRecordError("PROMOTION_IDENTITY_CONFLICT", "promotion releaseId mismatch")
+    try:
+        classified_environment_from_payload(payload)
+    except ContractError as exc:
+        raise PromotionRecordError("PROMOTION_ENVIRONMENT_INVALID", str(exc)) from exc
     return payload
+
+
+def promotion_environment(record: dict) -> str | None:
+    try:
+        return classified_environment_from_payload(record)
+    except ContractError as exc:
+        raise PromotionRecordError("PROMOTION_ENVIRONMENT_INVALID", str(exc)) from exc
+
+
+def promotion_identity(record: dict) -> tuple[str, str, str, str, str, str]:
+    env = promotion_environment(record)
+    return (
+        str(record.get("schema") or ""),
+        str(record.get("wallId") or ""),
+        str(record.get("releaseId") or ""),
+        str(record.get("name") or ""),
+        str(record.get("releaseManifestSha256") or ""),
+        env or "",
+    )
 
 
 def promotion_record(
@@ -62,8 +87,9 @@ def promotion_record(
     name: str,
     promoted_at: str,
     release_manifest_sha256: str,
+    environment: str | None = None,
 ) -> dict:
-    return {
+    payload = {
         "schema": PROMOTION_SCHEMA,
         "wallId": wall_id,
         "releaseId": release_id,
@@ -71,3 +97,8 @@ def promotion_record(
         "promotedAt": promoted_at,
         "releaseManifestSha256": release_manifest_sha256,
     }
+    if environment is not None:
+        if environment not in CLASSIFIED_ENVIRONMENTS:
+            raise PromotionRecordError("PROMOTION_ENVIRONMENT_INVALID", "invalid environment")
+        payload["environment"] = environment
+    return payload

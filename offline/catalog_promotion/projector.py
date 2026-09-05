@@ -6,8 +6,15 @@ Catalog v1 is a view, not a mutable publication authority.
 
 from __future__ import annotations
 
-from .catalog import CATALOG_SCHEMA, CatalogError, empty_catalog, encode_catalog, release_ordinal
-from .record import PromotionRecordError, decode_promotion_record
+from .catalog import (
+    CATALOG_SCHEMA,
+    CatalogError,
+    catalog_entry,
+    empty_catalog,
+    encode_catalog,
+    release_ordinal,
+)
+from .record import PromotionRecordError, decode_promotion_record, promotion_environment
 
 
 class ProjectionError(ValueError):
@@ -47,16 +54,29 @@ def project_catalog(records: list[dict]) -> dict:
                 f"conflicting display names for {wall_id}",
             )
         try:
+            environments = {promotion_environment(item) for item in group}
+        except PromotionRecordError as exc:
+            raise ProjectionError(exc.code, str(exc)) from exc
+        if len(environments) != 1:
+            raise ProjectionError(
+                "PROMOTION_ENVIRONMENT_CONFLICT",
+                f"conflicting environments for {wall_id}",
+            )
+        try:
             latest = max(group, key=lambda item: release_ordinal(str(item["releaseId"])))
         except CatalogError as exc:
             raise ProjectionError("PROMOTION_RECORD_INVALID", str(exc)) from exc
-        walls.append(
-            {
-                "wallId": wall_id,
-                "name": latest["name"],
-                "latestReleaseId": latest["releaseId"],
-            }
-        )
+        try:
+            walls.append(
+                catalog_entry(
+                    wall_id=wall_id,
+                    name=str(latest["name"]),
+                    latest_release_id=str(latest["releaseId"]),
+                    environment=next(iter(environments)),
+                )
+            )
+        except CatalogError as exc:
+            raise ProjectionError("PROMOTION_ENVIRONMENT_INVALID", str(exc)) from exc
     catalog = empty_catalog()
     catalog["walls"] = walls
     catalog["schema"] = CATALOG_SCHEMA

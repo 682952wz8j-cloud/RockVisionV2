@@ -32,7 +32,8 @@ struct CloudAPIClient: Sendable {
     func fetchCatalog() async throws -> WallCatalog {
         let request = URLRequest(url: try catalogURL())
         let data = try await fetchData(request)
-        return try CloudAssetContract.decodeCatalog(data)
+        let decoded = try CloudAssetContract.decodeCatalog(data)
+        return CloudCatalogAudience.current.filter(decoded)
     }
 
     func fetchManifest(wallId: String) async throws -> WallManifest {
@@ -69,12 +70,12 @@ struct CloudAPIClient: Sendable {
     }
 
     func catalogURL() throws -> URL {
-        try url(path: ["v1", "walls"])
+        try url(path: catalogCollectionPath)
     }
 
     func manifestURL(wallId: String) throws -> URL {
         try CloudIdentifier.requireWallId(wallId)
-        return try url(path: ["v1", "walls", wallId, "manifest"])
+        return try url(path: catalogCollectionPath + [wallId, "manifest"])
     }
 
     func releaseManifestURL(wallId: String, releaseId: String) throws -> URL {
@@ -88,6 +89,13 @@ struct CloudAPIClient: Sendable {
         try CloudIdentifier.requireReleaseId(releaseId)
         try CloudIdentifier.requireAssetId(assetId)
         return try url(path: ["v1", "walls", wallId, "releases", releaseId, "assets", assetId])
+    }
+
+    private var catalogCollectionPath: [String] {
+        if CloudAPIConfiguration.usesDebugCatalogDiscovery {
+            return ["v1", "debug", "walls"]
+        }
+        return ["v1", "walls"]
     }
 
     private func url(path: [String]) throws -> URL {

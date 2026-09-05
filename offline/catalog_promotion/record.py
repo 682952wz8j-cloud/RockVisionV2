@@ -6,6 +6,7 @@ import json
 import re
 
 from offline.localization_package.package_schema import is_release_id, is_safe_id
+from offline.localization_package.schema import ENVIRONMENTS
 
 PROMOTION_SCHEMA = "cragpal.wall-promotion.v1"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -28,8 +29,9 @@ def promotion_record(
     name: str,
     promoted_at: str,
     release_manifest_sha256: str,
+    environment: str | None = None,
 ) -> dict:
-    return {
+    payload = {
         "schema": PROMOTION_SCHEMA,
         "wallId": wall_id,
         "releaseId": release_id,
@@ -37,6 +39,11 @@ def promotion_record(
         "promotedAt": promoted_at,
         "releaseManifestSha256": release_manifest_sha256,
     }
+    if environment is not None:
+        if environment not in ENVIRONMENTS:
+            raise PromotionRecordError("PROMOTION_ENVIRONMENT_INVALID", "invalid environment")
+        payload["environment"] = environment
+    return payload
 
 
 def decode_promotion_record(
@@ -71,14 +78,30 @@ def decode_promotion_record(
         raise PromotionRecordError("PROMOTION_IDENTITY_CONFLICT", "promotion wallId mismatch")
     if release_id is not None and rec_release != release_id:
         raise PromotionRecordError("PROMOTION_IDENTITY_CONFLICT", "promotion releaseId mismatch")
+    _decoded_environment(payload)
     return payload
 
 
-def promotion_identity(record: dict) -> tuple[str, str, str, str, str]:
+def _decoded_environment(payload: dict) -> str | None:
+    if "environment" not in payload:
+        return None
+    value = payload["environment"]
+    if value not in ENVIRONMENTS:
+        raise PromotionRecordError("PROMOTION_ENVIRONMENT_INVALID", "invalid environment")
+    return value
+
+
+def promotion_environment(record: dict) -> str | None:
+    return _decoded_environment(record)
+
+
+def promotion_identity(record: dict) -> tuple[str, str, str, str, str, str]:
+    env = promotion_environment(record)
     return (
         str(record.get("schema") or ""),
         str(record.get("wallId") or ""),
         str(record.get("releaseId") or ""),
         str(record.get("name") or ""),
         str(record.get("releaseManifestSha256") or ""),
+        env or "",
     )

@@ -393,18 +393,27 @@ immutable promotion record
 → catalog view
 ```
 
-For each `wallId`, projection requires a consistent display name and
-sets `latestReleaseId` to the highest valid `rNNNNNN` ordinal. Older
-promotion records may coexist. Concurrent different releases are both
-preserved. Conflicting names fail closed. Output wall order is
-deterministic (`wallId` sorted).
+For each `wallId`, projection requires a consistent display name **and**
+a consistent environment (`production`, `development_test`, or missing
+unspecified). `latestReleaseId` is the highest valid `rNNNNNN` ordinal
+**within that coherent environment**. Older promotion records may
+coexist. Concurrent different releases are both preserved. Conflicting
+names or environments fail closed. Highest ordinal cannot cross an
+environment boundary. Output wall order is deterministic (`wallId`
+sorted). New classified promotion records include `environment` in
+immutable identity. Missing environment on old records remains
+unspecified and is never silently upgraded to production.
 
 Subsequent backend migration (this phase, repository only): `GET /v1/walls`
-projects promotion records into `cragpal.wall-catalog.v1` and **merges**
-them with remaining legacy `published/catalog.json` entries. Convenience
-`GET /v1/walls/{wallId}/manifest` uses the merged `latestReleaseId`.
+is the PRODUCTION audience (explicit `environment=production` only).
+`GET /v1/debug/walls` is the DEBUG_TEST audience. Convenience
+`GET /v1/walls/{wallId}/manifest` uses the production catalog.
+`GET /v1/debug/walls/{wallId}/manifest` uses the debug catalog.
 Release-scoped manifest routes stay unchanged. Production backend is
-**not** deployed in this phase.
+**not** deployed in this phase. The production promoter writes
+`environment=production` only after existing remote qualification
+gates pass. Development-test promotion is a separate unimplemented
+contract, not a `--allow-dev` flag.
 
 ### Phase D0.5 finding — do not use PUT ETag preconditions
 

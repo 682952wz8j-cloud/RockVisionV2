@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from offline.localization_package.package_schema import is_release_id, is_safe_id
+from offline.localization_package.schema import ENVIRONMENTS
 
 CATALOG_SCHEMA = "cragpal.wall-catalog.v1"
 
@@ -47,7 +48,30 @@ def decode_catalog(payload: object) -> dict:
         release_id = str(item.get("latestReleaseId") or "")
         if not is_release_id(release_id):
             raise CatalogError("CATALOG_INVALID", "invalid catalog latestReleaseId")
+        catalog_environment(item)
     return payload
+
+
+def catalog_environment(item: dict) -> str | None:
+    if "environment" not in item:
+        return None
+    value = item["environment"]
+    if value not in ENVIRONMENTS:
+        raise CatalogError("CATALOG_ENVIRONMENT_INVALID", "invalid environment")
+    return value
+
+
+def catalog_entry(*, wall_id: str, name: str, latest_release_id: str, environment: str | None) -> dict:
+    entry = {
+        "wallId": wall_id,
+        "name": name,
+        "latestReleaseId": latest_release_id,
+    }
+    if environment is not None:
+        if environment not in ENVIRONMENTS:
+            raise CatalogError("CATALOG_ENVIRONMENT_INVALID", "invalid environment")
+        entry["environment"] = environment
+    return entry
 
 
 def release_ordinal(release_id: str) -> int:

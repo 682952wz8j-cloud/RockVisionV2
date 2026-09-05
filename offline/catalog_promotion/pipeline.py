@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from offline.localization_package.cloud_manifest import CloudManifestError, decode_cloud_manifest_candidate
 from offline.localization_package.package_schema import is_release_id, is_safe_id
 from offline.localization_package.schema import (
+    ENVIRONMENT_PRODUCTION,
     TYPE_DESCRIPTORS,
     TYPE_LANDMARKS,
     TYPE_S_WALL_COLMAP,
@@ -107,13 +108,16 @@ def promote_localization_release(
         name=name,
         promoted_at=promoted_at or _utc_now(),
         release_manifest_sha256=manifest_sha,
+        environment=ENVIRONMENT_PRODUCTION,
     )
     if existing is not None:
         return _existing_record_result(base, existing, candidate)
 
     try:
-        _assert_name_consistent(store, wall_id=wall_id, name=name)
+        _assert_promotion_coherent(store, wall_id=wall_id, name=name, environment=ENVIRONMENT_PRODUCTION)
     except _PromotionFail as exc:
+        if exc.reason == ReasonCode.PROMOTION_ENVIRONMENT_CONFLICT:
+            return _fail(base, PromotionState.PROMOTION_ENVIRONMENT_CONFLICT, exc.reason)
         return _fail(base, PromotionState.PROMOTION_NAME_CONFLICT, exc.reason)
 
     candidate_bytes = encode_promotion_record(candidate)
@@ -163,6 +167,8 @@ def _existing_record_result(base: PromotionResult, existing: bytes, candidate: d
             reason = ReasonCode.PROMOTION_SCHEMA_UNSUPPORTED
         elif isinstance(exc, PromotionRecordError) and exc.code == "PROMOTION_IDENTITY_CONFLICT":
             reason = ReasonCode.PROMOTION_IDENTITY_CONFLICT
+        elif isinstance(exc, PromotionRecordError) and exc.code == "PROMOTION_ENVIRONMENT_INVALID":
+            reason = ReasonCode.PROMOTION_ENVIRONMENT_INVALID
         return _fail(base, PromotionState.IMMUTABLE_PROMOTION_CONFLICT, reason)
     if promotion_identity(record) == promotion_identity(candidate):
         base.state = PromotionState.ALREADY_PROMOTED_IDENTICAL.value
@@ -173,12 +179,15 @@ def _existing_record_result(base: PromotionResult, existing: bytes, candidate: d
     return _fail(base, PromotionState.IMMUTABLE_PROMOTION_CONFLICT, ReasonCode.IMMUTABLE_PROMOTION_CONFLICT)
 
 
-def _assert_name_consistent(store: PromotionStore, *, wall_id: str, name: str) -> None:
+def _assert_promotion_coherent(
+    store: PromotionStore, *, wall_id: str, name: str, environment: str
+) -> None:
     keys_fn = getattr(store, "keys_with_prefix", None)
     if keys_fn is None:
         return
     prefix = f"{PROMOTIONS_PREFIX}{wall_id}/"
     names: set[str] = set()
+    environments: set[str | None] = set()
     for key in keys_fn(prefix):
         raw = store.get_bytes(key)
         if raw is None:
@@ -188,12 +197,15 @@ def _assert_name_consistent(store: PromotionStore, *, wall_id: str, name: str) -
         except (UnicodeDecodeError, json.JSONDecodeError, PromotionRecordError) as exc:
             if isinstance(exc, PromotionRecordError) and exc.code == "PROMOTION_SCHEMA_UNSUPPORTED":
                 raise _PromotionFail(ReasonCode.PROMOTION_SCHEMA_UNSUPPORTED) from exc
+            if isinstance(exc, PromotionRecordError) and exc.code == "PROMOTION_ENVIRONMENT_INVALID":
+                raise _PromotionFail(ReasonCode.PROMOTION_ENVIRONMENT_INVALID) from exc
             raise _PromotionFail(ReasonCode.PROMOTION_RECORD_INVALID) from exc
         names.add(str(record["name"]))
-    if not names:
-        return
-    if len(names) > 1 or name not in names:
+        environments.add(record["environment"] if "environment" in record else None)
+    if names and (len(names) > 1 or name not in names):
         raise _PromotionFail(ReasonCode.PROMOTION_NAME_CONFLICT)
+    if environments and (len(environments) > 1 or environment not in environments):
+        raise _PromotionFail(ReasonCode.PROMOTION_ENVIRONMENT_CONFLICT)
 
 
 class _PromotionFail(Exception):

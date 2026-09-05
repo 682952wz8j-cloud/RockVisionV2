@@ -59,6 +59,7 @@ def _record(
     name: str = SYNTHETIC_NAME,
     sha: str = SHA_A,
     promoted_at: str = WHEN,
+    environment: str | None = None,
 ) -> dict:
     return promotion_record(
         wall_id=wall_id,
@@ -66,6 +67,7 @@ def _record(
         name=name,
         promoted_at=promoted_at,
         release_manifest_sha256=sha,
+        environment=environment,
     )
 
 
@@ -188,7 +190,10 @@ class CatalogApiProjectionTests(unittest.TestCase):
             assets={(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID, EXAMPLE_ASSET_ID): EXAMPLE_ASSET_BYTES},
             promotions=[_record()],
         )
-        response = _client(store).get("/v1/walls")
+        production = _client(store).get("/v1/walls")
+        self.assertEqual(production.status_code, 200)
+        self.assertEqual(production.json()["walls"], [])
+        response = _client(store).get("/v1/debug/walls")
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["schema"], CATALOG_SCHEMA)
@@ -216,11 +221,16 @@ class CatalogApiProjectionTests(unittest.TestCase):
                 )
             ],
         )
-        catalog = _client(store).get("/v1/walls")
+        catalog = _client(store).get("/v1/debug/walls")
         self.assertEqual(catalog.json()["walls"][0]["latestReleaseId"], EXAMPLE_RELEASE_ID_2)
-        convenience = _client(store).get(f"/v1/walls/{EXAMPLE_WALL_ID}/manifest")
+        self.assertEqual(_client(store).get("/v1/walls").json()["walls"], [])
+        convenience = _client(store).get(f"/v1/debug/walls/{EXAMPLE_WALL_ID}/manifest")
         self.assertEqual(convenience.status_code, 200)
         self.assertEqual(convenience.json()["releaseId"], EXAMPLE_RELEASE_ID_2)
+        self.assertEqual(
+            _client(store).get(f"/v1/walls/{EXAMPLE_WALL_ID}/manifest").status_code,
+            404,
+        )
 
     def test_13_release_scoped_manifest_unchanged(self) -> None:
         fake = FakeCosClient()
@@ -248,15 +258,18 @@ class CatalogApiProjectionTests(unittest.TestCase):
             assets={},
             promotions=[_record()],
         )
-        catalog = _client(store).get("/v1/walls")
+        catalog = _client(store).get("/v1/debug/walls")
         self.assertEqual(catalog.json()["walls"][0]["wallId"], SYNTHETIC_WALL)
-        convenience = _client(store).get(f"/v1/walls/{SYNTHETIC_WALL}/manifest")
+        self.assertEqual(_client(store).get("/v1/walls").json()["walls"], [])
+        convenience = _client(store).get(f"/v1/debug/walls/{SYNTHETIC_WALL}/manifest")
         self.assertEqual(convenience.status_code, 200)
         self.assertEqual(convenience.json()["releaseId"], SYNTHETIC_RELEASE)
         self.assertEqual(convenience.json()["wallId"], SYNTHETIC_WALL)
+        self.assertEqual(_client(store).get(f"/v1/walls/{SYNTHETIC_WALL}/manifest").status_code, 404)
 
     def test_16_legacy_only_wall_convenience_manifest_still_works(self) -> None:
-        response = _client().get(f"/v1/walls/{EXAMPLE_WALL_ID}/manifest")
+        self.assertEqual(_client().get(f"/v1/walls/{EXAMPLE_WALL_ID}/manifest").status_code, 404)
+        response = _client().get(f"/v1/debug/walls/{EXAMPLE_WALL_ID}/manifest")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["releaseId"], EXAMPLE_RELEASE_ID)
 
@@ -268,13 +281,16 @@ class CatalogApiProjectionTests(unittest.TestCase):
         client = _client(store)
         catalog = client.get("/v1/walls")
         self.assertEqual(catalog.status_code, 200)
+        self.assertEqual(catalog.json()["walls"], [])
+        debug = client.get("/v1/debug/walls")
         self.assertEqual(
-            [item["wallId"] for item in catalog.json()["walls"]],
+            [item["wallId"] for item in debug.json()["walls"]],
             [EXAMPLE_WALL_ID, SYNTHETIC_WALL],
         )
-        convenience = client.get(f"/v1/walls/{SYNTHETIC_WALL}/manifest")
+        convenience = client.get(f"/v1/debug/walls/{SYNTHETIC_WALL}/manifest")
         self.assertEqual(convenience.status_code, 200)
         self.assertEqual(convenience.json()["releaseId"], SYNTHETIC_RELEASE)
+        self.assertEqual(client.get(f"/v1/walls/{SYNTHETIC_WALL}/manifest").status_code, 404)
         self.assertTrue(fake.listed_prefixes)
         self.assertEqual(set(fake.listed_prefixes), {published_promotions_prefix()})
         self.assertEqual(fake.write_attempts, [])
@@ -395,9 +411,9 @@ class MemoryStoreProjectionTests(unittest.TestCase):
     def test_mutating_legacy_catalog_still_affects_view_without_promotions(self) -> None:
         store = MemoryStore.two_releases(latest_release_id=EXAMPLE_RELEASE_ID)
         client = TestClient(create_app(store=store))
-        self.assertEqual(client.get(f"/v1/walls/{EXAMPLE_WALL_ID}/manifest").json()["releaseId"], EXAMPLE_RELEASE_ID)
+        self.assertEqual(client.get(f"/v1/debug/walls/{EXAMPLE_WALL_ID}/manifest").json()["releaseId"], EXAMPLE_RELEASE_ID)
         store._catalog["walls"][0]["latestReleaseId"] = EXAMPLE_RELEASE_ID_2
-        self.assertEqual(client.get(f"/v1/walls/{EXAMPLE_WALL_ID}/manifest").json()["releaseId"], EXAMPLE_RELEASE_ID_2)
+        self.assertEqual(client.get(f"/v1/debug/walls/{EXAMPLE_WALL_ID}/manifest").json()["releaseId"], EXAMPLE_RELEASE_ID_2)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,12 @@ from __future__ import annotations
 import copy
 import hashlib
 
-from .catalog_projection import merge_legacy_and_projected, project_promotions
+from .catalog_projection import (
+    filter_catalog_for_audience,
+    merge_legacy_and_projected,
+    project_promotions,
+)
+from .contract import AUDIENCE_DEBUG_TEST, AUDIENCE_PRODUCTION
 from .contract import (
     CATALOG_SCHEMA,
     MANIFEST_SCHEMA,
@@ -122,18 +127,33 @@ class MemoryStore:
             },
         )
 
-    def catalog(self) -> dict:
+    def merged_catalog(self) -> dict:
         return merge_legacy_and_projected(self._catalog, project_promotions(self._promotions))
 
+    def catalog(self) -> dict:
+        return filter_catalog_for_audience(self.merged_catalog(), AUDIENCE_PRODUCTION)
+
+    def debug_catalog(self) -> dict:
+        return filter_catalog_for_audience(self.merged_catalog(), AUDIENCE_DEBUG_TEST)
+
     def latest_release_id(self, wall_id: str) -> str:
+        return self._latest_release_id(wall_id, self.catalog())
+
+    def debug_latest_release_id(self, wall_id: str) -> str:
+        return self._latest_release_id(wall_id, self.debug_catalog())
+
+    def _latest_release_id(self, wall_id: str, catalog: dict) -> str:
         require_wall_id(wall_id)
-        for item in self.catalog()["walls"]:
+        for item in catalog["walls"]:
             if item["wallId"] == wall_id:
                 return item["latestReleaseId"]
         raise NotFound(f"unknown wallId {wall_id}")
 
     def manifest(self, wall_id: str) -> dict:
         return self.manifest_for_release(wall_id, self.latest_release_id(wall_id))
+
+    def debug_manifest(self, wall_id: str) -> dict:
+        return self.manifest_for_release(wall_id, self.debug_latest_release_id(wall_id))
 
     def manifest_for_release(self, wall_id: str, release_id: str) -> dict:
         require_wall_id(wall_id)

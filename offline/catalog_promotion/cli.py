@@ -44,6 +44,7 @@ def run_promote_localization_release(
 
     print("PRODUCTION LOCALIZATION RELEASE PROMOTION")
     print("Immutable promotion record. published/catalog.json is not written.")
+    print("environment: production")
     print(f"wallId: {wall_id}")
     print(f"releaseId: {release_id}")
     print(f"name: {name}")

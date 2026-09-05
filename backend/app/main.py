@@ -51,12 +51,25 @@ def create_app(store=None) -> FastAPI:
 
     @app.get("/v1/walls")
     def list_walls() -> dict:
+        """PRODUCTION audience catalog. Caller query/headers cannot select debug."""
         return resolve_store().catalog()
+
+    @app.get("/v1/debug/walls")
+    def list_debug_walls() -> dict:
+        """DEBUG_TEST audience catalog. Separate from production discovery."""
+        return resolve_store().debug_catalog()
 
     @app.get("/v1/walls/{wall_id}/manifest")
     def wall_manifest(wall_id: str) -> dict:
+        """PRODUCTION convenience: latestReleaseId from the production catalog only."""
         _reject_unsafe_wall(wall_id)
         return resolve_store().manifest(wall_id)
+
+    @app.get("/v1/debug/walls/{wall_id}/manifest")
+    def debug_wall_manifest(wall_id: str) -> dict:
+        """DEBUG_TEST convenience: latestReleaseId from the debug catalog view."""
+        _reject_unsafe_wall(wall_id)
+        return resolve_store().debug_manifest(wall_id)
 
     @app.get("/v1/walls/{wall_id}/releases/{release_id}/manifest")
     def wall_release_manifest(wall_id: str, release_id: str) -> dict:

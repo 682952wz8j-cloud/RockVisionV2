@@ -22,9 +22,15 @@ from offline.catalog_promotion.catalog import CATALOG_SCHEMA
 from offline.catalog_promotion.cli import run_promote_localization_release
 from offline.catalog_promotion.pipeline import promote_localization_release
 from offline.catalog_promotion.projector import ProjectionError, project_catalog
-from offline.catalog_promotion.record import encode_promotion_record, promotion_record
+from offline.catalog_promotion.record import decode_promotion_record, encode_promotion_record, promotion_identity, promotion_record
 from offline.catalog_promotion.schema import PromotionState, ReasonCode
-from offline.localization_package.schema import TYPE_DESCRIPTORS, TYPE_LANDMARKS, TYPE_S_WALL_COLMAP
+from offline.localization_package.schema import (
+    ENVIRONMENT_DEVELOPMENT_TEST,
+    ENVIRONMENT_PRODUCTION,
+    TYPE_DESCRIPTORS,
+    TYPE_LANDMARKS,
+    TYPE_S_WALL_COLMAP,
+)
 from offline.publisher.fake_store import FakeObjectStore
 from offline.publisher.keys import (
     CATALOG_KEY,
@@ -111,6 +117,7 @@ def seed_promotion(
     name: str,
     manifest_sha: str,
     promoted_at: str = WHEN,
+    environment: str | None = None,
 ) -> bytes:
     payload = promotion_record(
         wall_id=wall_id,
@@ -118,6 +125,7 @@ def seed_promotion(
         name=name,
         promoted_at=promoted_at,
         release_manifest_sha256=manifest_sha,
+        environment=environment,
     )
     data = encode_promotion_record(payload)
     store.objects[published_promotion_key(wall_id, release_id)] = data
@@ -241,11 +249,19 @@ class ImmutablePromotionFakeStoreTests(unittest.TestCase):
         self.assertEqual(payload["wallId"], WALL)
         self.assertEqual(payload["releaseId"], RELEASE)
         self.assertEqual(payload["name"], NAME)
+        self.assertEqual(payload["environment"], ENVIRONMENT_PRODUCTION)
 
     def test_12_identical_existing_promotion_idempotent(self) -> None:
         store = FakeObjectStore()
         manifest = seed_release(store)
-        before = seed_promotion(store, wall_id=WALL, release_id=RELEASE, name=NAME, manifest_sha=_sha(manifest))
+        before = seed_promotion(
+            store,
+            wall_id=WALL,
+            release_id=RELEASE,
+            name=NAME,
+            manifest_sha=_sha(manifest),
+            environment=ENVIRONMENT_PRODUCTION,
+        )
         result = _promote(store)
         self.assertEqual(result.state, PromotionState.ALREADY_PROMOTED_IDENTICAL.value)
         self.assertTrue(result.promotion_record_created)
@@ -542,6 +558,117 @@ class ImmutablePromotionFakeStoreTests(unittest.TestCase):
         )
         catalog = project_catalog([low, high])
         self.assertEqual(catalog["walls"][0]["latestReleaseId"], "r000010")
+
+    def test_environment_unspecified_old_record_and_identity(self) -> None:
+        old = promotion_record(
+            wall_id=WALL, release_id=RELEASE, name=NAME, promoted_at=WHEN, release_manifest_sha256="a" * 64
+        )
+        decoded = decode_promotion_record(old)
+        self.assertNotIn("environment", decoded)
+        production = promotion_record(
+            wall_id=WALL,
+            release_id=RELEASE,
+            name=NAME,
+            promoted_at=WHEN,
+            release_manifest_sha256="a" * 64,
+            environment=ENVIRONMENT_PRODUCTION,
+        )
+        development = promotion_record(
+            wall_id=WALL,
+            release_id=RELEASE,
+            name=NAME,
+            promoted_at=WHEN,
+            release_manifest_sha256="a" * 64,
+            environment=ENVIRONMENT_DEVELOPMENT_TEST,
+        )
+        self.assertNotEqual(promotion_identity(decoded), promotion_identity(production))
+        self.assertNotEqual(promotion_identity(production), promotion_identity(development))
+        catalog = project_catalog([old])
+        self.assertNotIn("environment", catalog["walls"][0])
+
+    def test_unknown_environment_fails_closed(self) -> None:
+        payload = promotion_record(
+            wall_id=WALL,
+            release_id=RELEASE,
+            name=NAME,
+            promoted_at=WHEN,
+            release_manifest_sha256="a" * 64,
+            environment=ENVIRONMENT_PRODUCTION,
+        )
+        payload["environment"] = "dev"
+        with self.assertRaises(Exception) as exc:
+            decode_promotion_record(payload)
+        self.assertEqual(exc.exception.code, "PROMOTION_ENVIRONMENT_INVALID")
+
+    def test_unspecified_existing_is_not_identical_to_production(self) -> None:
+        store = FakeObjectStore()
+        manifest = seed_release(store)
+        before = seed_promotion(
+            store,
+            wall_id=WALL,
+            release_id=RELEASE,
+            name=NAME,
+            manifest_sha=_sha(manifest),
+        )
+        result = _promote(store)
+        self.assertEqual(result.state, PromotionState.IMMUTABLE_PROMOTION_CONFLICT.value)
+        self.assertEqual(store.objects[published_promotion_key(WALL, RELEASE)], before)
+
+    def test_conflicting_environments_fail_closed(self) -> None:
+        records = [
+            promotion_record(
+                wall_id=WALL,
+                release_id=OLDER,
+                name=NAME,
+                promoted_at=WHEN,
+                release_manifest_sha256="a" * 64,
+                environment=ENVIRONMENT_PRODUCTION,
+            ),
+            promotion_record(
+                wall_id=WALL,
+                release_id=FORWARD,
+                name=NAME,
+                promoted_at=WHEN,
+                release_manifest_sha256="b" * 64,
+                environment=ENVIRONMENT_DEVELOPMENT_TEST,
+            ),
+        ]
+        with self.assertRaises(ProjectionError) as exc:
+            project_catalog(records)
+        self.assertEqual(exc.exception.code, "PROMOTION_ENVIRONMENT_CONFLICT")
+
+    def test_classified_projection_preserves_environment(self) -> None:
+        catalog = project_catalog(
+            [
+                promotion_record(
+                    wall_id=WALL,
+                    release_id=RELEASE,
+                    name=NAME,
+                    promoted_at=WHEN,
+                    release_manifest_sha256="a" * 64,
+                    environment=ENVIRONMENT_DEVELOPMENT_TEST,
+                )
+            ]
+        )
+        self.assertEqual(catalog["walls"][0]["environment"], ENVIRONMENT_DEVELOPMENT_TEST)
+
+    def test_production_promoter_has_no_dev_bypass_and_gates_remain(self) -> None:
+        pipeline = (PROMOTION_DIR / "pipeline.py").read_text(encoding="utf-8")
+        cli = (PROMOTION_DIR / "cli.py").read_text(encoding="utf-8")
+        self.assertNotIn("allow-dev", pipeline)
+        self.assertNotIn("allow-dev", cli)
+        self.assertIn("environment=ENVIRONMENT_PRODUCTION", pipeline)
+        self.assertIn("TYPE_DESCRIPTORS", pipeline)
+        self.assertIn("TYPE_LANDMARKS", pipeline)
+        self.assertIn("TYPE_S_WALL_COLMAP", pipeline)
+        from offline.catalog_promotion.development_promotion import (
+            DevelopmentPromotionNotImplemented,
+            promote_development_test_release,
+        )
+
+        with self.assertRaises(DevelopmentPromotionNotImplemented):
+            promote_development_test_release()
+        self.assertNotIn("promote_development_test_release", cli)
 
 
 if __name__ == "__main__":
