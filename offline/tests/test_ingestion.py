@@ -222,6 +222,28 @@ class IngestionTests(unittest.TestCase):
         after = snapshot_hashes(wall)
         self.assertEqual(before, after)
 
+    def test_snapshot_hashes_ignore_ds_store_not_hidden_files(self) -> None:
+        wall = self._wall()
+        write_jpeg(wall / "a.jpg")
+        _write(wall / "flight.MRK", "1,Lat,2,Lon,3,Ellh\n")
+        _write(wall / ".DS_Store", b"finder-a")
+        _write(wall / "sub" / ".DS_Store", b"finder-nested")
+        _write(wall / ".hidden_notes.txt", "keep me in identity\n")
+        before = snapshot_hashes(wall)
+        self.assertIn("a.jpg", before)
+        self.assertIn("flight.MRK", before)
+        self.assertIn(".hidden_notes.txt", before)
+        self.assertNotIn(".DS_Store", before)
+        self.assertNotIn("sub/.DS_Store", before)
+        _write(wall / ".DS_Store", b"finder-b-changed")
+        _write(wall / "sub" / ".DS_Store", b"finder-nested-changed")
+        _write(wall / "newdir" / ".DS_Store", b"finder-created")
+        after_noise = snapshot_hashes(wall)
+        self.assertEqual(before, after_noise)
+        _write(wall / "a.jpg", b"not-a-real-jpeg-anymore")
+        after_jpeg = snapshot_hashes(wall)
+        self.assertNotEqual(before["a.jpg"], after_jpeg["a.jpg"])
+
     def test_missing_wall_id_fails(self) -> None:
         summary = ingest("wall_does_not_exist", self.tmp)
         self.assertEqual(summary.result, RunResult.FAIL)

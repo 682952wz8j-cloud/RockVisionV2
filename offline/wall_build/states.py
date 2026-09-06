@@ -101,6 +101,9 @@ PRODUCTION_EXECUTABLE_STAGES = frozenset(
         Stage.POSITIONING_QUALITY,
         Stage.RECONSTRUCTION,
         Stage.METRIC_REGISTRATION,
+        Stage.REFERENCE_MAP,
+        Stage.REFERENCE_MATCH,
+        Stage.PNP,
     }
 )
 
@@ -114,14 +117,14 @@ PRODUCTION_STAGE_SEQUENCE = (
     Stage.POSITIONING_QUALITY,
     Stage.RECONSTRUCTION,
     Stage.METRIC_REGISTRATION,
+    Stage.REFERENCE_MAP,
+    Stage.REFERENCE_MATCH,
+    Stage.PNP,
 )
 
 PHASE1_FORBIDDEN_STAGES = frozenset(
     {
         Stage.REGISTER,
-        Stage.REFERENCE_MATCH,
-        Stage.PNP,
-        Stage.REFERENCE_MAP,
         Stage.ROUTE_COORDINATE_REGISTRATION,
         Stage.ROUTE_PACKAGE_BUILD,
     }

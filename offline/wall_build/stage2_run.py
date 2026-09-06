@@ -69,12 +69,17 @@ def run_production_stage2(
     stage_durations: dict[str, float],
     blocking: list[str],
     frozen_terra_ply_product: dict | None = None,
+    capture_group: str | None = None,
 ) -> None:
     """Execute approved Generic Stage 2. Stops fail-closed before COLMAP when possible."""
     t0 = perf_counter()
     record("stage2-selection")
     selection = select_stage2_inputs(
-        wall_id, root, run_id=dest.name, frozen_terra_ply_product=frozen_terra_ply_product
+        wall_id,
+        root,
+        run_id=dest.name,
+        frozen_terra_ply_product=frozen_terra_ply_product,
+        capture_group=capture_group,
     )
     write_selection_artifact(dest / "stage2_input_selection.json", selection)
     sources = sources_from_selection(selection)
@@ -89,6 +94,7 @@ def run_production_stage2(
             "selectionStatus": selection_status,
             "selectedImageCount": len((selection.get("selectedCapture") or {}).get("memberRelativePaths") or ()),
             "sourcesBound": sources is not None,
+            "requestedCaptureGroup": capture_group,
         },
     )
     stage_durations[Stage.STAGE2_SELECTION.value] = round(perf_counter() - t0, 4)

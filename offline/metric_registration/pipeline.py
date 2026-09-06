@@ -154,6 +154,29 @@ def _judge(
     return "VALIDATED", "PASS", problems
 
 
+def stamp_sim3_run_provenance(
+    sim3: dict,
+    *,
+    wall_id: str,
+    run_id: str | None,
+    identity: dict | None,
+) -> None:
+    """Bind VALIDATED Sim(3) to this wall_build run. Does not change the transform.
+
+    wallId comes from the register() argument, not from evaluate_colmap_source_identity()
+    (that dict has no wallId key). Fingerprint is the already-allowed identity proof.
+    """
+    if not run_id or not identity or not identity.get("colmapSourceIdentityExecutionAllowed"):
+        return
+    fingerprint = identity.get("modelFingerprint")
+    if not isinstance(fingerprint, str) or not fingerprint:
+        return
+    sim3["wallId"] = wall_id
+    sim3["wallBuildRunId"] = run_id
+    sim3["colmapModelFingerprint"] = fingerprint
+    sim3["modelFingerprint"] = fingerprint
+
+
 def register(
     wall_id: str,
     root: Path,
@@ -611,17 +634,7 @@ def _run(
     sim3["status"] = validation
     sim3["gateResult"] = gate
     sim3["gpsRuntimePolicy"] = GPS_RUNTIME_POLICY
-    if (
-        run_id
-        and identity
-        and identity.get("wallId") == wall_id
-        and isinstance(identity.get("modelFingerprint"), str)
-        and identity.get("modelFingerprint")
-    ):
-        sim3["wallId"] = wall_id
-        sim3["wallBuildRunId"] = run_id
-        sim3["colmapModelFingerprint"] = identity["modelFingerprint"]
-        sim3["modelFingerprint"] = identity["modelFingerprint"]
+    stamp_sim3_run_provenance(sim3, wall_id=wall_id, run_id=run_id, identity=identity)
     write_json(dest / "S_wall_colmap.json", sim3)
 
     return {

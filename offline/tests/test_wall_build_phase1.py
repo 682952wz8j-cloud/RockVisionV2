@@ -152,6 +152,23 @@ class WallBuildPhase1Tests(unittest.TestCase):
         self.assertEqual(report["stageStatuses"]["STAGE2_SELECTION"]["reasonCode"], ReasonCode.STAGE2_SELECTION_NOT_AUTO_PASS.value)
         self.assertTrue(report["productionBuildStage2Enabled"])
 
+    def test_cli_forwards_capture_group(self) -> None:
+        cli = _load_cli()
+        fake = {
+            "wallId": "wall_jinshidong_01",
+            "runId": "wb_test",
+            "runTerminalStatus": RunTerminalStatus.HUMAN_REVIEW_REQUIRED.value,
+            "requestedCaptureGroup": "DJI_202609051628_009_九龙峰",
+        }
+        with patch("offline.wall_build.cli.run_wall_build", return_value=fake) as fn:
+            code = cli.main(
+                ["build", "wall_jinshidong_01", "--capture-group", "DJI_202609051628_009_九龙峰"],
+                root=self.tmp,
+            )
+        self.assertEqual(code, 2)
+        self.assertEqual(fn.call_args.kwargs.get("capture_group"), "DJI_202609051628_009_九龙峰")
+        self.assertEqual(fn.call_args.args[0], "wall_jinshidong_01")
+
     def test_invalid_wall_id(self) -> None:
         report = self._build("jinshidong")
         self.assertEqual(report["runTerminalStatus"], RunTerminalStatus.AUTO_FAIL.value)
@@ -388,6 +405,74 @@ class WallBuildPhase1Tests(unittest.TestCase):
         self.assertIn(ReasonCode.INPUT_MUTATED_DURING_RUN.value, report["reasonCodes"])
         self.assertEqual(report["stageStatuses"]["INPUT_FREEZE"]["status"], StageStatus.AUTO_FAIL.value)
 
+    def test_ds_store_create_or_change_does_not_fail_input_freeze(self) -> None:
+        wall = self._wall("wall_test_phase1_dsstore")
+        write_jpeg(wall / "cam.jpg")
+        _write(wall / ".DS_Store", b"finder-before")
+        import offline.ingestion.pipeline as ingest_mod
+
+        real_ingest = ingest_mod.ingest
+
+        def mutate_ds_store(wall_id, root):
+            summary = real_ingest(wall_id, root)
+            incoming = root / "incoming" / wall_id
+            (incoming / ".DS_Store").write_bytes(b"finder-after-changed-bytes")
+            nested = incoming / "DJI_flight" / ".DS_Store"
+            nested.parent.mkdir(parents=True, exist_ok=True)
+            nested.write_bytes(b"finder-created-during-run")
+            return summary
+
+        with (
+            patch("offline.wall_build.orchestrator.ingest", side_effect=mutate_ds_store),
+            patch("offline.wall_build.stage2_run.reconstruct") as reconstruct,
+        ):
+            report = run_wall_build("wall_test_phase1_dsstore", self.tmp)
+        reconstruct.assert_not_called()
+        self.assertEqual(report["stageStatuses"]["INPUT_FREEZE"]["status"], StageStatus.AUTO_PASS.value)
+        self.assertNotIn(ReasonCode.INPUT_MUTATED_DURING_RUN.value, report["reasonCodes"])
+        freeze = json.loads(Path(report["inputManifest"]["path"]).read_text(encoding="utf-8"))
+        recorded = {item["relativePath"] for item in freeze["files"]}
+        self.assertIn("cam.jpg", recorded)
+        self.assertFalse(any(Path(path).name == ".DS_Store" for path in recorded))
+
+    def test_formal_production_source_change_still_fail_closed(self) -> None:
+        import offline.ingestion.pipeline as ingest_mod
+
+        real_ingest = ingest_mod.ingest
+        sources = (
+            "cam.jpg",
+            "flight.MRK",
+            "flight.RTK",
+            "flight.NAV",
+            "flight.OBS",
+        )
+        for filename in sources:
+            with self.subTest(filename=filename):
+                wall_id = f"wall_test_phase1_mut_{filename.replace('.', '_')}"
+                wall = self._wall(wall_id)
+                write_jpeg(wall / "cam.jpg")
+                for name in sources:
+                    if name == "cam.jpg":
+                        continue
+                    _write(wall / name, f"original-{name}\n")
+
+                def mutate(wall_id, root, *, target=filename):
+                    summary = real_ingest(wall_id, root)
+                    path = root / "incoming" / wall_id / target
+                    path.write_bytes(b"mutated-production-source")
+                    return summary
+
+                with (
+                    patch("offline.wall_build.orchestrator.ingest", side_effect=mutate),
+                    patch("offline.wall_build.stage2_run.reconstruct") as reconstruct,
+                ):
+                    report = run_wall_build(wall_id, self.tmp)
+                reconstruct.assert_not_called()
+                self.assertEqual(report["stageStatuses"]["INPUT_FREEZE"]["status"], StageStatus.AUTO_FAIL.value)
+                self.assertIn(ReasonCode.INPUT_MUTATED_DURING_RUN.value, report["reasonCodes"])
+                disc = report["stageStatuses"]["INPUT_FREEZE"].get("discrepancies") or []
+                self.assertTrue(any(item.get("relativePath") == filename for item in disc), disc)
+
     def test_reports_written_and_no_wall_metric_claim(self) -> None:
         wall = self._wall("wall_test_phase1_report")
         write_jpeg(wall / "cam.jpg")
@@ -496,13 +581,14 @@ class WallBuildPhase1Tests(unittest.TestCase):
                 "POSITIONING_QUALITY",
                 "RECONSTRUCTION",
                 "METRIC_REGISTRATION",
+                "REFERENCE_MAP",
+                "REFERENCE_MATCH",
+                "PNP",
             },
         )
         self.assertEqual(
             report["forbiddenCommandsNotInvoked"],
             [
-                "reference-match",
-                "pnp",
                 "publish-localization-package",
                 "promote-localization-release",
                 "promote-development-release",

@@ -19,9 +19,19 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     build_cmd = sub.add_parser(
         "build",
-        help="Gate-aware wall build: Phase 1 plus approved Generic Stage 2 reconstruction and metric registration",
+        help="Gate-aware wall build: Phase 1, Generic Stage 2, this-run 3C freeze / Stage 3, stop before publish",
     )
     build_cmd.add_argument("wall_id")
+    build_cmd.add_argument(
+        "--capture-group",
+        dest="capture_group",
+        default=None,
+        help=(
+            "Explicit production capture parent directory or groupId. "
+            "Only resolves MULTIPLE_SELECTABLE_CAPTURE_GROUPS. "
+            "The named group must still independently satisfy existing capture and MRK rules."
+        ),
+    )
     ingest_cmd = sub.add_parser("ingest", help="Gate 1A: scan incoming/wall_<id>/")
     ingest_cmd.add_argument("wall_id")
     qualify_cmd = sub.add_parser("qualify", help="Gate 1B: qualify source data and coordinates")
@@ -137,7 +147,7 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     if args.command == "build":
         from offline.wall_build.cli import run_build
 
-        return run_build(args.wall_id, repo)
+        return run_build(args.wall_id, repo, capture_group=args.capture_group)
     if args.command == "ingest":
         from offline.ingestion.cli import main as ingest_main
 

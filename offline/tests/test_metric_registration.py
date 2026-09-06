@@ -290,6 +290,39 @@ class GeometryAndSerializeTests(unittest.TestCase):
         self.assertEqual(loaded["scale"], 2.0)
         self.assertEqual(loaded["wallBuildRunId"], "wb_run")
 
+    def test_stamp_sim3_uses_register_wall_id_not_identity_dict(self) -> None:
+        from offline.metric_registration.pipeline import stamp_sim3_run_provenance
+
+        sim3 = {"scale": 2.0, "status": "VALIDATED"}
+        identity = {
+            "colmapSourceIdentityExecutionAllowed": True,
+            "modelFingerprint": "abc123",
+        }
+        self.assertNotIn("wallId", identity)
+        stamp_sim3_run_provenance(
+            sim3,
+            wall_id="wall_jinshidong_01",
+            run_id="wb_run",
+            identity=identity,
+        )
+        self.assertEqual(sim3["wallId"], "wall_jinshidong_01")
+        self.assertEqual(sim3["wallBuildRunId"], "wb_run")
+        self.assertEqual(sim3["colmapModelFingerprint"], "abc123")
+        self.assertEqual(sim3["modelFingerprint"], "abc123")
+        self.assertEqual(sim3["scale"], 2.0)
+
+    def test_stamp_sim3_skips_when_identity_not_allowed(self) -> None:
+        from offline.metric_registration.pipeline import stamp_sim3_run_provenance
+
+        sim3 = {"scale": 1.0}
+        stamp_sim3_run_provenance(
+            sim3,
+            wall_id="wall_x",
+            run_id="wb_run",
+            identity={"colmapSourceIdentityExecutionAllowed": False, "modelFingerprint": "abc"},
+        )
+        self.assertNotIn("wallBuildRunId", sim3)
+
     def test_historical_sim3_without_provenance_remains_readable(self) -> None:
         path = ROOT / "offline" / "work" / "wall_jiulongfeng_01" / "metric_registration" / "S_wall_colmap.json"
         if not path.is_file():

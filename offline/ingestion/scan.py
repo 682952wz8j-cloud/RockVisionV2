@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .detect import classify_file
 from .geospatial import inspect_sidecar
-from .hashing import sha256_file
+from .hashing import is_os_metadata_noise, sha256_file
 from .images import image_to_json, inspect_image
 from .types import (
     MISSING,
@@ -31,7 +31,7 @@ def filesystem_times(path: Path) -> tuple[str, str]:
 
 
 def iter_files(root: Path) -> list[Path]:
-    files = [p for p in root.rglob("*") if p.is_file()]
+    files = [p for p in root.rglob("*") if p.is_file() and not is_os_metadata_noise(p)]
     files.sort(key=lambda p: p.relative_to(root).as_posix())
     return files
 

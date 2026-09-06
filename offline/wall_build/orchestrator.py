@@ -22,6 +22,7 @@ from .manifest import build_input_manifest, utc_now, verify_input_manifest
 from .preflight import run_preflight
 from .reports import write_reports
 from .stage2_run import run_production_stage2
+from .stage3_run import metric_registration_passed, run_production_stage3, run_stage3_legal_boundary
 from .states import (
     PRODUCTION_EXECUTABLE_STAGES,
     PRODUCTION_STAGE_SEQUENCE,
@@ -35,8 +36,6 @@ from .wall_id import wall_id_error
 
 SCHEMA_VERSION = "wallBuild.report.1"
 FORBIDDEN_COMMANDS = (
-    "reference-match",
-    "pnp",
     "publish-localization-package",
     "promote-localization-release",
     "promote-development-release",
@@ -52,6 +51,7 @@ _AUTOMATION_FOR_STAGE = {
     Stage.POSITIONING_QUALITY: AutomationReached.POSITIONING_QUALITY_COMPLETE,
     Stage.RECONSTRUCTION: AutomationReached.RECONSTRUCTION_COMPLETE,
     Stage.METRIC_REGISTRATION: AutomationReached.METRIC_REGISTRATION_COMPLETE,
+    Stage.REFERENCE_MAP: AutomationReached.REFERENCE_MAP_COMPLETE,
 }
 
 
@@ -161,7 +161,7 @@ def _next_stage(stage_statuses: dict[str, dict]) -> tuple[str, str, str | None]:
     )
 
 
-def run_wall_build(wall_id: str, root: Path, *, run_id: str | None = None) -> dict:
+def run_wall_build(wall_id: str, root: Path, *, run_id: str | None = None, capture_group: str | None = None) -> dict:
     started = perf_counter()
     run_start = utc_now()
     run_id = run_id or new_run_id()
@@ -192,6 +192,11 @@ def run_wall_build(wall_id: str, root: Path, *, run_id: str | None = None) -> di
     }
     freeze_ok = True
     freeze_discrepancies: list[dict] = []
+    chain_extras: dict = {
+        "localizationPackage": None,
+        "pnpSelfTest": None,
+        "fieldPnP": False,
+    }
 
     def finish() -> dict:
         nonlocal freeze_ok, freeze_discrepancies
@@ -284,6 +289,10 @@ def run_wall_build(wall_id: str, root: Path, *, run_id: str | None = None) -> di
                 "fieldNotes": None,
             },
             "runOutputDir": str(dest),
+            "requestedCaptureGroup": capture_group,
+            "localizationPackage": chain_extras.get("localizationPackage"),
+            "pnpSelfTest": chain_extras.get("pnpSelfTest"),
+            "fieldPnP": False,
             **capability_fields(),
         }
         (dest / "input_manifest.json").write_text(
@@ -420,7 +429,43 @@ def run_wall_build(wall_id: str, root: Path, *, run_id: str | None = None) -> di
         stage_durations=stage_durations,
         blocking=blocking,
         frozen_terra_ply_product=ply_product,
+        capture_group=capture_group,
     )
+    if metric_registration_passed(stage_statuses):
+        freeze_ok, freeze_discrepancies = verify_input_manifest(incoming, manifest)
+        if freeze_ok:
+            stage_statuses["INPUT_FREEZE"] = _stage(StageStatus.AUTO_PASS)
+            bind_report = {
+                "schemaVersion": SCHEMA_VERSION,
+                "runId": run_id,
+                "wallId": wall_id,
+                "stageStatuses": stage_statuses,
+            }
+            (dest / "wall_build_report.json").write_text(
+                json.dumps(bind_report, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+            three_c = run_production_stage3(
+                wall_id=wall_id,
+                root=root,
+                run_id=run_id,
+                dest=dest,
+                stage_statuses=stage_statuses,
+                stage_durations=stage_durations,
+                blocking=blocking,
+            )
+            follow = run_stage3_legal_boundary(
+                wall_id=wall_id,
+                root=root,
+                run_id=run_id,
+                dest=dest,
+                stage_statuses=stage_statuses,
+                stage_durations=stage_durations,
+                three_c=three_c,
+            )
+            chain_extras.update(follow)
+        else:
+            blocking.append("incoming files changed during the run")
     _block_remaining(stage_statuses, from_stage=Stage.STAGE2_SELECTION)
     return finish()
 
