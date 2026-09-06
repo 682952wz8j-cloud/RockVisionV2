@@ -129,6 +129,8 @@ class Stage2SelectionTests(unittest.TestCase):
         self.assertNotEqual(artifact["selectedCapture"]["memberCount"], 47)
         self.assertEqual(artifact["terraExportRoot"]["relativePath"], "export")
         self.assertEqual(artifact["selectedCrosscheckProduct"]["productToken"], "terra_ply")
+        self.assertIsNone(artifact["selectionEvidence"]["requestedCaptureGroup"])
+        self.assertFalse(artifact["selectionEvidence"]["humanCaptureGroupResolvedMultipleSelectable"])
 
     def test_one_metadata_plus_one_ply_without_approved_association(self) -> None:
         self._complete_unique()
@@ -172,6 +174,106 @@ class Stage2SelectionTests(unittest.TestCase):
         self.assertIn("MULTIPLE_SELECTABLE_CAPTURE_GROUPS", artifact["selectionReasonCodes"])
         self.assertEqual(artifact["selectionStatus"], "HUMAN_REVIEW_REQUIRED")
         self.assertNotIn("UNIQUE_LEGAL_SOURCE_SET", artifact["selectionReasonCodes"])
+        self.assertIsNone(artifact["selectedCapture"])
+        self.assertFalse(artifact["selectionEvidence"]["humanCaptureGroupResolvedMultipleSelectable"])
+        self.assertIsNone(artifact["selectionEvidence"]["requestedCaptureGroup"])
+
+    def test_multiple_valid_captures_explicit_group_selects(self) -> None:
+        for folder, date in (("A", "20260823"), ("B", "20260824")):
+            cap = self.wall / folder
+            for seq in (1, 2):
+                _dji(cap, seq, date=date)
+            _mrk(cap, [1, 2], name=f"DJI_{date}122200_0002_D.MRK")
+        _metadata(self.wall / "export" / "terra_ply")
+        _ply(self.wall / "export" / "terra_ply")
+        artifact = select_stage2_inputs(WALL, self.tmp, capture_group="B")
+        self.assertEqual(artifact["selectionStatus"], "AUTO_PASS")
+        self.assertEqual(artifact["selectionReasonCodes"], ["UNIQUE_LEGAL_SOURCE_SET"])
+        self.assertEqual(artifact["selectedCapture"]["parentDirectory"], "B")
+        self.assertEqual(artifact["selectedCapture"]["memberCount"], 2)
+        self.assertTrue(artifact["selectionEvidence"]["humanCaptureGroupResolvedMultipleSelectable"])
+        self.assertEqual(artifact["selectionEvidence"]["requestedCaptureGroup"], "B")
+        self.assertTrue(artifact["selectedMRKSource"]["relativePath"].startswith("B/"))
+
+    def test_multiple_valid_captures_unknown_group_fails(self) -> None:
+        for folder, date in (("A", "20260823"), ("B", "20260824")):
+            cap = self.wall / folder
+            for seq in (1, 2):
+                _dji(cap, seq, date=date)
+            _mrk(cap, [1, 2], name=f"DJI_{date}122200_0002_D.MRK")
+        _metadata(self.wall / "export" / "terra_ply")
+        _ply(self.wall / "export" / "terra_ply")
+        artifact = select_stage2_inputs(WALL, self.tmp, capture_group="missing_flight")
+        self.assertEqual(artifact["selectionStatus"], "AUTO_FAIL")
+        self.assertIn("CAPTURE_GROUP_REQUEST_NOT_SELECTABLE", artifact["selectionReasonCodes"])
+        self.assertIsNone(artifact["selectedCapture"])
+
+    def test_explicit_group_must_still_have_legal_mrk(self) -> None:
+        for folder, date in (("legal_a", "20260823"), ("legal_b", "20260824")):
+            cap_ok = self.wall / folder
+            for seq in (1, 2):
+                _dji(cap_ok, seq, date=date)
+            _mrk(cap_ok, [1, 2], name=f"DJI_{date}122200_0002_D.MRK")
+        cap_bad = self.wall / "no_mrk"
+        for seq in (1, 2):
+            _dji(cap_bad, seq, date="20260825")
+        _metadata(self.wall / "export" / "terra_ply")
+        _ply(self.wall / "export" / "terra_ply")
+        artifact = select_stage2_inputs(WALL, self.tmp, capture_group="no_mrk")
+        self.assertEqual(artifact["selectionStatus"], "AUTO_FAIL")
+        self.assertIn("CAPTURE_GROUP_REQUEST_NOT_SELECTABLE", artifact["selectionReasonCodes"])
+        self.assertTrue(any(code.startswith("MRK_") for code in artifact["selectionReasonCodes"]))
+        self.assertNotIn("UNIQUE_LEGAL_SOURCE_SET", artifact["selectionReasonCodes"])
+        self.assertIsNone(artifact["selectedCapture"])
+
+    def test_explicit_group_does_not_override_unique_mismatch(self) -> None:
+        self._complete_unique()
+        artifact = select_stage2_inputs(WALL, self.tmp, capture_group="not_this_flight")
+        self.assertEqual(artifact["selectionStatus"], "AUTO_FAIL")
+        self.assertIn("CAPTURE_GROUP_REQUEST_NOT_SELECTABLE", artifact["selectionReasonCodes"])
+        self.assertIsNone(artifact["selectedCapture"])
+
+    def test_explicit_group_matching_unique_still_auto_pass(self) -> None:
+        self._complete_unique()
+        artifact = select_stage2_inputs(WALL, self.tmp, capture_group="flight")
+        self.assertEqual(artifact["selectionStatus"], "AUTO_PASS")
+        self.assertEqual(artifact["selectionReasonCodes"], ["UNIQUE_LEGAL_SOURCE_SET"])
+        self.assertEqual(artifact["selectedCapture"]["parentDirectory"], "flight")
+        self.assertFalse(artifact["selectionEvidence"]["humanCaptureGroupResolvedMultipleSelectable"])
+        self.assertEqual(artifact["selectionEvidence"]["requestedCaptureGroup"], "flight")
+
+    def test_explicit_group_matches_group_id(self) -> None:
+        for folder, date in (("A", "20260823"), ("B", "20260824")):
+            cap = self.wall / folder
+            for seq in (1, 2):
+                _dji(cap, seq, date=date)
+            _mrk(cap, [1, 2], name=f"DJI_{date}122200_0002_D.MRK")
+        _metadata(self.wall / "export" / "terra_ply")
+        _ply(self.wall / "export" / "terra_ply")
+        artifact = select_stage2_inputs(WALL, self.tmp, capture_group="B|20260824")
+        self.assertEqual(artifact["selectionStatus"], "AUTO_PASS")
+        self.assertEqual(artifact["selectedCapture"]["parentDirectory"], "B")
+        self.assertEqual(artifact["selectedCapture"]["groupId"], "B|20260824")
+
+    def test_explicit_group_strips_whitespace(self) -> None:
+        for folder, date in (("A", "20260823"), ("B", "20260824")):
+            cap = self.wall / folder
+            for seq in (1, 2):
+                _dji(cap, seq, date=date)
+            _mrk(cap, [1, 2], name=f"DJI_{date}122200_0002_D.MRK")
+        _metadata(self.wall / "export" / "terra_ply")
+        _ply(self.wall / "export" / "terra_ply")
+        artifact = select_stage2_inputs(WALL, self.tmp, capture_group="  B  ")
+        self.assertEqual(artifact["selectionStatus"], "AUTO_PASS")
+        self.assertEqual(artifact["selectedCapture"]["parentDirectory"], "B")
+        self.assertEqual(artifact["selectionEvidence"]["requestedCaptureGroup"], "B")
+
+    def test_empty_capture_group_request_fails(self) -> None:
+        self._complete_unique()
+        artifact = select_stage2_inputs(WALL, self.tmp, capture_group="   ")
+        self.assertEqual(artifact["selectionStatus"], "AUTO_FAIL")
+        self.assertIn("CAPTURE_GROUP_REQUEST_NOT_SELECTABLE", artifact["selectionReasonCodes"])
+        self.assertIsNone(artifact["selectedCapture"])
 
     def test_mrk_missing(self) -> None:
         cap = self.wall / "flight"

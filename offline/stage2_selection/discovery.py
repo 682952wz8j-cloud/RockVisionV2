@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from offline.ingestion.detect import classify_file
-from offline.ingestion.hashing import sha256_file
+from offline.ingestion.hashing import is_os_metadata_noise, sha256_file
 from offline.ingestion.images import image_to_json, inspect_image
 from offline.qualification.associate import dji_filename_parts
 from offline.qualification.images import classify_image, collect_ply_texture_names
@@ -13,7 +13,6 @@ from offline.qualification.metadata_scan import parse_model_metadata_xml
 from offline.qualification.rtk import parse_mrk
 from offline.stage2_selection.terra import has_exact_temp_component
 
-_SKIP_NAMES = {".ds_store"}
 _IMAGE_EXT = {".jpg", ".jpeg", ".png", ".heic", ".heif"}
 _TILE_HINT = ("/tiles/", "/terra_b3dms/", "/overlap_render", "/screennail", "/report/")
 
@@ -28,7 +27,7 @@ def _parent(rel: str) -> str:
 
 
 def iter_incoming_files(incoming: Path) -> list[Path]:
-    files = [p for p in incoming.rglob("*") if p.is_file() and p.name.lower() not in _SKIP_NAMES]
+    files = [p for p in incoming.rglob("*") if p.is_file() and not is_os_metadata_noise(p)]
     files.sort(key=lambda p: p.relative_to(incoming).as_posix())
     return files
 

@@ -256,26 +256,33 @@ class WallBuildStage2ProductionTests(unittest.TestCase):
         self.assertEqual(report["runTerminalStatus"], "AUTO_FAIL")
         self.assertIn(ReasonCode.INPUT_MUTATED_DURING_RUN.value, report["reasonCodes"])
 
-    def test_l_downstream_stage3_and_routes_remain_blocked(self) -> None:
-        report, _recon, _reg, _src, match, pnp = self._run_mocked()
-        match.assert_not_called()
-        pnp.assert_not_called()
-        self.assertNotIn("reference-match", INVOKED)
+    def test_l_stage3_bind_stops_without_publish(self) -> None:
+        report, _recon, _reg, _src, _match, _pnp = self._run_mocked()
+        self.assertIn("reference-match", INVOKED)
         self.assertNotIn("pnp", INVOKED)
-        for stage in ("REGISTER", "REFERENCE_MATCH", "PNP", "REFERENCE_MAP", "ROUTE_COORDINATE_REGISTRATION", "ROUTE_PACKAGE_BUILD"):
-            self.assertEqual(report["stageStatuses"][stage]["status"], StageStatus.BLOCKED.value, stage)
-            self.assertFalse(report["stageStatuses"][stage].get("invoked"))
+        self.assertEqual(report["stageStatuses"]["REFERENCE_MATCH"]["status"], StageStatus.AUTO_FAIL.value)
+        self.assertEqual(report["stageStatuses"]["REFERENCE_MATCH"].get("gateResult"), "STOP")
+        self.assertTrue(report["stageStatuses"]["REFERENCE_MATCH"].get("productionBound"))
+        self.assertFalse(report["stageStatuses"]["REFERENCE_MATCH"].get("legacyFallback"))
+        self.assertEqual(report["stageStatuses"]["REFERENCE_MATCH"].get("runId"), Path(report["runOutputDir"]).name)
+        self.assertFalse(report["stageStatuses"]["REFERENCE_MAP"].get("freezeBound"))
+        self.assertEqual(report["stageStatuses"]["REGISTER"]["status"], StageStatus.BLOCKED.value)
+        self.assertEqual(report["stageStatuses"]["ROUTE_COORDINATE_REGISTRATION"]["status"], StageStatus.BLOCKED.value)
+        self.assertEqual(report["stageStatuses"]["ROUTE_PACKAGE_BUILD"]["status"], StageStatus.BLOCKED.value)
         self.assertFalse(report["fieldTestReady"])
         self.assertEqual(
             report["forbiddenCommandsNotInvoked"],
             [
-                "reference-match",
-                "pnp",
                 "publish-localization-package",
                 "promote-localization-release",
                 "promote-development-release",
             ],
         )
+
+    def test_production_chain_never_omits_run_id(self) -> None:
+        text = (ROOT / "offline" / "wall_build" / "stage3_run.py").read_text(encoding="utf-8")
+        self.assertIn("build_reference_matching(wall_id, root, run_id=run_id)", text)
+        self.assertIn("production Stage 3 requires run_id", text)
 
     def test_m_no_wall_metric_meters_claim(self) -> None:
         report, _recon, _reg, _src, _match, _pnp = self._run_mocked()
@@ -300,6 +307,81 @@ class WallBuildStage2ProductionTests(unittest.TestCase):
         self.assertNotIn("REQUIRED_SESSION", text)
         self.assertNotIn("dji_20260823", text)
 
+    def _two_legal_captures(self) -> None:
+        from offline.tests.test_stage2_selection import _dji, _metadata, _mrk, _ply
+
+        wall = self.tmp / "incoming" / self.wall_id
+        shutil.rmtree(wall)
+        wall.mkdir(parents=True)
+        for folder, date in (("hist", "20260823"), ("prod", "20260905")):
+            cap = wall / folder
+            for seq in (1, 2):
+                _dji(cap, seq, date=date)
+            _mrk(cap, [1, 2], name=f"DJI_{date}122200_0002_D.MRK")
+        _metadata(wall / "export" / "terra_ply")
+        _ply(wall / "export" / "terra_ply")
+
+    def test_explicit_capture_group_enters_later_gates(self) -> None:
+        self._two_legal_captures()
+        reset_invocations()
+        with (
+            patch("offline.wall_build.stage2_run.reconstruct", side_effect=_pass_recon) as recon,
+            patch("offline.wall_build.stage2_run.register", side_effect=_pass_register) as reg,
+            patch("offline.wall_build.stage2_run.evaluate_generic_height_from_sources", side_effect=_pass_height) as height,
+            patch("offline.wall_build.stage2_run.evaluate_positioning_quality_from_sources", side_effect=_pass_pq) as pq,
+            patch("offline.reference_matching.cli.run_reference_match") as match,
+            patch("offline.pnp.cli.run_pnp") as pnp,
+        ):
+            without = run_wall_build(self.wall_id, self.tmp)
+            with_group = run_wall_build(self.wall_id, self.tmp, capture_group="prod")
+        self.assertEqual(without["stageStatuses"]["STAGE2_SELECTION"]["status"], StageStatus.HUMAN_REVIEW_REQUIRED.value)
+        self.assertFalse(without["stageStatuses"]["HEIGHT_VERTICAL_DATUM"].get("invoked"))
+        self.assertFalse(without["stageStatuses"]["POSITIONING_QUALITY"].get("invoked"))
+        self.assertIsNone(without.get("requestedCaptureGroup"))
+        recon.assert_called_once()
+        reg.assert_called_once()
+        self.assertEqual(height.call_count, 1)
+        self.assertEqual(pq.call_count, 1)
+        self.assertEqual(with_group["requestedCaptureGroup"], "prod")
+        self.assertEqual(with_group["stageStatuses"]["STAGE2_SELECTION"]["status"], StageStatus.AUTO_PASS.value)
+        self.assertEqual(with_group["stageStatuses"]["STAGE2_SELECTION"].get("selectedImageCount"), 2)
+        self.assertTrue(with_group["stageStatuses"]["HEIGHT_VERTICAL_DATUM"].get("invoked"))
+        self.assertTrue(with_group["stageStatuses"]["POSITIONING_QUALITY"].get("invoked"))
+        self.assertTrue(with_group["stageStatuses"]["RECONSTRUCTION"].get("invoked"))
+        match.assert_not_called()
+        pnp.assert_not_called()
+
+    def test_explicit_capture_group_does_not_bypass_positioning_quality(self) -> None:
+        self._two_legal_captures()
+        reset_invocations()
+
+        def _fail_pq(_incoming, _sources):
+            return {
+                "positioningQualityExecutionAllowed": False,
+                "positioningQualityProvenance": "AUTO_FAIL",
+                "positioningQualityReasonCode": "POSITIONING_QUALITY_NOT_PROVEN",
+                "selectedFrameCount": 2,
+                "fixedFrameCount": 0,
+                "nonFixedFrameCount": 2,
+                "missingOrUnparseableFrameCount": 0,
+            }
+
+        with (
+            patch("offline.wall_build.stage2_run.reconstruct") as recon,
+            patch("offline.wall_build.stage2_run.register") as reg,
+            patch("offline.wall_build.stage2_run.evaluate_generic_height_from_sources", side_effect=_pass_height),
+            patch("offline.wall_build.stage2_run.evaluate_positioning_quality_from_sources", side_effect=_fail_pq),
+        ):
+            report = run_wall_build(self.wall_id, self.tmp, capture_group="prod")
+        recon.assert_not_called()
+        reg.assert_not_called()
+        self.assertEqual(report["stageStatuses"]["STAGE2_SELECTION"]["status"], StageStatus.AUTO_PASS.value)
+        self.assertTrue(report["stageStatuses"]["POSITIONING_QUALITY"].get("invoked"))
+        self.assertFalse(report["stageStatuses"]["POSITIONING_QUALITY"].get("positioningQualityExecutionAllowed"))
+        self.assertEqual(report["stageStatuses"]["POSITIONING_QUALITY"]["reasonCode"], "POSITIONING_QUALITY_NOT_PROVEN")
+        self.assertEqual(report["stageStatuses"]["RECONSTRUCTION"]["status"], StageStatus.BLOCKED.value)
+        self.assertFalse(report["stageStatuses"]["RECONSTRUCTION"].get("invoked"))
+
 
 class WallBuildStage2RealRegressionTests(unittest.TestCase):
     def test_j_jinshidong_fail_closed_before_reconstruction(self) -> None:
@@ -317,13 +399,13 @@ class WallBuildStage2RealRegressionTests(unittest.TestCase):
         self.assertNotIn("reconstruct", INVOKED)
         self.assertTrue(report["productionBuildStage2Enabled"])
         self.assertTrue(report["genericStage2Pass"])
+        selection = report["stageStatuses"]["STAGE2_SELECTION"]
+        self.assertEqual(selection["status"], StageStatus.HUMAN_REVIEW_REQUIRED.value)
+        self.assertEqual(selection["reasonCode"], ReasonCode.STAGE2_SELECTION_NOT_AUTO_PASS.value)
+        self.assertEqual(selection.get("selectedImageCount"), 0)
         pq = report["stageStatuses"]["POSITIONING_QUALITY"]
-        self.assertEqual(pq["reasonCode"], "POSITIONING_QUALITY_NOT_PROVEN")
-        self.assertFalse(pq.get("positioningQualityExecutionAllowed"))
-        self.assertEqual(pq.get("fixedFrameCount"), 0)
-        self.assertEqual(pq.get("selectedFrameCount"), 179)
-        self.assertEqual(pq.get("nonFixedFrameCount"), 152)
-        self.assertEqual(pq.get("missingOrUnparseableFrameCount"), 27)
+        self.assertFalse(pq.get("invoked"))
+        self.assertEqual(pq["reasonCode"], "UPSTREAM_STAGE_NOT_COMPLETE")
         self.assertEqual(report["stageStatuses"]["RECONSTRUCTION"]["status"], StageStatus.BLOCKED.value)
         self.assertFalse(report["stageStatuses"]["RECONSTRUCTION"].get("invoked"))
         dest = Path(report["runOutputDir"])
@@ -349,7 +431,13 @@ class WallBuildStage2RealRegressionTests(unittest.TestCase):
             "metric": _fingerprint(frozen_metric),
         }
         reset_invocations()
-        report = run_wall_build("wall_jiulongfeng_01", ROOT)
+        with (
+            patch("offline.wall_build.orchestrator.run_production_stage3") as stage3,
+            patch("offline.wall_build.orchestrator.run_stage3_legal_boundary", return_value={}),
+        ):
+            report = run_wall_build("wall_jiulongfeng_01", ROOT)
+        stage3.assert_called_once()
+        self.assertEqual(stage3.call_args.kwargs.get("run_id"), report["runId"])
         self.assertEqual(_fingerprint(incoming), before["incoming"])
         self.assertEqual(_fingerprint(frozen_colmap), before["colmap"])
         self.assertEqual(_fingerprint(frozen_metric), before["metric"])
@@ -386,7 +474,7 @@ class WallBuildStage2RealRegressionTests(unittest.TestCase):
         self.assertEqual(metric.get("outputFrame"), "WallLocal")
         self.assertEqual(metric.get("wallMetricMetersProvenance"), "NOT_CLAIMED")
         self.assertEqual(metric.get("colmapSourceIdentityReasonCode"), "COLMAP_SOURCE_IDENTITY_PROVEN")
-        self.assertEqual(report["stageStatuses"]["REFERENCE_MATCH"]["status"], StageStatus.BLOCKED.value)
+        self.assertEqual(stage3.call_args.kwargs.get("run_id"), report["runId"])
         self.assertFalse(report["fieldTestReady"])
         print(
             "JIULONGFENG_PRODUCTION_BUILD_SUMMARY "

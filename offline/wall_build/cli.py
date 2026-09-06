@@ -8,8 +8,8 @@ from .orchestrator import run_wall_build
 from .states import RunTerminalStatus
 
 
-def run_build(wall_id: str, root: Path) -> int:
-    report = run_wall_build(wall_id, root)
+def run_build(wall_id: str, root: Path, *, capture_group: str | None = None) -> int:
+    report = run_wall_build(wall_id, root, capture_group=capture_group)
     terminal = report.get("runTerminalStatus")
     print(f"Wall ID: {report.get('wallId')}")
     print(f"runId: {report.get('runId')}")
@@ -18,6 +18,8 @@ def run_build(wall_id: str, root: Path) -> int:
     print(f"NEXT_STAGE: {report.get('nextStage')}")
     print(f"NEXT_STAGE_STATUS: {report.get('nextStageStatus')}")
     print(f"FIELD_TEST_READY: {report.get('fieldTestReadyLabel')}")
+    if report.get("requestedCaptureGroup"):
+        print(f"requestedCaptureGroup: {report.get('requestedCaptureGroup')}")
     print(f"genericStage2Pass: {report.get('genericStage2Pass')}")
     print(f"productionBuildStage2Enabled: {report.get('productionBuildStage2Enabled')}")
     print(f"Wrote {report.get('runOutputDir')}/wall_build_report.json")

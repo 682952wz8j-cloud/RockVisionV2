@@ -377,6 +377,7 @@ def evaluate_colmap_source_identity(
         "registeredImageNames": live_names,
         "registeredImageCount": len(live_names),
         "foreignImageNames": foreign,
+        "modelFingerprint": actual_fp,
     }
     if foreign:
         return _result(

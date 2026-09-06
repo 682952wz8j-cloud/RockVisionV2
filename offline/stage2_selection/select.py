@@ -34,6 +34,38 @@ def _status(value: str) -> SelectionStatus:
     return SelectionStatus(value)
 
 
+def _normalized_capture_group(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+def _group_matches_request(group: dict, requested: str) -> bool:
+    return requested in {group.get("parentDirectory"), group.get("groupId")}
+
+
+def _selectable_requested_group(selectable: list[dict], requested: str) -> dict | None:
+    matches = [group for group in selectable if _group_matches_request(group, requested)]
+    if len(matches) != 1:
+        return None
+    return matches[0]
+
+
+def _bound_capture(row: dict) -> tuple[dict, dict]:
+    selected_capture = {
+        "groupId": row["groupId"],
+        "parentDirectory": row["parentDirectory"],
+        "filenameDate": row["filenameDate"],
+        "memberRelativePaths": row["memberRelativePaths"],
+        "memberCount": row["memberCount"],
+        "sourceChecksums": {m["relativePath"]: m.get("sha256") for m in row["members"]},
+    }
+    return selected_capture, row["mrkAssociation"]["selected"]
+
+
 def select_stage2_inputs(
     wall_id: str,
     root: Path,
@@ -43,6 +75,7 @@ def select_stage2_inputs(
     inventory_source: str = "incoming_scan",
     frozen_identity_regression_evidence: dict | None = None,
     frozen_terra_ply_product: dict | None = None,
+    capture_group: str | None = None,
 ) -> dict:
     incoming_wall = incoming or incoming_dir(root, wall_id)
     discovered = discover_candidates(incoming_wall)
@@ -65,28 +98,51 @@ def select_stage2_inputs(
 
     selected_capture = None
     selected_mrk = None
+    requested = _normalized_capture_group(capture_group)
+    requested_invalid = capture_group is not None and requested is None
+    human_resolved_multiple = False
 
-    if not groups:
+    if requested_invalid:
+        statuses.append(SelectionStatus.AUTO_FAIL)
+        reason_codes.append(ReasonCode.CAPTURE_GROUP_REQUEST_NOT_SELECTABLE.value)
+    elif not groups:
         statuses.append(SelectionStatus.AUTO_FAIL)
         reason_codes.append(ReasonCode.ZERO_COMPATIBLE_PRIMARY_CAPTURE.value)
     elif len(selectable) > 1:
-        statuses.append(SelectionStatus.HUMAN_REVIEW_REQUIRED)
-        reason_codes.append(ReasonCode.MULTIPLE_SELECTABLE_CAPTURE_GROUPS.value)
-        ambiguous.extend({"kind": "captureGroup", "groupId": g["groupId"]} for g in selectable)
+        if requested is None:
+            statuses.append(SelectionStatus.HUMAN_REVIEW_REQUIRED)
+            reason_codes.append(ReasonCode.MULTIPLE_SELECTABLE_CAPTURE_GROUPS.value)
+            ambiguous.extend({"kind": "captureGroup", "groupId": g["groupId"]} for g in selectable)
+        else:
+            chosen = _selectable_requested_group(selectable, requested)
+            named = [g for g in group_assoc if _group_matches_request(g, requested)]
+            if chosen is not None:
+                selected_capture, selected_mrk = _bound_capture(chosen)
+                statuses.append(SelectionStatus.AUTO_PASS)
+                reason_codes.append(ReasonCode.UNIQUE_LEGAL_SOURCE_SET.value)
+                human_resolved_multiple = True
+            else:
+                statuses.append(SelectionStatus.AUTO_FAIL)
+                reason_codes.append(ReasonCode.CAPTURE_GROUP_REQUEST_NOT_SELECTABLE.value)
+                if named:
+                    code = named[0]["mrkAssociation"].get("reasonCode")
+                    if code:
+                        reason_codes.append(code)
+                else:
+                    ambiguous.extend({"kind": "captureGroup", "groupId": g["groupId"]} for g in selectable)
     elif len(selectable) == 1:
-        selected_capture = {
-            "groupId": selectable[0]["groupId"],
-            "parentDirectory": selectable[0]["parentDirectory"],
-            "filenameDate": selectable[0]["filenameDate"],
-            "memberRelativePaths": selectable[0]["memberRelativePaths"],
-            "memberCount": selectable[0]["memberCount"],
-            "sourceChecksums": {
-                m["relativePath"]: m.get("sha256") for m in selectable[0]["members"]
-            },
-        }
-        selected_mrk = selectable[0]["mrkAssociation"]["selected"]
-        statuses.append(SelectionStatus.AUTO_PASS)
-        reason_codes.append(ReasonCode.UNIQUE_LEGAL_SOURCE_SET.value)
+        if requested is not None and not _group_matches_request(selectable[0], requested):
+            statuses.append(SelectionStatus.AUTO_FAIL)
+            reason_codes.append(ReasonCode.CAPTURE_GROUP_REQUEST_NOT_SELECTABLE.value)
+            named = [g for g in group_assoc if _group_matches_request(g, requested)]
+            if named:
+                code = named[0]["mrkAssociation"].get("reasonCode")
+                if code:
+                    reason_codes.append(code)
+        else:
+            selected_capture, selected_mrk = _bound_capture(selectable[0])
+            statuses.append(SelectionStatus.AUTO_PASS)
+            reason_codes.append(ReasonCode.UNIQUE_LEGAL_SOURCE_SET.value)
     else:
         assoc_statuses = [_status(g["mrkAssociation"]["status"]) for g in group_assoc]
         worst = worst_status(assoc_statuses)
@@ -270,6 +326,8 @@ def select_stage2_inputs(
             "mrkQIsNotRtkSource": True,
             "numericalSanityIsNotDatumProvenance": True,
             "plyUsedInFit": False,
+            "requestedCaptureGroup": requested,
+            "humanCaptureGroupResolvedMultipleSelectable": human_resolved_multiple,
         },
         "rejectedCandidates": {
             "images": rejected_images,

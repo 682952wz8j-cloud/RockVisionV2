@@ -4,6 +4,7 @@ import json
 import re
 from pathlib import Path
 
+from .hashing import OS_METADATA_BASENAMES
 from .types import RawAssetType
 
 IMAGE_EXTENSIONS = {
@@ -50,8 +51,6 @@ STRUCTURED_EXTENSIONS = {".json", ".yaml", ".yml", ".xml", ".csv"}
 METADATA_EXTENSIONS = {".txt", ".md"}
 ROUTE_STRONG_EXTENSIONS = {".dxf", ".poly"}
 GEOSPATIAL_SIDECAR_EXTENSIONS = {".tfw", ".prj"}
-
-_SKIP_NAMES = {".ds_store"}
 
 
 def read_head(path: Path, n: int = 4096) -> bytes:
@@ -163,7 +162,7 @@ def classify(path: Path, head: bytes) -> tuple[RawAssetType, str, str]:
     ext = path.suffix.lower()
     signature = file_signature_label(head)
 
-    if name in _SKIP_NAMES or name.startswith("._"):
+    if name in OS_METADATA_BASENAMES or name.startswith("._"):
         return RawAssetType.UNKNOWN, "macos_sidecar", signature
 
     if signature == "image/jpeg":

@@ -1,9 +1,8 @@
 """Gate-aware wall build orchestrator.
 
-Executable stages: DISCOVERY, PREFLIGHT, INGEST, QUALIFY,
-STAGE2_SELECTION, HEIGHT_VERTICAL_DATUM, POSITIONING_QUALITY,
-RECONSTRUCTION, METRIC_REGISTRATION.
-Stage 3 / route stages remain locked.
+Executable stages: DISCOVERY through METRIC_REGISTRATION, then this-run
+REFERENCE_MAP / REFERENCE_MATCH / pinned PnP. Stops before publish.
+Legacy register and route stages remain locked.
 """
 
 from .orchestrator import run_wall_build
