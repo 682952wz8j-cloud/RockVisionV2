@@ -36,6 +36,7 @@ DEFAULT_UNITTEST_MODULES: tuple[str, ...] = (
     "offline.tests.test_catalog_promotion",
     "offline.tests.test_development_promotion",
     "offline.tests.test_engineering_workflow",
+    "offline.tests.test_jinshidong_ios_local_test",
 )
 
 

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "gate5c.development.route.fixture.1",
+  "kind": "development_validation_route_fixture",
+  "developmentValidationOnly": true,
+  "notAProductionRoutePackage": true,
+  "sourceArtifact": "ingested/jinshidong_shui_tai_shen.json",
+  "routeId": "jinshidong_shui_tai_shen",
+  "routeName": "水太深",
+  "grade": "5.12d",
+  "quickdraws": "6+2",
+  "wallId": "wall_jinshidong_01",
+  "wallBuildRunId": "wb_20260906T024519Z_6e08b5ff",
+  "colmapModelFingerprint": "32e9791497d9c9584acf455dc0942762f1d3e1993e9b4e682723408c1294350c",
+  "coordinateFrame": "WallMetricMeters",
+  "provenance": "IDENTITY_SUPPORTED",
+  "dummyOriginExcluded": true,
+  "pointCount": 3,
+  "polyline": [
+    [
+      10.290118217468262,
+      12.743415832519531,
+      5.109707355499268
+    ],
+    [
+      15.406683921813965,
+      12.585599899291992,
+      -2.3439319133758545
+    ],
+    [
+      13.329497337341309,
+      12.138467788696289,
+      -5.2794952392578125
+    ]
+  ],
+  "polylineSha256": "83e5a754ff42ddc30739d0b52d05cb54f94c74725541af612623b1d9a7ebc509"
+}

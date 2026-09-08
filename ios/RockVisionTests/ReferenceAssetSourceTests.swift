@@ -278,10 +278,10 @@ final class ReferenceAssetSourceTests: XCTestCase {
         XCTAssertFalse(cloudSource.contains("CloudAPIClient"))
     }
 
-    func testDefaultLocalizationSourceRemainsDevelopmentFixture() throws {
+    func testDefaultLocalizationSourceIsJinshidongLocalTest() throws {
         let processor = OpenCVFrameProcessor()
         #if DEBUG
-        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "bundleDevelopmentFixture")
+        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "jinshidongLocalTest")
         #else
         throw XCTSkip("Only meaningful in DEBUG test builds.")
         #endif

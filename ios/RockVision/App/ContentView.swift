@@ -35,7 +35,8 @@ struct ContentView: View {
                                 presentation: .fullDebug,
                                 cameraProvenance: openCV.referenceAssetProvenance,
                                 onSelectReferenceSourceBundle: { openCV.selectReferenceSourceBundleDevelopmentFixture() },
-                                onSelectReferenceSourceCloudCurrent: { openCV.selectReferenceSourceCloudCurrentJiulongfengDevR000001() }
+                                onSelectReferenceSourceCloudCurrent: { openCV.selectReferenceSourceCloudCurrentJiulongfengDevR000001() },
+                                onSelectReferenceSourceJinshidongLocalTest: { openCV.selectReferenceSourceJinshidongLocalTest() }
                             )
                             .frame(maxHeight: geo.size.height * 0.78, alignment: .top)
                         }
@@ -43,7 +44,7 @@ struct ContentView: View {
                     Spacer()
                 }
                 .ignoresSafeArea(edges: .top)
-                if DebugHUDMode.active.showsGate4BHUD {
+                if DebugHUDMode.active.showsGate4BHUD || DebugHUDMode.active.showsStage5HUD {
                     FieldTestPanel(
                         controller: fieldTest,
                         tracking: sessionHost.snapshot.trackingState,
@@ -58,6 +59,7 @@ struct ContentView: View {
                         wallMarkers: openCV.wallDebugSnapshot.markers,
                         routeBinding: openCV.runtimeRouteBinding,
                         routePlan: openCV.routeRenderPlan,
+                        localTestLegend: openCV.localTestRouteLegend,
                         sift: openCV.siftSnapshot,
                         matching: openCV.matchingSnapshot,
                         pnp: openCV.pnpSnapshot

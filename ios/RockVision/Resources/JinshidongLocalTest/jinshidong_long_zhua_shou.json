@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "gate5c.development.route.fixture.1",
+  "kind": "development_validation_route_fixture",
+  "developmentValidationOnly": true,
+  "notAProductionRoutePackage": true,
+  "sourceArtifact": "ingested/jinshidong_long_zhua_shou.json",
+  "routeId": "jinshidong_long_zhua_shou",
+  "routeName": "龙抓手",
+  "grade": "5.11b",
+  "quickdraws": "5+2",
+  "wallId": "wall_jinshidong_01",
+  "wallBuildRunId": "wb_20260906T024519Z_6e08b5ff",
+  "colmapModelFingerprint": "32e9791497d9c9584acf455dc0942762f1d3e1993e9b4e682723408c1294350c",
+  "coordinateFrame": "WallMetricMeters",
+  "provenance": "IDENTITY_SUPPORTED",
+  "dummyOriginExcluded": true,
+  "pointCount": 4,
+  "polyline": [
+    [
+      14.530263900756836,
+      14.493602752685547,
+      4.7401933670043945
+    ],
+    [
+      14.680303573608398,
+      14.547874450683594,
+      2.8448660373687744
+    ],
+    [
+      15.147367477416992,
+      14.155166625976562,
+      0.4528455436229706
+    ],
+    [
+      15.971027374267578,
+      13.625236511230469,
+      -1.9390414953231812
+    ]
+  ],
+  "polylineSha256": "0534fd4a3babefdfb02bb994c15956491052fcf852fa8d1d1c55b4e12006eea7"
+}

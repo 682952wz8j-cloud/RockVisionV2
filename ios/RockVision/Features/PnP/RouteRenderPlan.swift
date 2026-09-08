@@ -33,6 +33,17 @@ struct RouteRenderSegment: Equatable, Sendable {
     }
 }
 
+struct RouteOverlayLabel: Equatable, Sendable {
+    var routeId: String
+    var title: String
+    var anchorARWorld: [Double]
+}
+
+enum RouteOverlayStroke: Equatable, Sendable {
+    case productionGold
+    case fieldTestRed
+}
+
 /// PLAN — current-frame renderable geometry derived from B. Not apply/C.
 struct RouteRenderPlan: Equatable, Sendable {
     static let expectedPointCount = 11
@@ -47,6 +58,8 @@ struct RouteRenderPlan: Equatable, Sendable {
     var arWorldEndpoints: [[Double]]
     var segments: [RouteRenderSegment]
     var maxFloatConversionErrorMeters: Double
+    var labels: [RouteOverlayLabel] = []
+    var stroke: RouteOverlayStroke = .productionGold
 
     static let empty = RouteRenderPlan(
         routeId: nil,
@@ -77,10 +90,101 @@ struct RouteRenderPlan: Equatable, Sendable {
             )
         }
         let points = binding.routeARWorldPoints.map { [$0[0], $0[1], $0[2]] }
+        let built = makeSegments(points: points)
+        return RouteRenderPlan(
+            routeId: binding.routeId,
+            wouldRender: true,
+            pointCount: expectedPointCount,
+            segmentCount: expectedSegmentCount,
+            arWorldEndpoints: points,
+            segments: built.segments,
+            maxFloatConversionErrorMeters: built.maxError
+        )
+    }
+
+    /// Development/local-test routes. Does not require the production 11-point contract.
+    static func evaluateLocalTest(
+        from binding: RuntimeRouteBinding,
+        route: VerifiedFrozenRoute
+    ) -> RouteRenderPlan {
+        let count = binding.routeARWorldPoints.count
+        guard binding.hasBoundRoute,
+              count >= 2,
+              binding.routeARWorldPointCount == count,
+              binding.routeARWorldPoints.allSatisfy({ $0.count == 3 && $0.allSatisfy(\.isFinite) })
+        else {
+            return RouteRenderPlan(
+                routeId: binding.routeId ?? route.routeId,
+                wouldRender: false,
+                pointCount: 0,
+                segmentCount: 0,
+                arWorldEndpoints: [],
+                segments: [],
+                maxFloatConversionErrorMeters: 0,
+                labels: [],
+                stroke: .fieldTestRed
+            )
+        }
+        let points = binding.routeARWorldPoints.map { [$0[0], $0[1], $0[2]] }
+        let built = makeSegments(points: points)
+        let name = route.routeName ?? route.routeId
+        let grade = route.grade ?? ""
+        let draws = route.displayDraws ?? ""
+        let title = [name, grade, draws].filter { !$0.isEmpty }.joined(separator: " ")
+        let label = RouteOverlayLabel(
+            routeId: route.routeId,
+            title: title,
+            anchorARWorld: points[0]
+        )
+        return RouteRenderPlan(
+            routeId: route.routeId,
+            wouldRender: true,
+            pointCount: count,
+            segmentCount: built.segments.count,
+            arWorldEndpoints: points,
+            segments: built.segments,
+            maxFloatConversionErrorMeters: built.maxError,
+            labels: [label],
+            stroke: .fieldTestRed
+        )
+    }
+
+    static func concatenateFieldTest(_ plans: [RouteRenderPlan]) -> RouteRenderPlan {
+        let ready = plans.filter(\.wouldRender)
+        guard !ready.isEmpty else { return empty }
         var segments: [RouteRenderSegment] = []
-        segments.reserveCapacity(expectedSegmentCount)
+        var endpoints: [[Double]] = []
+        var labels: [RouteOverlayLabel] = []
         var maxError = 0.0
-        for index in 0..<expectedSegmentCount {
+        for plan in ready {
+            for segment in plan.segments {
+                var copy = segment
+                copy.index = segments.count
+                segments.append(copy)
+            }
+            endpoints.append(contentsOf: plan.arWorldEndpoints)
+            labels.append(contentsOf: plan.labels)
+            maxError = max(maxError, plan.maxFloatConversionErrorMeters)
+        }
+        return RouteRenderPlan(
+            routeId: "jinshidong_local_test",
+            wouldRender: true,
+            pointCount: endpoints.count,
+            segmentCount: segments.count,
+            arWorldEndpoints: endpoints,
+            segments: segments,
+            maxFloatConversionErrorMeters: maxError,
+            labels: labels,
+            stroke: .fieldTestRed
+        )
+    }
+
+    private static func makeSegments(points: [[Double]]) -> (segments: [RouteRenderSegment], maxError: Double) {
+        guard points.count >= 2 else { return ([], 0) }
+        var segments: [RouteRenderSegment] = []
+        segments.reserveCapacity(points.count - 1)
+        var maxError = 0.0
+        for index in 0..<(points.count - 1) {
             let start = points[index]
             let end = points[index + 1]
             let direction = [end[0] - start[0], end[1] - start[1], end[2] - start[2]]
@@ -109,15 +213,7 @@ struct RouteRenderPlan: Equatable, Sendable {
                 )
             )
         }
-        return RouteRenderPlan(
-            routeId: binding.routeId,
-            wouldRender: true,
-            pointCount: expectedPointCount,
-            segmentCount: expectedSegmentCount,
-            arWorldEndpoints: points,
-            segments: segments,
-            maxFloatConversionErrorMeters: maxError
-        )
+        return (segments, maxError)
     }
 
     private static func hypot3(_ v: [Double]) -> Double {
@@ -152,7 +248,13 @@ struct RouteRenderState: Equatable, Sendable {
     /// This is production render intent, not a RealityKit scene-graph reverse read,
     /// and not AlignmentFrameResult.renderedRoute.
     static func afterApplying(_ plan: RouteRenderPlan) -> RouteRenderState {
-        guard plan.wouldRender, plan.segmentCount == RouteRenderPlan.expectedSegmentCount else {
+        let renderable: Bool
+        if plan.stroke == .fieldTestRed {
+            renderable = plan.wouldRender && !plan.segments.isEmpty
+        } else {
+            renderable = plan.wouldRender && plan.segmentCount == RouteRenderPlan.expectedSegmentCount
+        }
+        guard renderable else {
             return RouteRenderState(
                 renderedRoute: false,
                 visibleSegmentCount: 0,

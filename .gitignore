@@ -37,6 +37,10 @@ offline/vendor/opencv414/
 ios/RockVision/Resources/DevelopmentFixture/descriptors.bin
 ios/RockVision/Resources/DevelopmentFixture/landmarks.json
 
+# Jinshidong local-test binaries. Commit manifest, package identity, Sim(3) JSON, and route JSON.
+ios/RockVision/Resources/JinshidongLocalTest/descriptors.bin
+ios/RockVision/Resources/JinshidongLocalTest/landmarks.json
+
 # Field Test exports if copied from an iPhone into this repo
 **/FieldTests/
 gate3b_*.json

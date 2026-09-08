@@ -42,6 +42,7 @@ struct FieldTestPanel: View {
     var wallMarkers: String = "0/4"
     var routeBinding: RuntimeRouteBinding = .unbound
     var routePlan: RouteRenderPlan = .empty
+    var localTestLegend: [LocalTestRouteLegendItem] = []
     var sift: SIFTRuntimeSnapshot = SIFTRuntimeSnapshot()
     var matching: MatchingRuntimeSnapshot = MatchingRuntimeSnapshot()
     var pnp: PnPRuntimeSnapshot = PnPRuntimeSnapshot()
@@ -60,13 +61,18 @@ struct FieldTestPanel: View {
             if actions.showUnfinishedBanner {
                 Text(Gate4BPhysicalValidationHUD.unfinishedMessage)
                     .font(.system(size: 11, weight: .regular, design: .monospaced))
-            } else {
-                if controller.phase == .complete {
-                    Text("Measurement session complete")
-                        .font(.system(size: 11, weight: .regular, design: .monospaced))
-                }
-                ForEach(visibleRows, id: \.title) { row in
-                    statusRow(row.title, row.value)
+            } else if controller.phase == .complete {
+                Text("Measurement session complete")
+                    .font(.system(size: 11, weight: .regular, design: .monospaced))
+            }
+            ForEach(visibleRows, id: \.title) { row in
+                statusRow(row.title, row.value)
+            }
+            if !localTestLegend.isEmpty {
+                Text("Jinshidong local test")
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                ForEach(localTestLegend, id: \.routeId) { item in
+                    statusRow(item.routeName, "\(item.grade)  \(item.displayDraws)")
                 }
             }
 
@@ -113,7 +119,7 @@ struct FieldTestPanel: View {
         }
         .foregroundStyle(.white)
         .padding(8)
-        .frame(maxWidth: 260, alignment: .leading)
+        .frame(maxWidth: 300, alignment: .leading)
         .background(Color.black.opacity(0.62), in: RoundedRectangle(cornerRadius: 6))
         .padding(.leading, 10)
         .padding(.bottom, 10)

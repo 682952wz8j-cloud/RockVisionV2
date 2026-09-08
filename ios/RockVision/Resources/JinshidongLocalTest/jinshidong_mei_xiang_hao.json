@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "gate5c.development.route.fixture.1",
+  "kind": "development_validation_route_fixture",
+  "developmentValidationOnly": true,
+  "notAProductionRoutePackage": true,
+  "sourceArtifact": "ingested/jinshidong_mei_xiang_hao.json",
+  "routeId": "jinshidong_mei_xiang_hao",
+  "routeName": "没想好",
+  "grade": "5.11b",
+  "quickdraws": "7+2",
+  "wallId": "wall_jinshidong_01",
+  "wallBuildRunId": "wb_20260906T024519Z_6e08b5ff",
+  "colmapModelFingerprint": "32e9791497d9c9584acf455dc0942762f1d3e1993e9b4e682723408c1294350c",
+  "coordinateFrame": "WallMetricMeters",
+  "provenance": "IDENTITY_SUPPORTED",
+  "dummyOriginExcluded": true,
+  "pointCount": 6,
+  "polyline": [
+    [
+      -10.039306640625,
+      -33.72099304199219,
+      21.710527420043945
+    ],
+    [
+      -9.417291641235352,
+      -33.69523620605469,
+      18.6872501373291
+    ],
+    [
+      -9.11772632598877,
+      -34.224056243896484,
+      15.718689918518066
+    ],
+    [
+      -8.518190383911133,
+      -34.67768478393555,
+      12.537633895874023
+    ],
+    [
+      -7.869889736175537,
+      -35.99150848388672,
+      9.994261741638184
+    ],
+    [
+      -7.772514343261719,
+      -37.12474822998047,
+      6.812337875366211
+    ]
+  ],
+  "polylineSha256": "98a08ad0608795a1a2d1b0c48028870b22b33c20257913ffcc8557239e8b173d"
+}

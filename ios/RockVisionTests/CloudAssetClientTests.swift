@@ -1116,7 +1116,7 @@ final class CloudCatalogDiscoveryInstallTests: XCTestCase {
     func testSyntheticWallIsNeverAutomaticallySelectedAsLocalizationSource() throws {
         let processor = OpenCVFrameProcessor()
         #if DEBUG
-        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "bundleDevelopmentFixture")
+        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "jinshidongLocalTest")
         #else
         throw XCTSkip("Only meaningful in DEBUG test builds.")
         #endif
@@ -1350,8 +1350,9 @@ final class CloudCatalogAudienceTests: XCTestCase {
 final class CloudDebugHUDScopeTests: XCTestCase {
     func testDebugActiveModeIsCloudD5InDebugBuilds() {
         #if DEBUG
-        XCTAssertEqual(DebugHUDMode.active, .cloudD5)
-        XCTAssertTrue(DebugHUDMode.active.showsCloudD5HUD)
+        XCTAssertEqual(DebugHUDMode.active, .stage5)
+        XCTAssertTrue(DebugHUDMode.active.showsStage5HUD)
+        XCTAssertFalse(DebugHUDMode.active.showsCloudD5HUD)
         XCTAssertFalse(DebugHUDMode.active.showsGate4BHUD)
         #else
         XCTAssertEqual(DebugHUDMode.active, .gate4b)
@@ -1366,7 +1367,7 @@ final class CloudDebugHUDScopeTests: XCTestCase {
         let content = try String(contentsOf: sourceFile("RockVision/App/ContentView.swift"))
         XCTAssertTrue(content.contains("DebugHUDMode.active.showsCloudD5HUD"))
         XCTAssertTrue(content.contains("presentation: .d5Discovery"))
-        XCTAssertTrue(content.contains("if DebugHUDMode.active.showsGate4BHUD"))
+        XCTAssertTrue(content.contains("if DebugHUDMode.active.showsGate4BHUD || DebugHUDMode.active.showsStage5HUD"))
         let d5Range = content.range(of: "if DebugHUDMode.active.showsCloudD5HUD")!
         let gateRange = content.range(of: "if DebugHUDMode.active.showsGate4BHUD")!
         let d5Block = String(content[d5Range.lowerBound..<gateRange.lowerBound])
