@@ -1367,15 +1367,18 @@ final class CloudDebugHUDScopeTests: XCTestCase {
         let content = try String(contentsOf: sourceFile("RockVision/App/ContentView.swift"))
         XCTAssertTrue(content.contains("DebugHUDMode.active.showsCloudD5HUD"))
         XCTAssertTrue(content.contains("presentation: .d5Discovery"))
-        XCTAssertTrue(content.contains("if DebugHUDMode.active.showsGate4BHUD || DebugHUDMode.active.showsStage5HUD"))
+        XCTAssertTrue(content.contains("if DebugHUDMode.active.showsGate4BHUD {"))
+        XCTAssertTrue(content.contains("if DebugHUDMode.active.showsStage5HUD {"))
         let d5Range = content.range(of: "if DebugHUDMode.active.showsCloudD5HUD")!
-        let gateRange = content.range(of: "if DebugHUDMode.active.showsGate4BHUD")!
+        let gateRange = content.range(of: "if DebugHUDMode.active.showsGate4BHUD {")!
         let d5Block = String(content[d5Range.lowerBound..<gateRange.lowerBound])
         XCTAssertTrue(d5Block.contains("CloudDebugPanel"))
         XCTAssertFalse(d5Block.contains("FieldTestPanel"))
         XCTAssertFalse(d5Block.contains("Gate 4B"))
+        XCTAssertFalse(d5Block.contains("Stage5DebugHUD"))
         let gateBlock = String(content[gateRange.lowerBound...])
         XCTAssertTrue(gateBlock.contains("FieldTestPanel("))
+        XCTAssertTrue(gateBlock.contains("Stage5DebugHUD("))
     }
 
     func testD5PrimaryHUDExposesFetchCatalogAndInstallWithoutHistoricalControls() throws {

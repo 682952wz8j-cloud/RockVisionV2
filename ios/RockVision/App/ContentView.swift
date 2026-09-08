@@ -44,7 +44,7 @@ struct ContentView: View {
                     Spacer()
                 }
                 .ignoresSafeArea(edges: .top)
-                if DebugHUDMode.active.showsGate4BHUD || DebugHUDMode.active.showsStage5HUD {
+                if DebugHUDMode.active.showsGate4BHUD {
                     FieldTestPanel(
                         controller: fieldTest,
                         tracking: sessionHost.snapshot.trackingState,
@@ -62,6 +62,12 @@ struct ContentView: View {
                         localTestLegend: openCV.localTestRouteLegend,
                         sift: openCV.siftSnapshot,
                         matching: openCV.matchingSnapshot,
+                        pnp: openCV.pnpSnapshot
+                    )
+                }
+                if DebugHUDMode.active.showsStage5HUD {
+                    Stage5DebugHUD(
+                        localization: openCV.confirmationSnapshot.localization,
                         pnp: openCV.pnpSnapshot
                     )
                 }

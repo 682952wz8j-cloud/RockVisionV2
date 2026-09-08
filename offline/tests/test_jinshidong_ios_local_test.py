@@ -81,6 +81,33 @@ class JinshidongIOSLocalTestTests(unittest.TestCase):
         self.assertIn("PnPConfig.expectedSim3Scale", sim3)
         self.assertIn('guard abs(payload.scale - PnPConfig.expectedSim3Scale) < 1e-9 else', sim3)
 
+    def test_stage5_debug_hud_is_localization_and_pnp_only(self) -> None:
+        hud = (IOS / "RockVision" / "Features" / "DebugOverlay" / "Stage5DebugHUD.swift").read_text(encoding="utf-8")
+        self.assertIn("定位成功", hud)
+        self.assertIn("定位失败", hud)
+        self.assertIn("localizationLocalized", hud)
+        self.assertIn('PnP \\(inliers) | \\(medianToken(reproj)) px', hud)
+        self.assertNotIn("Start Measurement", hud)
+        self.assertNotIn("Gate 4B", hud)
+        self.assertNotIn("Jinshidong local test", hud)
+        self.assertNotIn("FieldTestPanel", hud)
+        content = (IOS / "RockVision" / "App" / "ContentView.swift").read_text(encoding="utf-8")
+        self.assertIn("Stage5DebugHUD(", content)
+        self.assertIn("if DebugHUDMode.active.showsStage5HUD {", content)
+        self.assertIn("if DebugHUDMode.active.showsGate4BHUD {", content)
+        self.assertNotIn("showsGate4BHUD || DebugHUDMode.active.showsStage5HUD", content)
+        stage = content.split("if DebugHUDMode.active.showsStage5HUD {", 1)[1]
+        self.assertIn("Stage5DebugHUD(", stage)
+        self.assertNotIn("FieldTestPanel(", stage)
+        gate = content.split("if DebugHUDMode.active.showsGate4BHUD {", 1)[1].split(
+            "if DebugHUDMode.active.showsStage5HUD {", 1
+        )[0]
+        self.assertIn("FieldTestPanel(", gate)
+        self.assertNotIn("Stage5DebugHUD(", gate)
+        panel = (IOS / "RockVision" / "Features" / "FieldTest" / "FieldTestPanel.swift").read_text(encoding="utf-8")
+        self.assertIn("Gate4BPhysicalValidationHUD", panel)
+        self.assertNotIn("定位成功", panel)
+
     def test_binaries_are_not_required_in_git(self) -> None:
         gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
         self.assertIn("ios/RockVision/Resources/JinshidongLocalTest/descriptors.bin", gitignore)
