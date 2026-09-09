@@ -67,7 +67,7 @@ final class JinshidongLocalTestAssetTests: XCTestCase {
         XCTAssertEqual(manifest.wallId, "wall_jinshidong_01")
         let processor = OpenCVFrameProcessor()
         #if DEBUG
-        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "jinshidongLocalTest")
+        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "productionCloud")
         #endif
         XCTAssertEqual(DebugHUDMode.stage5.showsStage5HUD, true)
         #if DEBUG
@@ -80,7 +80,8 @@ final class JinshidongLocalTestAssetTests: XCTestCase {
     func testProcessorDefaultDoesNotSelectJiulongfengFixture() throws {
         let processor = OpenCVFrameProcessor()
         #if DEBUG
-        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "jinshidongLocalTest")
+        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "productionCloud")
+        XCTAssertNotEqual(processor.debugDesiredReferenceSourceMode, "jinshidongLocalTest")
         XCTAssertNotEqual(processor.debugDesiredReferenceSourceMode, "bundleDevelopmentFixture")
         #else
         throw XCTSkip("Only meaningful in DEBUG test builds.")

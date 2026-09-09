@@ -57,13 +57,15 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
     private var sceneBuckets: [String: [SIFTProcessingPreset: ResolutionAccumulator]] = [:]
     private var referenceDatabase: ReferenceDatabase?
     private enum ReferenceSourceMode: Sendable, Equatable {
+        case productionCloudUnselected
+        case productionCloud(String)
         case jinshidongLocalTest
         case bundleDevelopmentFixture
         case cloudCurrentJiulongfengDevR000001
     }
 
-    /// Default on fresh launch: Jinshidong local-test assets (not a catalog release).
-    private var desiredReferenceSourceMode: ReferenceSourceMode = .jinshidongLocalTest
+    /// Default: production catalog discovery. Diagnostic local-test is explicit.
+    private var desiredReferenceSourceMode: ReferenceSourceMode = .productionCloudUnselected
     private var loadedReferenceSourceMode: ReferenceSourceMode?
     private var debugCloudAssetServiceOverride: CloudAssetService?
     private var matchingStatus = "inactive"
@@ -513,6 +515,50 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
 
         do {
             switch mode {
+            case .productionCloudUnselected:
+                matchingStatus = "inactive (waiting for wallId)"
+                return
+            case .productionCloud(let wallId):
+                let service: CloudAssetService
+                if let override = debugCloudAssetServiceOverride {
+                    service = override
+                } else {
+                    service = try CloudAssetService.default()
+                }
+                let loaded = try ReferenceAssetSession.load(.cloudValidatedRelease(wallId: wallId, service: service))
+                let sim3Asset = try CloudStage3AssetSemantics.requiredSim3Asset(in: try service.localValidatedRelease(wallId: wallId).manifest)
+                let sim3URL = try service.localAssetURL(wallId: wallId, assetId: sim3Asset.assetId)
+                let productionSim3 = try ProductionSim3Loader.load(from: sim3URL)
+                var routes: [VerifiedFrozenRoute] = []
+                if let routesAsset = try CloudStage3AssetSemantics.productionRoutesAsset(
+                    in: try service.localValidatedRelease(wallId: wallId).manifest
+                ) {
+                    let routesURL = try service.localAssetURL(wallId: wallId, assetId: routesAsset.assetId)
+                    routes = VerifiedFrozenRoute.loadProductionAsset(
+                        from: routesURL,
+                        expectedWallId: wallId,
+                        expectedReleaseId: loaded.provenance.releaseId
+                    ) ?? []
+                    if routes.isEmpty {
+                        throw ReferenceAssetError.integrityRejected("production routes failed verification")
+                    }
+                }
+                referenceDatabase = loaded.database
+                referenceAssetProvenance = loaded.provenance
+                matchingStatus = "active"
+                sim3 = productionSim3
+                measurementFixture = nil
+                verifiedFrozenRoute = nil
+                verifiedFrozenRoutes = routes
+                localTestRouteLegend = routes.map {
+                    LocalTestRouteLegendItem(
+                        routeId: $0.routeId,
+                        routeName: $0.routeName ?? $0.routeId,
+                        grade: $0.grade ?? "",
+                        displayDraws: $0.displayDraws ?? ""
+                    )
+                }
+                print("Matching: loaded reference source=\(loaded.provenance.source) wall=\(loaded.provenance.wallId) release=\(loaded.provenance.releaseId) rows=\(loaded.database.descriptorCount) unique3D=\(Set(loaded.database.point3dIds).count) routes=\(routes.count)")
             case .jinshidongLocalTest:
                 let pack = try JinshidongLocalTestAssets.load(from: Bundle(for: OpenCVFrameProcessor.self))
                 referenceDatabase = pack.database
@@ -546,7 +592,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                           loaded.provenance.releaseId == expectedReleaseId else {
                         throw ReferenceAssetError.integrityRejected("cloud CURRENT identity mismatch (expected \(expectedWallId)/\(expectedReleaseId), got \(loaded.provenance.wallId)/\(loaded.provenance.releaseId))")
                     }
-                case .jinshidongLocalTest:
+                case .jinshidongLocalTest, .productionCloud, .productionCloudUnselected:
                     throw ReferenceAssetError.bundleUnavailable("unreachable")
                 }
 
@@ -615,7 +661,21 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
         return (binding, RouteRenderPlan.concatenateFieldTest(plans))
     }
 
-    // MARK: - DEBUG-only reference source selection
+    // MARK: - Production runtime discovery
+
+    func selectProductionCloudRelease(wallId: String, service: CloudAssetService) {
+        lock.lock()
+        desiredReferenceSourceMode = .productionCloud(wallId)
+        debugCloudAssetServiceOverride = service
+        loadedReferenceSourceMode = nil
+        referenceDatabase = nil
+        referenceAssetProvenance = .unavailable
+        matchingStatus = "inactive (select production cloud)"
+        lock.unlock()
+        ensureFixtureLoaded()
+    }
+
+    // MARK: - Diagnostic reference source selection
 
     func selectReferenceSourceJinshidongLocalTest() {
         lock.lock()
@@ -665,6 +725,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
 
     var debugDesiredReferenceSourceMode: String {
         switch desiredReferenceSourceMode {
+        case .productionCloudUnselected, .productionCloud: return "productionCloud"
         case .jinshidongLocalTest: return "jinshidongLocalTest"
         case .bundleDevelopmentFixture: return "bundleDevelopmentFixture"
         case .cloudCurrentJiulongfengDevR000001: return "cloudCurrentJiulongfengDevR000001"

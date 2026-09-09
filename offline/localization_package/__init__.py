@@ -9,6 +9,7 @@ from .schema import (
     TYPE_DESCRIPTORS,
     TYPE_LANDMARKS,
     TYPE_S_WALL_COLMAP,
+    TYPE_WALL_ROUTES,
     ReasonCode,
 )
 from .validate import PackageValidationResult, validate_package_dir
@@ -18,6 +19,7 @@ __all__ = [
     "TYPE_DESCRIPTORS",
     "TYPE_LANDMARKS",
     "TYPE_S_WALL_COLMAP",
+    "TYPE_WALL_ROUTES",
     "ReasonCode",
     "PackageValidationResult",
     "decode_cloud_manifest_candidate",

@@ -1,0 +1,36 @@
+{
+  "schema": "cragpal.wall-manifest.v1",
+  "wallId": "wall_jinshidong_01",
+  "releaseId": "r000001",
+  "createdAt": "2026-09-09T06:00:00Z",
+  "assets": [
+    {
+      "assetId": "stage3-descriptors",
+      "type": "reference_descriptors_rvs1",
+      "required": true,
+      "sha256": "120b38d654d059d431638abe0b48310aea240d4081a7a044598487d21b3bf49e",
+      "bytes": 83280404
+    },
+    {
+      "assetId": "stage3-landmarks",
+      "type": "reference_landmarks_json",
+      "required": true,
+      "sha256": "949a6ff0c4bdf4ed2df481ae9c5c7a50b3c6ca7996bdb7b13bd6009c9b7814f3",
+      "bytes": 60797816
+    },
+    {
+      "assetId": "s-wall-colmap",
+      "type": "s_wall_colmap_json",
+      "required": true,
+      "sha256": "c5a855eca2858b7bdf840c53974bfe2bb1daa05037d3d64b5f67f7b9c43486f8",
+      "bytes": 5110
+    },
+    {
+      "assetId": "wall-routes",
+      "type": "wall_routes_json",
+      "required": true,
+      "sha256": "7c3e28e7cbc715ec5e2a9d1b1c787bd61d6489f202c1ff1afeb0684b0899a677",
+      "bytes": 4747
+    }
+  ]
+}

@@ -220,6 +220,78 @@ struct VerifiedFrozenRoute: Equatable, Sendable {
             displayDraws: payload.quickdraws
         )
     }
+
+    static func loadProductionAsset(from url: URL, expectedWallId: String, expectedReleaseId: String) -> [VerifiedFrozenRoute]? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return loadProductionAsset(from: data, expectedWallId: expectedWallId, expectedReleaseId: expectedReleaseId)
+    }
+
+    static func loadProductionAsset(from data: Data, expectedWallId: String, expectedReleaseId: String) -> [VerifiedFrozenRoute]? {
+        guard let payload = try? JSONDecoder().decode(ProductionRoutesFile.self, from: data) else { return nil }
+        guard payload.schema == "cragpal.wall-routes.v1",
+              payload.wallId == expectedWallId,
+              payload.releaseId == expectedReleaseId,
+              payload.coordinateFrame == expectedCoordinateFrame,
+              !payload.routes.isEmpty
+        else { return nil }
+        var routes: [VerifiedFrozenRoute] = []
+        for item in payload.routes {
+            guard item.coordinateFrame == expectedCoordinateFrame,
+                  item.dummyOriginExcluded,
+                  item.pointCount >= 2,
+                  item.polyline.count == item.pointCount,
+                  !item.polyline.contains(where: { $0 == [0.0, 0.0, 0.0] }),
+                  item.routeId != expectedRouteId,
+                  FrozenRoutePolylineHash.sha256Hex(item.polyline, pointCount: item.pointCount) == item.polylineSha256
+            else { return nil }
+            routes.append(
+                VerifiedFrozenRoute(
+                    routeId: item.routeId,
+                    wallId: payload.wallId,
+                    coordinateFrame: item.coordinateFrame,
+                    provenance: item.provenance,
+                    dummyOriginExcluded: true,
+                    polylineSha256: item.polylineSha256,
+                    wallMetricMeters: item.polyline,
+                    hashVerified: true,
+                    developmentValidationOnly: false,
+                    sourceArtifact: item.source.path,
+                    routeName: item.routeName,
+                    grade: item.grade,
+                    displayDraws: item.quickdraws
+                )
+            )
+        }
+        return routes
+    }
+
+    struct ProductionRoutesFile: Codable, Equatable, Sendable {
+        var schema: String
+        var wallId: String
+        var releaseId: String
+        var coordinateFrame: String
+        var routes: [ProductionRoute]
+    }
+
+    struct ProductionRoute: Codable, Equatable, Sendable {
+        var routeId: String
+        var routeName: String
+        var grade: String
+        var quickdraws: String
+        var source: ProductionRouteSource
+        var coordinateFrame: String
+        var provenance: String
+        var dummyOriginExcluded: Bool
+        var pointCount: Int
+        var polyline: [[Double]]
+        var polylineSha256: String
+    }
+
+    struct ProductionRouteSource: Codable, Equatable, Sendable {
+        var path: String
+        var sha256: String
+        var sizeBytes: Int
+    }
 }
 
 /// B — disposable current ARWorld geometry. Function of A and CURRENT production T.

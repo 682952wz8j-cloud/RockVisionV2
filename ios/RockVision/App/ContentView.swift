@@ -7,6 +7,7 @@ struct ContentView: View {
     @StateObject private var openCV = OpenCVFrameProcessor()
     @StateObject private var fieldTest = FieldTestController()
     @StateObject private var cloudDebug = CloudDebugController()
+    @StateObject private var productionRuntime = ProductionRuntimeController()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -68,7 +69,9 @@ struct ContentView: View {
                 if DebugHUDMode.active.showsStage5HUD {
                     Stage5DebugHUD(
                         localization: openCV.confirmationSnapshot.localization,
-                        pnp: openCV.pnpSnapshot
+                        pnp: openCV.pnpSnapshot,
+                        wallId: productionRuntime.wallId,
+                        cloudAssetsLoaded: productionRuntime.cloudAssetsLoaded
                     )
                 }
             }
@@ -82,8 +85,10 @@ struct ContentView: View {
                     openCV.resetConfirmation(completion: completion)
                 }
                 fieldTest.enterFieldTest()
+                productionRuntime.processor = openCV
                 openCV.updateViewContext(size: geo.size, orientation: currentOrientation())
                 sessionHost.start()
+                Task { await productionRuntime.start() }
             }
             .onChange(of: geo.size) { _, size in
                 openCV.updateViewContext(size: size, orientation: currentOrientation())

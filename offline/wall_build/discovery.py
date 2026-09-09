@@ -6,6 +6,10 @@ import hashlib
 from collections import defaultdict
 from pathlib import Path
 
+from offline.ingestion.route_namespace import (
+    is_authoritative_route_relative,
+    is_route_namespace_relative,
+)
 from offline.ingestion.scan import build_record, find_duplicates, iter_files
 from offline.ingestion.types import RawAssetType
 from offline.ingestion.validate import is_readable_image
@@ -64,7 +68,8 @@ def build_discovery(wall_id: str, incoming: Path, records: list) -> dict:
     mrk = [r for r in records if _is_mrk(r)]
     metadata = [r for r in records if _is_metadata_xml(r)]
     gnss_aux = [r for r in records if _is_gnss_aux(r)]
-    dxf = [r for r in records if _is_dxf(r)]
+    dxf = [r for r in records if _is_dxf(r) and not is_route_namespace_relative(r.relative_path)]
+    route_inputs = [r for r in records if is_authoritative_route_relative(r.relative_path)]
     models = [r for r in records if r.detected_type == RawAssetType.MODEL_3D]
     measurement = [
         r
@@ -77,6 +82,8 @@ def build_discovery(wall_id: str, incoming: Path, records: list) -> dict:
 
     by_capture: dict[str, list] = defaultdict(list)
     for record in images:
+        if is_route_namespace_relative(record.relative_path):
+            continue
         by_capture[_capture_key(record.relative_path)].append(record)
 
     capture_candidates = []
@@ -127,6 +134,7 @@ def build_discovery(wall_id: str, incoming: Path, records: list) -> dict:
             "metadataXml": [_file_ref(r) for r in metadata],
             "gnssAuxiliary": [_file_ref(r) for r in gnss_aux],
             "dxf": [_file_ref(r) for r in dxf],
+            "authoritativeRouteInputs": [_file_ref(r) for r in route_inputs],
             "models": [_file_ref(r) for r in models],
             "measurementRelated": [_file_ref(r) for r in measurement],
         },
@@ -136,6 +144,7 @@ def build_discovery(wall_id: str, incoming: Path, records: list) -> dict:
         "metadataCandidates": [_file_ref(r) for r in metadata],
         "modelCandidates": [_file_ref(r) for r in models],
         "dxfFiles": [_file_ref(r) for r in dxf],
+        "authoritativeRouteInputs": [_file_ref(r) for r in route_inputs],
         "imageCount": len(images),
         "readableImageCount": len(readable),
         "duplicateGroups": {

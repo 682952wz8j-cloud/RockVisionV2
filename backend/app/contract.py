@@ -107,7 +107,39 @@ def classified_environment_from_payload(payload: dict) -> str | None:
     return value
 
 
-def catalog_entry(*, wall_id: str, name: str, latest_release_id: str, environment: str | None) -> dict:
+def decode_catalog_location(payload: object) -> dict:
+    """WallCandidateSelector GPS only. Missing catalogLocation is allowed."""
+    if not isinstance(payload, dict):
+        raise ContractError("catalogLocation must be an object")
+    if payload.get("purpose") != "wall_candidate_selection_only":
+        raise ContractError("catalogLocation.purpose is not wall_candidate_selection_only")
+    lat = payload.get("latitudeDeg")
+    lon = payload.get("longitudeDeg")
+    if not isinstance(lat, (int, float)) or isinstance(lat, bool) or lat != lat or lat < -90 or lat > 90:
+        raise ContractError("catalogLocation.latitudeDeg is invalid")
+    if not isinstance(lon, (int, float)) or isinstance(lon, bool) or lon != lon or lon < -180 or lon > 180:
+        raise ContractError("catalogLocation.longitudeDeg is invalid")
+    location = {
+        "purpose": "wall_candidate_selection_only",
+        "latitudeDeg": float(lat),
+        "longitudeDeg": float(lon),
+    }
+    if "altitudeMeters" in payload:
+        alt = payload.get("altitudeMeters")
+        if not isinstance(alt, (int, float)) or isinstance(alt, bool) or alt != alt:
+            raise ContractError("catalogLocation.altitudeMeters is invalid")
+        location["altitudeMeters"] = float(alt)
+    return location
+
+
+def catalog_entry(
+    *,
+    wall_id: str,
+    name: str,
+    latest_release_id: str,
+    environment: str | None,
+    catalog_location: dict | None = None,
+) -> dict:
     entry = {
         "wallId": wall_id,
         "name": name,
@@ -117,6 +149,8 @@ def catalog_entry(*, wall_id: str, name: str, latest_release_id: str, environmen
         if environment not in CLASSIFIED_ENVIRONMENTS:
             raise ContractError("invalid environment")
         entry["environment"] = environment
+    if catalog_location is not None:
+        entry["catalogLocation"] = decode_catalog_location(catalog_location)
     return entry
 
 
@@ -165,6 +199,8 @@ def validate_catalog(payload: dict) -> dict:
             raise ContractError("catalog wall name is required")
         require_release_id(str(item.get("latestReleaseId") or ""))
         classified_environment_from_payload(item)
+        if "catalogLocation" in item:
+            decode_catalog_location(item.get("catalogLocation"))
     return payload
 
 

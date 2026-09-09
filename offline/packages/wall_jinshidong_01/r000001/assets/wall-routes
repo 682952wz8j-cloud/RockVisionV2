@@ -1,0 +1,177 @@
+{
+  "schema": "cragpal.wall-routes.v1",
+  "wallId": "wall_jinshidong_01",
+  "releaseId": "r000001",
+  "wallBuildRunId": "wb_20260906T024519Z_6e08b5ff",
+  "colmapModelFingerprint": "32e9791497d9c9584acf455dc0942762f1d3e1993e9b4e682723408c1294350c",
+  "coordinateFrame": "WallMetricMeters",
+  "routes": [
+    {
+      "routeId": "jinshidong_lucky_baby",
+      "routeName": "Lucky Baby",
+      "grade": "5.7",
+      "quickdraws": "3+2",
+      "source": {
+        "path": "routes/Lucky Baby 5.7.dxf",
+        "sha256": "494b20f161b8fea77a31808c215d7b7c3b7d075d6810023ecf98249cc277e7d1",
+        "sizeBytes": 5514
+      },
+      "coordinateFrame": "WallMetricMeters",
+      "provenance": "IDENTITY_SUPPORTED",
+      "dummyOriginExcluded": true,
+      "pointCount": 6,
+      "polyline": [
+        [
+          -9.145891189575195,
+          -33.03070068359375,
+          14.691120147705078
+        ],
+        [
+          -8.93558406829834,
+          -32.82399368286133,
+          13.039535522460938
+        ],
+        [
+          -8.314493179321289,
+          -33.47356033325195,
+          11.001001358032227
+        ],
+        [
+          -8.410008430480957,
+          -34.26354217529297,
+          9.245091438293457
+        ],
+        [
+          -8.04168701171875,
+          -34.570289611816406,
+          7.721412658691406
+        ],
+        [
+          -8.212965965270996,
+          -35.018524169921875,
+          6.559218406677246
+        ]
+      ],
+      "polylineSha256": "9473023e60e9fd5a2003ead60d5e7134d0b1386e81b861457e1de569ae62b407"
+    },
+    {
+      "routeId": "jinshidong_shui_tai_shen",
+      "routeName": "水太深",
+      "grade": "5.12d",
+      "quickdraws": "6+2",
+      "source": {
+        "path": "routes/水太深 5.12d.dxf",
+        "sha256": "b6ae4c2947e0031b0c54d6fe781af08ee0382e2a81f1c74986a48ef567dbc29e",
+        "sizeBytes": 5214
+      },
+      "coordinateFrame": "WallMetricMeters",
+      "provenance": "IDENTITY_SUPPORTED",
+      "dummyOriginExcluded": true,
+      "pointCount": 3,
+      "polyline": [
+        [
+          10.290118217468262,
+          12.743415832519531,
+          5.109707355499268
+        ],
+        [
+          15.406683921813965,
+          12.585599899291992,
+          -2.3439319133758545
+        ],
+        [
+          13.329497337341309,
+          12.138467788696289,
+          -5.2794952392578125
+        ]
+      ],
+      "polylineSha256": "83e5a754ff42ddc30739d0b52d05cb54f94c74725541af612623b1d9a7ebc509"
+    },
+    {
+      "routeId": "jinshidong_mei_xiang_hao",
+      "routeName": "没想好",
+      "grade": "5.11b",
+      "quickdraws": "7+2",
+      "source": {
+        "path": "routes/没想好 5.11b.dxf",
+        "sha256": "eee23505969870ee33577e160ed4aa17be82e9139a01583f092d155f4dbc1d19",
+        "sizeBytes": 5523
+      },
+      "coordinateFrame": "WallMetricMeters",
+      "provenance": "IDENTITY_SUPPORTED",
+      "dummyOriginExcluded": true,
+      "pointCount": 6,
+      "polyline": [
+        [
+          -10.039306640625,
+          -33.72099304199219,
+          21.710527420043945
+        ],
+        [
+          -9.417291641235352,
+          -33.69523620605469,
+          18.6872501373291
+        ],
+        [
+          -9.11772632598877,
+          -34.224056243896484,
+          15.718689918518066
+        ],
+        [
+          -8.518190383911133,
+          -34.67768478393555,
+          12.537633895874023
+        ],
+        [
+          -7.869889736175537,
+          -35.99150848388672,
+          9.994261741638184
+        ],
+        [
+          -7.772514343261719,
+          -37.12474822998047,
+          6.812337875366211
+        ]
+      ],
+      "polylineSha256": "98a08ad0608795a1a2d1b0c48028870b22b33c20257913ffcc8557239e8b173d"
+    },
+    {
+      "routeId": "jinshidong_long_zhua_shou",
+      "routeName": "龙抓手",
+      "grade": "5.11b",
+      "quickdraws": "5+2",
+      "source": {
+        "path": "routes/龙抓手 5.11b.dxf",
+        "sha256": "8caab76f051a765f3aa01c9403af79e56a32ee1e8cdbfe2c0bb91258cf4be738",
+        "sizeBytes": 5313
+      },
+      "coordinateFrame": "WallMetricMeters",
+      "provenance": "IDENTITY_SUPPORTED",
+      "dummyOriginExcluded": true,
+      "pointCount": 4,
+      "polyline": [
+        [
+          14.530263900756836,
+          14.493602752685547,
+          4.7401933670043945
+        ],
+        [
+          14.680303573608398,
+          14.547874450683594,
+          2.8448660373687744
+        ],
+        [
+          15.147367477416992,
+          14.155166625976562,
+          0.4528455436229706
+        ],
+        [
+          15.971027374267578,
+          13.625236511230469,
+          -1.9390414953231812
+        ]
+      ],
+      "polylineSha256": "0534fd4a3babefdfb02bb994c15956491052fcf852fa8d1d1c55b4e12006eea7"
+    }
+  ]
+}

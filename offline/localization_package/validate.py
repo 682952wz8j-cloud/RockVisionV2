@@ -39,6 +39,7 @@ from .schema import (
     TYPE_DESCRIPTORS,
     TYPE_LANDMARKS,
     TYPE_S_WALL_COLMAP,
+    TYPE_WALL_ROUTES,
 )
 from .sim3_asset import assess_sim3_asset, assess_sim3_identity
 
@@ -106,6 +107,7 @@ def validate_package_dir(root: Path) -> PackageValidationResult:
     codes.extend(_asset_bytes(root, package["stage3"]["descriptors"], TYPE_DESCRIPTORS, ReasonCode.DESCRIPTORS_REQUIRED))
     codes.extend(_asset_bytes(root, package["stage3"]["landmarks"], TYPE_LANDMARKS, ReasonCode.LANDMARKS_REQUIRED))
     codes.extend(_asset_bytes(root, package["metricTransform"], TYPE_S_WALL_COLMAP, ReasonCode.METRIC_SIM3_REQUIRED))
+    codes.extend(_production_routes(root, package))
 
     sim3_path = asset_path(root, package["metricTransform"]["assetId"])
     if sim3_path.is_file():
@@ -143,8 +145,6 @@ def validate_package_dir(root: Path) -> PackageValidationResult:
     codes.extend(_freeze_asset_binding(package, freeze))
 
     if package["capabilities"].get("routeArReady") is True:
-        codes.append(ReasonCode.ROUTES_NOT_AUTHORIZED)
-    if package.get("routes", {}).get("authorized") is True or package.get("routes", {}).get("present") is True:
         codes.append(ReasonCode.ROUTES_NOT_AUTHORIZED)
 
     unique = list(dict.fromkeys(codes))
@@ -273,6 +273,32 @@ def _asset_bytes(root: Path, spec: dict, expected_type: str, missing: ReasonCode
     return codes
 
 
+def _production_routes(root: Path, package: dict) -> list[ReasonCode]:
+    from offline.route_ingestion.production_asset import RouteAssetError, decode_production_route_asset
+
+    routes = package.get("routes") or {}
+    if routes.get("present") is not True:
+        return []
+    codes = _asset_bytes(root, routes, TYPE_WALL_ROUTES, ReasonCode.ROUTE_ASSET_INVALID)
+    if codes:
+        return codes
+    path = asset_path(root, routes["assetId"])
+    payload = _read_json(path)
+    if payload is None:
+        return [ReasonCode.ROUTE_ASSET_INVALID]
+    try:
+        decode_production_route_asset(
+            payload,
+            wall_id=package["wallId"],
+            release_id=package["releaseId"],
+            run_id=package["sourceBuild"]["runId"],
+            model_fingerprint=package["stage3"]["freezeIdentity"]["colmapModelFingerprint"],
+        )
+    except RouteAssetError:
+        return [ReasonCode.ROUTE_ASSET_INVALID]
+    return []
+
+
 def _manifest_matches_package(manifest: dict, package: dict) -> list[ReasonCode]:
     by_type = {item["type"]: item for item in manifest["assets"]}
     expected = {
@@ -280,6 +306,9 @@ def _manifest_matches_package(manifest: dict, package: dict) -> list[ReasonCode]
         TYPE_LANDMARKS: package["stage3"]["landmarks"],
         TYPE_S_WALL_COLMAP: package["metricTransform"],
     }
+    routes = package.get("routes") or {}
+    if routes.get("present") is True:
+        expected[TYPE_WALL_ROUTES] = routes
     codes: list[ReasonCode] = []
     for asset_type, spec in expected.items():
         item = by_type.get(asset_type)

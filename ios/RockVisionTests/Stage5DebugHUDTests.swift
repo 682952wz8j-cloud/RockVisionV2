@@ -10,17 +10,34 @@ final class Stage5DebugHUDTests: XCTestCase {
         var pnp = PnPRuntimeSnapshot()
         pnp.inliers = "28"
         pnp.reproj = "1.40 px"
-        let lines = Stage5DebugHUDModel.lines(localization: "localized", pnp: pnp)
-        XCTAssertEqual(lines, ["定位成功", "PnP 28 | 1.40 px"])
+        let lines = Stage5DebugHUDModel.lines(
+            localization: "localized",
+            pnp: pnp,
+            wallId: "wall_jinshidong_01",
+            cloudAssetsLoaded: true
+        )
+        XCTAssertEqual(lines, [
+            "定位成功",
+            "PnP 28 | 1.40 px",
+            "wall_jinshidong_01",
+            "云端资产：已加载"
+        ])
     }
 
     func testNonLocalizedStatesShowFailure() {
         for state in [ConfirmationConfig.localizationIdle, ConfirmationConfig.localizationConfirming, "lost"] {
             XCTAssertEqual(Stage5DebugHUDModel.localizationLine(state: state), "定位失败")
         }
-        let lines = Stage5DebugHUDModel.lines(localization: "idle", pnp: PnPRuntimeSnapshot())
+        let lines = Stage5DebugHUDModel.lines(
+            localization: "idle",
+            pnp: PnPRuntimeSnapshot(),
+            wallId: "",
+            cloudAssetsLoaded: false
+        )
         XCTAssertEqual(lines.first, "定位失败")
-        XCTAssertEqual(lines.count, 2)
+        XCTAssertEqual(lines.count, 4)
+        XCTAssertEqual(lines[2], "—")
+        XCTAssertEqual(lines[3], "云端资产：加载失败")
     }
 
     func testPnPLineUsesCurrentInliersAndReprojectionMedian() {
@@ -40,6 +57,8 @@ final class Stage5DebugHUDTests: XCTestCase {
         XCTAssertTrue(hud.contains("定位失败"))
         XCTAssertTrue(hud.contains("PnP \\(inliers)"))
         XCTAssertTrue(hud.contains("medianToken"))
+        XCTAssertTrue(hud.contains("云端资产：已加载"))
+        XCTAssertTrue(hud.contains("云端资产：加载失败"))
         XCTAssertFalse(hud.contains("Start Measurement"))
         XCTAssertFalse(hud.contains("Gate 4B"))
         XCTAssertFalse(hud.contains("Jinshidong local test"))
@@ -55,6 +74,8 @@ final class Stage5DebugHUDTests: XCTestCase {
         XCTAssertTrue(content.contains("Stage5DebugHUD("))
         XCTAssertTrue(content.contains("localization: openCV.confirmationSnapshot.localization"))
         XCTAssertTrue(content.contains("pnp: openCV.pnpSnapshot"))
+        XCTAssertTrue(content.contains("wallId: productionRuntime.wallId"))
+        XCTAssertTrue(content.contains("cloudAssetsLoaded: productionRuntime.cloudAssetsLoaded"))
         XCTAssertFalse(content.contains("showsGate4BHUD || DebugHUDMode.active.showsStage5HUD"))
         let stageRange = try XCTUnwrap(content.range(of: "if DebugHUDMode.active.showsStage5HUD {"))
         let stageBlock = String(content[stageRange.lowerBound...])

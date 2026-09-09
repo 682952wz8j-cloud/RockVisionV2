@@ -132,6 +132,28 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
         action="store_true",
         help="Explicit human authorization to create an immutable development_test promotion record. Without this flag, no COS writes.",
     )
+    ingest_routes_cmd = sub.add_parser(
+        "ingest-routes",
+        help=(
+            "Discover incoming/<wallId>/routes/*.dxf, freeze route provenance, "
+            "ingest Gate 5A polylines, bind the named wall_build run, and write "
+            "iOS local test route assets. Stops before field iPhone testing. "
+            "Not a Stage 5 release, publish, or production routes.json."
+        ),
+    )
+    ingest_routes_cmd.add_argument("wall_id")
+    ingest_routes_cmd.add_argument(
+        "--run-id",
+        dest="run_id",
+        required=True,
+        help="Exact wall_build/<runId>. No latest. No legacy fallback.",
+    )
+    ingest_routes_cmd.add_argument(
+        "--colmap-model-fingerprint",
+        dest="colmap_model_fingerprint",
+        required=True,
+        help="Expected colmapModelFingerprint for the bound production run.",
+    )
     verify_cmd = sub.add_parser(
         "verify",
         help="Run aggregated deterministic unit tests. Not a Gate PASS, FREEZE, or Stage advance.",
@@ -204,6 +226,15 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
             args.release_id,
             name=args.name,
             approve=args.approve,
+        )
+    if args.command == "ingest-routes":
+        from offline.route_ingestion.cli import run_ingest_routes
+
+        return run_ingest_routes(
+            args.wall_id,
+            repo,
+            run_id=args.run_id,
+            colmap_model_fingerprint=args.colmap_model_fingerprint,
         )
     if args.command == "verify":
         from offline.verify import run_verify

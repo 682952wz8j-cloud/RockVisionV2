@@ -42,6 +42,22 @@ Canonical persisted environments are exactly:
 Missing `environment` is **unspecified / legacy test compatibility**.
 Missing is **not** production. Unknown explicit values fail closed.
 
+Optional catalog GPS for WallCandidateSelector:
+
+```json
+"catalogLocation": {
+  "purpose": "wall_candidate_selection_only",
+  "latitudeDeg": 30.623418333479282,
+  "longitudeDeg": 118.72756872205237,
+  "altitudeMeters": 211.89499999933113
+}
+```
+
+`catalogLocation` is wall identity metadata. GPS / compass may use it only
+to choose a `wallId`. Visual localization, PnP, Sim(3), and RouteOverlay
+must not read it. Missing `catalogLocation` means GPS cannot select that
+wall. Invalid coordinates fail closed at catalog decode.
+
 ```text
 PRODUCTION DISCOVERY:
 GET /v1/walls
@@ -231,9 +247,13 @@ layout, or release immutability.
 |--------|---------|
 | `reference_descriptors_rvs1` | Existing Stage 3 `ReferenceDatabase` descriptor binary: RVS1, float32 × 128. Parsed only by the existing `ReferenceDatabase` loader. |
 | `reference_landmarks_json` | Existing Stage 3 landmark metadata JSON (Point3D / reference image / keypoint / `colmapXYZ`). Parsed only by the existing `ReferenceDatabase` loader. |
+| `s_wall_colmap_json` | Validated `S_wall_colmap` JSON for wall-space binding. Required for a production localization release. |
+| `wall_routes_json` | Production runtime route asset `cragpal.wall-routes.v1`. Optional for localization-only releases; required for Jinshidong field runtime routes. Not `routes.json`. |
 
-Both types are **required** for a Cloud-hosted Stage 3 localization
-package.
+Descriptors and landmarks are **required** for Cloud-hosted Stage 3
+localization. Production metric alignment also requires
+`s_wall_colmap_json`. Runtime route overlay loads `wall_routes_json` when
+that type is present in the same release.
 
 `assetId` remains an opaque manifest identifier. It is **not** a
 filename and must not be inferred from COS object names.

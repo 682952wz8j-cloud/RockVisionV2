@@ -20,6 +20,10 @@ incoming/**
 offline/work/**
 !offline/work/README.md
 
+# Unpublished production-candidate binaries. Metadata JSON is committed.
+offline/packages/**/assets/stage3-descriptors
+offline/packages/**/assets/stage3-landmarks
+
 # Generated Wall Package binaries (schema JSON may be committed later)
 walls/**/localization/*.bin
 walls/**/visual/

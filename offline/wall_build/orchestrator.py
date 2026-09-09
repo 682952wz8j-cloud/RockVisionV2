@@ -249,6 +249,7 @@ def run_wall_build(wall_id: str, root: Path, *, run_id: str | None = None, captu
             "metadataCandidates": discovery.get("metadataCandidates") or [],
             "modelCandidates": discovery.get("modelCandidates") or [],
             "dxfFiles": dxf_files,
+            "authoritativeRouteInputs": discovery.get("authoritativeRouteInputs") or [],
             "ingestStatus": (stage_statuses.get(Stage.INGEST.value) or {}).get("status"),
             "qualifyStatus": (stage_statuses.get(Stage.QUALIFY.value) or {}).get("status"),
             "stageStatuses": stage_statuses,

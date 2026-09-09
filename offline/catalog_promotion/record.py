@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 
+from offline.catalog_promotion.location import CatalogLocationError, decode_catalog_location
 from offline.localization_package.package_schema import is_release_id, is_safe_id
 from offline.localization_package.schema import ENVIRONMENTS
 
@@ -30,6 +31,7 @@ def promotion_record(
     promoted_at: str,
     release_manifest_sha256: str,
     environment: str | None = None,
+    catalog_location: dict | None = None,
 ) -> dict:
     payload = {
         "schema": PROMOTION_SCHEMA,
@@ -43,6 +45,11 @@ def promotion_record(
         if environment not in ENVIRONMENTS:
             raise PromotionRecordError("PROMOTION_ENVIRONMENT_INVALID", "invalid environment")
         payload["environment"] = environment
+    if catalog_location is not None:
+        try:
+            payload["catalogLocation"] = decode_catalog_location(catalog_location)
+        except CatalogLocationError as exc:
+            raise PromotionRecordError("CATALOG_LOCATION_INVALID", str(exc)) from exc
     return payload
 
 
@@ -79,6 +86,11 @@ def decode_promotion_record(
     if release_id is not None and rec_release != release_id:
         raise PromotionRecordError("PROMOTION_IDENTITY_CONFLICT", "promotion releaseId mismatch")
     _decoded_environment(payload)
+    if "catalogLocation" in payload:
+        try:
+            payload["catalogLocation"] = decode_catalog_location(payload.get("catalogLocation"))
+        except CatalogLocationError as exc:
+            raise PromotionRecordError("CATALOG_LOCATION_INVALID", str(exc)) from exc
     return payload
 
 

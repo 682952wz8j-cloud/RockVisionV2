@@ -1116,7 +1116,7 @@ final class CloudCatalogDiscoveryInstallTests: XCTestCase {
     func testSyntheticWallIsNeverAutomaticallySelectedAsLocalizationSource() throws {
         let processor = OpenCVFrameProcessor()
         #if DEBUG
-        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "jinshidongLocalTest")
+        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "productionCloud")
         #else
         throw XCTSkip("Only meaningful in DEBUG test builds.")
         #endif
