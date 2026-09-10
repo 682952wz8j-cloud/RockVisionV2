@@ -131,6 +131,13 @@ final class ProductionPathTests: XCTestCase {
         XCTAssertTrue(appear.contains("productionRuntime.start()"))
         XCTAssertFalse(appear.contains("selectReferenceSourceJinshidongLocalTest()"))
         XCTAssertFalse(appear.contains("selectReferenceSourceCloudCurrentJiulongfengDevR000001()"))
+        let api = try readHostSource("RockVision/Features/Cloud/CloudAPIConfiguration.swift")
+        XCTAssertTrue(api.contains("https://api.cragpal.com"))
+        XCTAssertTrue(api.contains("static let `default` = CloudAPIConfiguration.production"))
+        let releaseDefault = String(api.components(separatedBy: "#else").last!.components(separatedBy: "#endif")[0])
+        XCTAssertTrue(releaseDefault.contains("CloudAPIConfiguration.production"))
+        XCTAssertFalse(releaseDefault.contains("124.223.178.91"))
+        XCTAssertFalse(releaseDefault.contains("developmentTemporaryHTTP"))
     }
 
     private func makeProductionStore(

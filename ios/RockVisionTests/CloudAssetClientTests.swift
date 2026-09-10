@@ -394,7 +394,19 @@ final class CloudAssetClientTests: XCTestCase {
         let client = CloudAPIClient(configuration: custom, transport: MockCloudTransport())
         XCTAssertEqual(try client.catalogURL().absoluteString, "https://example.invalid\(catalogDiscoveryPath)")
         XCTAssertEqual(CloudAPIConfiguration.production.baseURL, CloudAPIConfiguration.productionHTTPSURL)
+        XCTAssertEqual(CloudAPIConfiguration.productionHTTPSURL.absoluteString, "https://api.cragpal.com")
         XCTAssertNotEqual(CloudAPIConfiguration.production.baseURL, CloudAPIConfiguration.developmentTemporaryHTTPURL)
+        XCTAssertFalse(CloudAPIConfiguration.productionHTTPSURL.absoluteString.contains("124.223.178.91"))
+        let source = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("RockVision/Features/Cloud/CloudAPIConfiguration.swift")
+        )
+        let releaseDefault = source.components(separatedBy: "#else").last!.components(separatedBy: "#endif")[0]
+        XCTAssertTrue(releaseDefault.contains("CloudAPIConfiguration.production"))
+        XCTAssertFalse(releaseDefault.contains("developmentTemporaryHTTP"))
+        XCTAssertFalse(releaseDefault.contains("124.223.178.91"))
     }
 
     func testHTTPStatusIsNotSwallowedAsEmpty() async {

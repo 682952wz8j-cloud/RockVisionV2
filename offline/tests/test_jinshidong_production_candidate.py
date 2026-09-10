@@ -122,26 +122,24 @@ class JinshidongProductionCandidateTests(unittest.TestCase):
             self.assertEqual(routes["releaseId"], PRODUCTION_RELEASE_ID)
             self.assertEqual(routes["coordinateFrame"], "WallMetricMeters")
 
-    def test_live_cloud_does_not_yet_contain_jinshidong(self) -> None:
+    def test_live_production_catalog_projects_jinshidong_location(self) -> None:
         try:
             with urllib.request.urlopen(f"{LIVE}/v1/walls", timeout=10) as response:
                 production = json.loads(response.read().decode("utf-8"))
-            with urllib.request.urlopen(f"{LIVE}/v1/debug/walls", timeout=10) as response:
-                debug = json.loads(response.read().decode("utf-8"))
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
             self.skipTest("live cloud catalog not reachable")
-        prod_ids = {item["wallId"] for item in production.get("walls", [])}
-        debug_ids = {item["wallId"] for item in debug.get("walls", [])}
-        self.assertNotIn(JINSHIDONG_WALL_ID, prod_ids)
-        self.assertNotIn(JINSHIDONG_WALL_ID, debug_ids)
-        try:
-            urllib.request.urlopen(
-                f"{LIVE}/v1/walls/{JINSHIDONG_WALL_ID}/releases/{PRODUCTION_RELEASE_ID}/manifest",
-                timeout=10,
-            )
-            self.fail("live exact Jinshidong r000001 should be 404 until publish")
-        except urllib.error.HTTPError as exc:
-            self.assertEqual(exc.code, 404)
+        entry = next((item for item in production.get("walls", []) if item.get("wallId") == JINSHIDONG_WALL_ID), None)
+        self.assertIsNotNone(entry)
+        assert entry is not None
+        self.assertEqual(entry["name"], "金狮洞")
+        self.assertEqual(entry["latestReleaseId"], PRODUCTION_RELEASE_ID)
+        self.assertEqual(entry["catalogLocation"], JINSHIDONG_CATALOG_LOCATION)
+        chosen = select_wall_id(
+            latitude_deg=JINSHIDONG_CATALOG_LOCATION["latitudeDeg"],
+            longitude_deg=JINSHIDONG_CATALOG_LOCATION["longitudeDeg"],
+            walls=production.get("walls", []),
+        )
+        self.assertEqual(chosen, JINSHIDONG_WALL_ID)
 
     def test_publish_would_write_four_assets_and_one_promotion_record(self) -> None:
         keys = [

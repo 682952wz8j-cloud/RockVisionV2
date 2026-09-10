@@ -515,6 +515,28 @@ class ImmutablePromotionFakeStoreTests(unittest.TestCase):
         self.assertEqual(second, 0)
         self.assertEqual(store.absent_puts, [published_promotion_key(WALL, RELEASE)])
 
+    def test_promote_writes_catalog_location_and_cli_reads_jinshidong_package(self) -> None:
+        from offline.catalog_promotion.cli import _catalog_location_from_package
+        from offline.catalog_promotion.location import JINSHIDONG_CATALOG_LOCATION
+
+        loc = _catalog_location_from_package("wall_jinshidong_01", "r000001")
+        self.assertEqual(loc, JINSHIDONG_CATALOG_LOCATION)
+        self.assertIsNone(_catalog_location_from_package(WALL, RELEASE))
+        store = FakeObjectStore()
+        seed_release(store)
+        result = promote_localization_release(
+            wall_id=WALL,
+            release_id=RELEASE,
+            name=NAME,
+            approve=True,
+            store=store,
+            promoted_at=WHEN,
+            catalog_location=JINSHIDONG_CATALOG_LOCATION,
+        )
+        self.assertTrue(result.ok)
+        payload = json.loads(store.objects[published_promotion_key(WALL, RELEASE)].decode("utf-8"))
+        self.assertEqual(payload["catalogLocation"], JINSHIDONG_CATALOG_LOCATION)
+
     def test_rockvision_cli_requires_name_and_approve(self) -> None:
         spec = importlib.util.spec_from_file_location("rockvision_tools_cli_promo", ROOT / "tools" / "rockvision.py")
         mod = importlib.util.module_from_spec(spec)

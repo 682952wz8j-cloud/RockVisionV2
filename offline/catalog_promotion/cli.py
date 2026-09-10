@@ -7,8 +7,11 @@ Does not write published/catalog.json.
 
 from __future__ import annotations
 
+import json
 import os
+from pathlib import Path
 
+from offline.localization_package.layout import package_dir, package_json_path
 from offline.publisher.config import PublisherConfigError, load_publisher_config, redact_text, resolve_env_file
 from offline.publisher.keys import PublisherKeyError, published_promotion_key
 from offline.publisher.store import PromotionStore
@@ -16,6 +19,8 @@ from offline.publisher.tencent_promotion_store import TencentPromotionStore
 
 from .pipeline import PromotionResult, promote_localization_release
 from .schema import TERMINAL_SUCCESS
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def run_promote_localization_release(
@@ -48,6 +53,9 @@ def run_promote_localization_release(
     print(f"wallId: {wall_id}")
     print(f"releaseId: {release_id}")
     print(f"name: {name}")
+    location = _catalog_location_from_package(wall_id, release_id)
+    if location is not None:
+        print(f"catalogLocation: {json.dumps(location, ensure_ascii=False)}")
     print("PROMOTION_APPROVED: YES")
     try:
         print(f"PROMOTION_KEY: {published_promotion_key(wall_id, release_id)}")
@@ -70,9 +78,22 @@ def run_promote_localization_release(
         name=name,
         approve=True,
         store=store,
+        catalog_location=_catalog_location_from_package(wall_id, release_id),
     )
     _print_result(result, env)
     return 0 if result.state in {item.value for item in TERMINAL_SUCCESS} else 1
+
+
+def _catalog_location_from_package(wall_id: str, release_id: str) -> dict | None:
+    path = package_json_path(package_dir(_REPO_ROOT, wall_id, release_id))
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    location = payload.get("catalogLocation")
+    return location if isinstance(location, dict) else None
 
 
 def _print_result(result: PromotionResult, environ: dict[str, str]) -> None:
