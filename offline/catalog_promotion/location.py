@@ -18,6 +18,22 @@ JINSHIDONG_CATALOG_LOCATION = {
     "altitudeMeters": 211.89499999933113,
 }
 
+# Frozen Jiulongfeng catalog location: UTM 50N SRS origin from the validated
+# S_wall_colmap wallLocalOrigin, converted with utm_to_geographic. Coarse
+# wall selection only. Not a pose.
+JIULONGFENG_WALL_ID = "wall_jiulongfeng_01"
+JIULONGFENG_DISPLAY_NAME = "九龙峰"
+JIULONGFENG_UTM_ZONE = 50
+JIULONGFENG_SRS_ORIGIN_EASTING = 597786.8584244546
+JIULONGFENG_SRS_ORIGIN_NORTHING = 3333597.1281958264
+JIULONGFENG_SRS_ORIGIN_ELLH = 352.50399999973473
+JIULONGFENG_CATALOG_LOCATION = {
+    "purpose": CATALOG_LOCATION_PURPOSE,
+    "latitudeDeg": 30.12974461019837,
+    "longitudeDeg": 118.01518161700322,
+    "altitudeMeters": JIULONGFENG_SRS_ORIGIN_ELLH,
+}
+
 
 class CatalogLocationError(ValueError):
     def __init__(self, code: str, message: str):

@@ -40,6 +40,29 @@ final class ProductionPathTests: XCTestCase {
         XCTAssertTrue(routes.allSatisfy { !$0.developmentValidationOnly })
     }
 
+    func testProductionSim3AndRoutesLoadFromJiulongfengCandidateArtifacts() throws {
+        let sim3URL = try candidateURL("assets/s-wall-colmap", wallId: JiulongfengCatalogLocation.wallId)
+        let routesURL = try candidateURL("assets/wall-routes", wallId: JiulongfengCatalogLocation.wallId)
+        let sim3 = try ProductionSim3Loader.load(from: sim3URL)
+        XCTAssertEqual(sim3.status, "VALIDATED")
+        XCTAssertEqual(sim3.scale, 3.19764417024824, accuracy: 1e-9)
+        XCTAssertEqual(sim3.scale, PnPConfig.expectedSim3Scale, accuracy: 1e-9)
+        let routes = try XCTUnwrap(
+            VerifiedFrozenRoute.loadProductionAsset(
+                from: routesURL,
+                expectedWallId: JiulongfengCatalogLocation.wallId,
+                expectedReleaseId: JiulongfengCatalogLocation.releaseId
+            )
+        )
+        XCTAssertEqual(routes.count, 1)
+        XCTAssertEqual(routes.map(\.routeId), [JiulongfengCatalogLocation.routeId])
+        XCTAssertEqual(routes[0].routeName, "白墙测试线")
+        XCTAssertEqual(routes[0].polylineSha256, "ff6ff3ee58303634d369b919284ee8c827a80eb57a9403004614cda6194d2f99")
+        XCTAssertNotEqual(routes[0].routeId, VerifiedFrozenRoute.expectedRouteId)
+        XCTAssertTrue(routes.allSatisfy { $0.hashVerified })
+        XCTAssertTrue(routes.allSatisfy { !$0.developmentValidationOnly })
+    }
+
     @MainActor
     func testInjectedJinshidongGPSSelectsWallAndLoadsProductionRelease() async throws {
         let (service, _) = try makeProductionStore(
@@ -111,6 +134,53 @@ final class ProductionPathTests: XCTestCase {
         XCTAssertEqual(processor.referenceAssetProvenance.assetState, "unavailable")
     }
 
+    @MainActor
+    func testInjectedJiulongfengGPSSelectsWallAndLoadsProductionRelease() async throws {
+        let (service, _) = try makeProductionStore(
+            wallId: JiulongfengCatalogLocation.wallId,
+            releaseId: JiulongfengCatalogLocation.releaseId,
+            routeId: JiulongfengCatalogLocation.routeId,
+            routeName: "白墙测试线"
+        )
+        let processor = OpenCVFrameProcessor()
+        let runtime = ProductionRuntimeController()
+        runtime.processor = processor
+        runtime.serviceOverride = service
+        runtime.injectedCatalog = WallCatalog(
+            schema: CloudAssetSchema.catalog,
+            walls: [
+                WallCatalogEntry(
+                    wallId: JinshidongCatalogLocation.wallId,
+                    name: JinshidongCatalogLocation.displayName,
+                    latestReleaseId: JinshidongCatalogLocation.releaseId,
+                    environment: .production,
+                    catalogLocation: JinshidongCatalogLocation.location
+                ),
+                WallCatalogEntry(
+                    wallId: JiulongfengCatalogLocation.wallId,
+                    name: JiulongfengCatalogLocation.displayName,
+                    latestReleaseId: JiulongfengCatalogLocation.releaseId,
+                    environment: .production,
+                    catalogLocation: JiulongfengCatalogLocation.location
+                )
+            ]
+        )
+        runtime.injectedCoordinate = (
+            JiulongfengCatalogLocation.location.latitudeDeg,
+            JiulongfengCatalogLocation.location.longitudeDeg
+        )
+        await runtime.start()
+        XCTAssertEqual(runtime.wallId, JiulongfengCatalogLocation.wallId)
+        XCTAssertTrue(runtime.cloudAssetsLoaded)
+        XCTAssertEqual(processor.referenceAssetProvenance.source, "cloud")
+        XCTAssertEqual(processor.referenceAssetProvenance.wallId, JiulongfengCatalogLocation.wallId)
+        XCTAssertEqual(processor.referenceAssetProvenance.releaseId, JiulongfengCatalogLocation.releaseId)
+        XCTAssertEqual(processor.referenceAssetProvenance.assetState, "available")
+        #if DEBUG
+        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "productionCloud")
+        #endif
+    }
+
     func testProductionPathDoesNotReadBundleSim3OrLocalTestDefaults() throws {
         let processor = try readHostSource("RockVision/Features/OpenCV/OpenCVFrameProcessor.swift")
         XCTAssertTrue(processor.contains("desiredReferenceSourceMode: ReferenceSourceMode = .productionCloudUnselected"))
@@ -140,9 +210,159 @@ final class ProductionPathTests: XCTestCase {
         XCTAssertFalse(releaseDefault.contains("developmentTemporaryHTTP"))
     }
 
+    @MainActor
+    func testLiveHTTPSReleaseProductionDiscovery() async throws {
+        #if !LIVE_PRODUCTION_HTTPS
+        throw XCTSkip("opt-in live HTTPS production discovery")
+        #else
+        executionTimeAllowance = 600
+        XCTAssertEqual(CloudAPIConfiguration.production.baseURL.absoluteString, "https://api.cragpal.com")
+        let catalogURL = CloudAPIConfiguration.productionHTTPSURL.appending(path: "v1/walls")
+        let (catalogData, catalogResponse) = try await URLSession.shared.data(from: catalogURL)
+        XCTAssertEqual((catalogResponse as? HTTPURLResponse)?.statusCode, 200)
+        let catalog = CloudCatalogAudience.production.filter(try CloudAssetContract.decodeCatalog(catalogData))
+        let location = JinshidongCatalogLocation.location
+        let selected = try XCTUnwrap(
+            WallCandidateSelector.selectWallId(
+                latitude: location.latitudeDeg,
+                longitude: location.longitudeDeg,
+                catalog: catalog
+            )
+        )
+        XCTAssertEqual(selected, JinshidongCatalogLocation.wallId)
+        let entry = try XCTUnwrap(catalog.walls.first { $0.wallId == selected })
+        XCTAssertEqual(entry.name, JinshidongCatalogLocation.displayName)
+        XCTAssertEqual(entry.latestReleaseId, JinshidongCatalogLocation.releaseId)
+        XCTAssertEqual(entry.environment, .production)
+        XCTAssertEqual(entry.catalogLocation, location)
+
+        let store = CloudReleaseStore(rootURL: uniqueRoot())
+        let service = CloudAssetService(
+            client: CloudAPIClient(configuration: .production),
+            store: store
+        )
+        let installed = try await service.installRelease(wallId: selected, releaseId: entry.latestReleaseId)
+        XCTAssertEqual(installed.release.wallId, selected)
+        XCTAssertEqual(installed.release.releaseId, JinshidongCatalogLocation.releaseId)
+        XCTAssertTrue(installed.optionalFailures.isEmpty)
+
+        let sim3Asset = try CloudStage3AssetSemantics.requiredSim3Asset(in: installed.release.manifest)
+        let routesAsset = try XCTUnwrap(
+            try CloudStage3AssetSemantics.productionRoutesAsset(in: installed.release.manifest)
+        )
+        let sim3 = try ProductionSim3Loader.load(from: try service.localAssetURL(wallId: selected, assetId: sim3Asset.assetId))
+        XCTAssertEqual(sim3.status, "VALIDATED")
+        XCTAssertEqual(sim3.scale, 3.7780058545133315, accuracy: 1e-9)
+        let routes = try XCTUnwrap(
+            VerifiedFrozenRoute.loadProductionAsset(
+                from: try service.localAssetURL(wallId: selected, assetId: routesAsset.assetId),
+                expectedWallId: selected,
+                expectedReleaseId: installed.release.releaseId
+            )
+        )
+        XCTAssertEqual(routes.map(\.routeId), [
+            "jinshidong_lucky_baby",
+            "jinshidong_shui_tai_shen",
+            "jinshidong_mei_xiang_hao",
+            "jinshidong_long_zhua_shou"
+        ])
+        XCTAssertTrue(routes.allSatisfy(\.hashVerified))
+
+        let processor = OpenCVFrameProcessor()
+        let runtime = ProductionRuntimeController()
+        runtime.processor = processor
+        runtime.serviceOverride = service
+        runtime.injectedCatalog = catalog
+        runtime.injectedCoordinate = (location.latitudeDeg, location.longitudeDeg)
+        await runtime.start()
+        XCTAssertNil(runtime.lastError)
+        XCTAssertEqual(runtime.wallId, selected)
+        XCTAssertTrue(runtime.cloudAssetsLoaded)
+        XCTAssertEqual(processor.referenceAssetProvenance.source, "cloud")
+        XCTAssertEqual(processor.referenceAssetProvenance.wallId, selected)
+        XCTAssertEqual(processor.referenceAssetProvenance.releaseId, JinshidongCatalogLocation.releaseId)
+        XCTAssertEqual(processor.referenceAssetProvenance.assetState, "available")
+        XCTAssertEqual(processor.localTestRouteLegend.count, 4)
+        #endif
+    }
+
+    @MainActor
+    func testLiveHTTPSJiulongfengReleaseProductionDiscovery() async throws {
+        #if !LIVE_PRODUCTION_HTTPS
+        throw XCTSkip("opt-in live HTTPS production discovery")
+        #else
+        executionTimeAllowance = 600
+        XCTAssertEqual(CloudAPIConfiguration.production.baseURL.absoluteString, "https://api.cragpal.com")
+        let catalogURL = CloudAPIConfiguration.productionHTTPSURL.appending(path: "v1/walls")
+        let (catalogData, catalogResponse) = try await URLSession.shared.data(from: catalogURL)
+        XCTAssertEqual((catalogResponse as? HTTPURLResponse)?.statusCode, 200)
+        let catalog = CloudCatalogAudience.production.filter(try CloudAssetContract.decodeCatalog(catalogData))
+        let location = JiulongfengCatalogLocation.location
+        let selected = try XCTUnwrap(
+            WallCandidateSelector.selectWallId(
+                latitude: location.latitudeDeg,
+                longitude: location.longitudeDeg,
+                catalog: catalog
+            )
+        )
+        XCTAssertEqual(selected, JiulongfengCatalogLocation.wallId)
+        let entry = try XCTUnwrap(catalog.walls.first { $0.wallId == selected })
+        XCTAssertEqual(entry.name, JiulongfengCatalogLocation.displayName)
+        XCTAssertEqual(entry.latestReleaseId, JiulongfengCatalogLocation.releaseId)
+        XCTAssertEqual(entry.environment, .production)
+        XCTAssertEqual(entry.catalogLocation, location)
+
+        let store = CloudReleaseStore(rootURL: uniqueRoot())
+        let service = CloudAssetService(
+            client: CloudAPIClient(configuration: .production),
+            store: store
+        )
+        let installed = try await service.installRelease(wallId: selected, releaseId: entry.latestReleaseId)
+        XCTAssertEqual(installed.release.wallId, selected)
+        XCTAssertEqual(installed.release.releaseId, JiulongfengCatalogLocation.releaseId)
+        XCTAssertTrue(installed.optionalFailures.isEmpty)
+
+        let sim3Asset = try CloudStage3AssetSemantics.requiredSim3Asset(in: installed.release.manifest)
+        let routesAsset = try XCTUnwrap(
+            try CloudStage3AssetSemantics.productionRoutesAsset(in: installed.release.manifest)
+        )
+        let sim3 = try ProductionSim3Loader.load(from: try service.localAssetURL(wallId: selected, assetId: sim3Asset.assetId))
+        XCTAssertEqual(sim3.status, "VALIDATED")
+        XCTAssertEqual(sim3.scale, 3.19764417024824, accuracy: 1e-9)
+        let routes = try XCTUnwrap(
+            VerifiedFrozenRoute.loadProductionAsset(
+                from: try service.localAssetURL(wallId: selected, assetId: routesAsset.assetId),
+                expectedWallId: selected,
+                expectedReleaseId: installed.release.releaseId
+            )
+        )
+        XCTAssertEqual(routes.map(\.routeId), [JiulongfengCatalogLocation.routeId])
+        XCTAssertEqual(routes[0].routeName, "白墙测试线")
+        XCTAssertTrue(routes.allSatisfy(\.hashVerified))
+
+        let processor = OpenCVFrameProcessor()
+        let runtime = ProductionRuntimeController()
+        runtime.processor = processor
+        runtime.serviceOverride = service
+        runtime.injectedCatalog = catalog
+        runtime.injectedCoordinate = (location.latitudeDeg, location.longitudeDeg)
+        await runtime.start()
+        XCTAssertNil(runtime.lastError)
+        XCTAssertEqual(runtime.wallId, selected)
+        XCTAssertTrue(runtime.cloudAssetsLoaded)
+        XCTAssertEqual(processor.referenceAssetProvenance.source, "cloud")
+        XCTAssertEqual(processor.referenceAssetProvenance.wallId, selected)
+        XCTAssertEqual(processor.referenceAssetProvenance.releaseId, JiulongfengCatalogLocation.releaseId)
+        XCTAssertEqual(processor.referenceAssetProvenance.assetState, "available")
+        XCTAssertEqual(processor.localTestRouteLegend.count, 1)
+        #endif
+    }
+
     private func makeProductionStore(
         wallId: String,
-        releaseId: String
+        releaseId: String,
+        routeId: String = "jinshidong_lucky_baby",
+        routeName: String = "Lucky Baby"
     ) throws -> (service: CloudAssetService, store: CloudReleaseStore) {
         let descriptors = try makeDescriptorsPayload()
         let landmarks = try makeLandmarksJSONPayload(wallId: wallId)
@@ -156,8 +376,8 @@ final class ProductionPathTests: XCTestCase {
             coordinateFrame: "WallMetricMeters",
             routes: [
                 VerifiedFrozenRoute.ProductionRoute(
-                    routeId: "jinshidong_lucky_baby",
-                    routeName: "Lucky Baby",
+                    routeId: routeId,
+                    routeName: routeName,
                     grade: "5.7",
                     quickdraws: "3+2",
                     source: VerifiedFrozenRoute.ProductionRouteSource(
@@ -297,12 +517,12 @@ final class ProductionPathTests: XCTestCase {
         return try JSONSerialization.data(withJSONObject: payload)
     }
 
-    private func candidateURL(_ relative: String) throws -> URL {
+    private func candidateURL(_ relative: String, wallId: String = JinshidongCatalogLocation.wallId) throws -> URL {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("offline/packages/wall_jinshidong_01/r000001")
+            .appendingPathComponent("offline/packages/\(wallId)/r000001")
             .appendingPathComponent(relative)
         guard FileManager.default.isReadableFile(atPath: url.path) else {
             throw XCTSkip("production candidate artifact missing: \(relative)")

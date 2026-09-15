@@ -18,6 +18,22 @@ final class WallCandidateSelectorTests: XCTestCase {
         )
     }
 
+    func testJiulongfengCoordinateSelectsJiulongfeng() {
+        let catalog = WallCatalog(
+            schema: CloudAssetSchema.catalog,
+            walls: [jinshidongEntry(), jiulongfengEntry()]
+        )
+        let location = JiulongfengCatalogLocation.location
+        XCTAssertEqual(
+            WallCandidateSelector.selectWallId(
+                latitude: location.latitudeDeg,
+                longitude: location.longitudeDeg,
+                catalog: catalog
+            ),
+            JiulongfengCatalogLocation.wallId
+        )
+    }
+
     func testFarAwayGPSSelectsNothing() {
         let catalog = WallCatalog(
             schema: CloudAssetSchema.catalog,
@@ -107,6 +123,16 @@ final class WallCandidateSelectorTests: XCTestCase {
             latestReleaseId: JinshidongCatalogLocation.releaseId,
             environment: .production,
             catalogLocation: JinshidongCatalogLocation.location
+        )
+    }
+
+    private func jiulongfengEntry() -> WallCatalogEntry {
+        WallCatalogEntry(
+            wallId: JiulongfengCatalogLocation.wallId,
+            name: JiulongfengCatalogLocation.displayName,
+            latestReleaseId: JiulongfengCatalogLocation.releaseId,
+            environment: .production,
+            catalogLocation: JiulongfengCatalogLocation.location
         )
     }
 

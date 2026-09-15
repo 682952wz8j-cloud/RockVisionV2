@@ -12,7 +12,8 @@ echo
 
 echo "2. Issue TLS certificate (HTTP-01)"
 sudo mkdir -p /var/www/certbot
-sudo certbot certonly --webroot -w /var/www/certbot -d "${DOMAIN}" --agree-tos --non-interactive
+sudo certbot certonly --webroot -w /var/www/certbot -d "${DOMAIN}" \
+  --agree-tos --non-interactive --register-unsafely-without-email --keep-until-expiring
 
 echo "3. Enable Nginx HTTPS"
 test -f "${LIVE}/fullchain.pem"

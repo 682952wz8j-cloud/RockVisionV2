@@ -36,3 +36,12 @@ class ProductionEdgeTests(unittest.TestCase):
         self.assertNotIn("developmentTemporaryHTTP", release_default)
         self.assertNotIn("124.223.178.91", release_default)
         self.assertNotIn("JinshidongLocalTest", release_default)
+
+    def test_enable_https_script_uses_webroot_and_hostname(self) -> None:
+        script = (ROOT / "deploy" / "nginx" / "enable-https.sh").read_text(encoding="utf-8")
+        self.assertIn("DOMAIN=api.cragpal.com", script)
+        self.assertIn("certbot certonly --webroot", script)
+        self.assertIn("-w /var/www/certbot", script)
+        self.assertIn("-d \"${DOMAIN}\"", script)
+        self.assertIn("api.cragpal.com.ssl.conf.template", script)
+        self.assertIn("systemctl reload nginx", script)

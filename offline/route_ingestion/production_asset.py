@@ -15,6 +15,7 @@ EXPECTED_JINSHIDONG_ROUTE_IDS = (
     "jinshidong_mei_xiang_hao",
     "jinshidong_long_zhua_shou",
 )
+EXPECTED_JIULONGFENG_ROUTE_IDS = ("jiulongfeng_bai_qiang_ce_shi",)
 
 
 class RouteAssetError(ValueError):
@@ -35,8 +36,10 @@ def build_production_route_asset(
     for ingested in ingested_records:
         routes.append(_runtime_route(ingested, wall_id=wall_id, run_id=run_id, fingerprint=model_fingerprint))
     route_ids = tuple(item["routeId"] for item in routes)
-    if route_ids != EXPECTED_JINSHIDONG_ROUTE_IDS and wall_id == "wall_jinshidong_01":
+    if wall_id == "wall_jinshidong_01" and route_ids != EXPECTED_JINSHIDONG_ROUTE_IDS:
         raise RouteAssetError("ROUTE_ASSET_INVALID", "Jinshidong production routes must be the frozen 4-route set")
+    if wall_id == "wall_jiulongfeng_01" and route_ids != EXPECTED_JIULONGFENG_ROUTE_IDS:
+        raise RouteAssetError("ROUTE_ASSET_INVALID", "Jiulongfeng production routes must be the frozen white-wall line")
     return {
         "schema": ROUTE_ASSET_SCHEMA,
         "wallId": wall_id,

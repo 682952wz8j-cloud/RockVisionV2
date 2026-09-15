@@ -4,6 +4,9 @@ import unittest
 
 from offline.catalog_promotion.catalog import catalog_entry
 from offline.catalog_promotion.location import (
+    JIULONGFENG_CATALOG_LOCATION,
+    JIULONGFENG_DISPLAY_NAME,
+    JIULONGFENG_WALL_ID,
     JINSHIDONG_CATALOG_LOCATION,
     JINSHIDONG_WALL_ID,
     MAX_CANDIDATE_DISTANCE_METERS,
@@ -87,3 +90,39 @@ class WallCandidateSelectorTests(unittest.TestCase):
         self.assertEqual(entry["catalogLocation"]["purpose"], "wall_candidate_selection_only")
         self.assertEqual(entry["catalogLocation"]["latitudeDeg"], JINSHIDONG_CATALOG_LOCATION["latitudeDeg"])
         self.assertEqual(MAX_CANDIDATE_DISTANCE_METERS, 2500.0)
+
+    def test_jiulongfeng_location_selects_jiulongfeng_not_jinshidong(self) -> None:
+        catalog = {
+            "walls": [
+                catalog_entry(
+                    wall_id=JINSHIDONG_WALL_ID,
+                    name="金狮洞",
+                    latest_release_id="r000001",
+                    environment=ENVIRONMENT_PRODUCTION,
+                    catalog_location=JINSHIDONG_CATALOG_LOCATION,
+                ),
+                catalog_entry(
+                    wall_id=JIULONGFENG_WALL_ID,
+                    name=JIULONGFENG_DISPLAY_NAME,
+                    latest_release_id="r000001",
+                    environment=ENVIRONMENT_PRODUCTION,
+                    catalog_location=JIULONGFENG_CATALOG_LOCATION,
+                ),
+            ]
+        }
+        loc = JIULONGFENG_CATALOG_LOCATION
+        chosen = select_wall_id(
+            latitude_deg=loc["latitudeDeg"],
+            longitude_deg=loc["longitudeDeg"],
+            walls=catalog["walls"],
+        )
+        self.assertEqual(chosen, JIULONGFENG_WALL_ID)
+        self.assertGreater(
+            haversine_meters(
+                loc["latitudeDeg"],
+                loc["longitudeDeg"],
+                JINSHIDONG_CATALOG_LOCATION["latitudeDeg"],
+                JINSHIDONG_CATALOG_LOCATION["longitudeDeg"],
+            ),
+            MAX_CANDIDATE_DISTANCE_METERS,
+        )

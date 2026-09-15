@@ -63,6 +63,19 @@ enum JinshidongCatalogLocation {
     )
 }
 
+enum JiulongfengCatalogLocation {
+    static let wallId = "wall_jiulongfeng_01"
+    static let displayName = "九龙峰"
+    static let releaseId = "r000001"
+    static let routeId = "jiulongfeng_bai_qiang_ce_shi"
+    static let location = WallCatalogLocation(
+        purpose: WallCatalogLocation.purpose,
+        latitudeDeg: 30.12974461019837,
+        longitudeDeg: 118.01518161700322,
+        altitudeMeters: 352.50399999973473
+    )
+}
+
 /// GPS coarse wall selection only. Does not import Core Location.
 enum WallCandidateSelector {
     static let maxDistanceMeters = 2500.0
