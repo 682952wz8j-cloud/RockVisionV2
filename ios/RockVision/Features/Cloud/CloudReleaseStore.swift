@@ -210,6 +210,44 @@ final class CloudReleaseStore: @unchecked Sendable {
         }
     }
 
+    /// Read-only inventory for installer diagnostics. Does not mutate staging.
+    func stagingInventory(wallId: String, releaseId: String) -> [CloudInstallStagingFile] {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let staging = try? stagingURL(wallId: wallId, releaseId: releaseId) else {
+            return []
+        }
+        return inventory(at: staging)
+    }
+
+    private func inventory(at root: URL) -> [CloudInstallStagingFile] {
+        guard fileManager.fileExists(atPath: root.path) else {
+            return []
+        }
+        guard let enumerator = fileManager.enumerator(
+            at: root,
+            includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+        var files: [CloudInstallStagingFile] = []
+        let rootPath = root.path
+        for case let url as URL in enumerator {
+            let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+            guard values?.isRegularFile == true else { continue }
+            var relative = url.path
+            if relative.hasPrefix(rootPath) {
+                relative = String(relative.dropFirst(rootPath.count))
+                if relative.hasPrefix("/") {
+                    relative = String(relative.dropFirst())
+                }
+            }
+            files.append(CloudInstallStagingFile(path: relative, bytes: values?.fileSize ?? 0))
+        }
+        return files.sorted { $0.path < $1.path }
+    }
+
     /// Promotes a verified staging tree into a **new** immutable releaseId. Never replaces an existing same id.
     func activateVerifiedStaging(wallId: String, releaseId: String, manifest: WallManifest) throws -> LocalValidatedRelease {
         lock.lock()

@@ -17,13 +17,15 @@ final class ProductionRuntimeController: ObservableObject {
     private let locationProvider = WallLocationProvider()
 
     func start() async {
+        var service: CloudAssetService?
         do {
-            let service = try serviceOverride ?? CloudAssetService.default()
+            let resolved = try serviceOverride ?? CloudAssetService.default()
+            service = resolved
             let catalog: WallCatalog
             if let injectedCatalog {
                 catalog = injectedCatalog
             } else {
-                catalog = try await service.fetchCatalog()
+                catalog = try await resolved.fetchCatalog()
             }
             let coordinate: (latitude: Double, longitude: Double)
             if let injectedCoordinate {
@@ -49,9 +51,9 @@ final class ProductionRuntimeController: ObservableObject {
             }
             wallId = selected
             if injectedCatalog == nil {
-                _ = try await service.refreshAndInstall(wallId: selected)
+                _ = try await resolved.refreshAndInstall(wallId: selected)
             }
-            processor?.selectProductionCloudRelease(wallId: selected, service: service)
+            processor?.selectProductionCloudRelease(wallId: selected, service: resolved)
             let provenance = processor?.referenceAssetProvenance
             cloudAssetsLoaded = provenance?.source == "cloud"
                 && provenance?.wallId == selected
@@ -64,6 +66,7 @@ final class ProductionRuntimeController: ObservableObject {
         } catch {
             cloudAssetsLoaded = false
             lastError = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            service?.recordProductionRuntimeCatch(error)
         }
     }
 }

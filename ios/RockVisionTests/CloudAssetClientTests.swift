@@ -9,6 +9,7 @@ final class MockCloudTransport: CloudHTTPTransport, @unchecked Sendable {
     var assetBytes: [String: Data] = [:]
     var statusByPath: [String: Int] = [:]
     var networkError = false
+    var urlSessionErrorOnAssets: NSError?
     var failNetworkAfterAssetRequests: Int?
     private var assetRequestCount = 0
     private(set) var requestedPaths: [String] = []
@@ -23,6 +24,9 @@ final class MockCloudTransport: CloudHTTPTransport, @unchecked Sendable {
         requestedPaths.append(path)
         if path.contains("/assets/") {
             assetRequestCount += 1
+            if let nsError = urlSessionErrorOnAssets {
+                throw nsError
+            }
             if let limit = failNetworkAfterAssetRequests, assetRequestCount > limit {
                 throw CloudAssetError.network
             }
