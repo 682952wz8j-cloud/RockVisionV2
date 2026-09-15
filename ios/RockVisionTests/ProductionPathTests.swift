@@ -38,6 +38,24 @@ final class ProductionPathTests: XCTestCase {
         XCTAssertEqual(routes[0].polylineSha256, "9473023e60e9fd5a2003ead60d5e7134d0b1386e81b861457e1de569ae62b407")
         XCTAssertTrue(routes.allSatisfy { $0.hashVerified })
         XCTAssertTrue(routes.allSatisfy { !$0.developmentValidationOnly })
+        XCTAssertEqual(
+            ProductionRouteFieldCopy.displayLines(routes[0]),
+            ["Lucky Baby", "5.7", "🔗 3+2"]
+        )
+        XCTAssertEqual(
+            ProductionRouteFieldCopy.displayLines(routes[1]),
+            ["水太深", "5.12d", "🔗 6+2"]
+        )
+        XCTAssertEqual(
+            ProductionRouteFieldCopy.displayLines(routes[2]),
+            ["没想好", "5.11b", "🔗 7+2"]
+        )
+        XCTAssertEqual(
+            ProductionRouteFieldCopy.displayLines(routes[3]),
+            ["龙抓手", "5.11b", "🔗 5+2"]
+        )
+        XCTAssertTrue(routes.allSatisfy { $0.lengthMeters == nil })
+        XCTAssertTrue(routes.allSatisfy { !ProductionRouteFieldCopy.displayLines($0).contains { $0.hasSuffix(" m") } })
     }
 
     func testProductionSim3AndRoutesLoadFromJiulongfengCandidateArtifacts() throws {
@@ -57,10 +75,17 @@ final class ProductionPathTests: XCTestCase {
         XCTAssertEqual(routes.count, 1)
         XCTAssertEqual(routes.map(\.routeId), [JiulongfengCatalogLocation.routeId])
         XCTAssertEqual(routes[0].routeName, "白墙测试线")
+        XCTAssertEqual(routes[0].grade, "unspecified")
+        XCTAssertEqual(routes[0].displayDraws, "unspecified")
+        XCTAssertNil(routes[0].lengthMeters)
         XCTAssertEqual(routes[0].polylineSha256, "ff6ff3ee58303634d369b919284ee8c827a80eb57a9403004614cda6194d2f99")
         XCTAssertNotEqual(routes[0].routeId, VerifiedFrozenRoute.expectedRouteId)
         XCTAssertTrue(routes.allSatisfy { $0.hashVerified })
         XCTAssertTrue(routes.allSatisfy { !$0.developmentValidationOnly })
+        XCTAssertEqual(ProductionRouteFieldCopy.displayLines(routes[0]), ["白墙测试线"])
+        XCTAssertFalse(ProductionRouteFieldCopy.displayLines(routes[0]).contains("unspecified"))
+        XCTAssertFalse(ProductionRouteFieldCopy.displayLines(routes[0]).contains { $0.hasPrefix("🔗") })
+        XCTAssertFalse(ProductionRouteFieldCopy.displayLines(routes[0]).contains { $0.hasSuffix(" m") })
     }
 
     @MainActor
@@ -96,6 +121,20 @@ final class ProductionPathTests: XCTestCase {
         XCTAssertEqual(processor.referenceAssetProvenance.wallId, JinshidongCatalogLocation.wallId)
         XCTAssertEqual(processor.referenceAssetProvenance.releaseId, JinshidongCatalogLocation.releaseId)
         XCTAssertEqual(processor.referenceAssetProvenance.assetState, "available")
+        XCTAssertEqual(processor.productionFieldRoutes.map(\.routeId), ["jinshidong_lucky_baby"])
+        XCTAssertEqual(
+            ProductionRouteFieldCopy.displayLines(processor.productionFieldRoutes[0]),
+            ["Lucky Baby", "5.7", "🔗 3+2"]
+        )
+        XCTAssertEqual(
+            Stage5DebugHUDModel.diagnosticLine(
+                localization: processor.confirmationSnapshot.localization,
+                pnp: processor.pnpSnapshot,
+                wallId: runtime.wallId,
+                cloudAssetsLoaded: runtime.cloudAssetsLoaded
+            ),
+            "定位失败 | PnP — | — px | \(JinshidongCatalogLocation.wallId) | 云端已加载"
+        )
         #if DEBUG
         XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "productionCloud")
         #endif
@@ -132,6 +171,16 @@ final class ProductionPathTests: XCTestCase {
         XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "productionCloud")
         #endif
         XCTAssertEqual(processor.referenceAssetProvenance.assetState, "unavailable")
+        XCTAssertTrue(processor.productionFieldRoutes.isEmpty)
+        XCTAssertEqual(
+            Stage5DebugHUDModel.diagnosticLine(
+                localization: processor.confirmationSnapshot.localization,
+                pnp: processor.pnpSnapshot,
+                wallId: runtime.wallId,
+                cloudAssetsLoaded: runtime.cloudAssetsLoaded
+            ),
+            "定位失败 | PnP — | — px | — | 加载失败"
+        )
     }
 
     @MainActor
@@ -140,7 +189,9 @@ final class ProductionPathTests: XCTestCase {
             wallId: JiulongfengCatalogLocation.wallId,
             releaseId: JiulongfengCatalogLocation.releaseId,
             routeId: JiulongfengCatalogLocation.routeId,
-            routeName: "白墙测试线"
+            routeName: "白墙测试线",
+            grade: "unspecified",
+            quickdraws: "unspecified"
         )
         let processor = OpenCVFrameProcessor()
         let runtime = ProductionRuntimeController()
@@ -176,9 +227,196 @@ final class ProductionPathTests: XCTestCase {
         XCTAssertEqual(processor.referenceAssetProvenance.wallId, JiulongfengCatalogLocation.wallId)
         XCTAssertEqual(processor.referenceAssetProvenance.releaseId, JiulongfengCatalogLocation.releaseId)
         XCTAssertEqual(processor.referenceAssetProvenance.assetState, "available")
+        XCTAssertEqual(processor.productionFieldRoutes.map(\.routeId), [JiulongfengCatalogLocation.routeId])
+        XCTAssertEqual(
+            ProductionRouteFieldCopy.displayLines(processor.productionFieldRoutes[0]),
+            ["白墙测试线"]
+        )
+        XCTAssertEqual(
+            Stage5DebugHUDModel.diagnosticLine(
+                localization: processor.confirmationSnapshot.localization,
+                pnp: processor.pnpSnapshot,
+                wallId: runtime.wallId,
+                cloudAssetsLoaded: runtime.cloudAssetsLoaded
+            ),
+            "定位失败 | PnP — | — px | \(JiulongfengCatalogLocation.wallId) | 云端已加载"
+        )
         #if DEBUG
         XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "productionCloud")
         #endif
+    }
+
+    @MainActor
+    func testProductionWallSwitchClearsPreviousPackageRoutesAndHUD() async throws {
+        let (jinshidongService, _) = try makeProductionStore(
+            wallId: JinshidongCatalogLocation.wallId,
+            releaseId: JinshidongCatalogLocation.releaseId
+        )
+        let (jiulongfengService, _) = try makeProductionStore(
+            wallId: JiulongfengCatalogLocation.wallId,
+            releaseId: JiulongfengCatalogLocation.releaseId,
+            routeId: JiulongfengCatalogLocation.routeId,
+            routeName: "白墙测试线",
+            grade: "unspecified",
+            quickdraws: "unspecified"
+        )
+        let processor = OpenCVFrameProcessor()
+        let runtime = ProductionRuntimeController()
+        runtime.processor = processor
+        runtime.injectedCatalog = bothWallsCatalog()
+
+        runtime.serviceOverride = jinshidongService
+        runtime.injectedCoordinate = (
+            JinshidongCatalogLocation.location.latitudeDeg,
+            JinshidongCatalogLocation.location.longitudeDeg
+        )
+        await runtime.start()
+        XCTAssertEqual(runtime.wallId, JinshidongCatalogLocation.wallId)
+        XCTAssertEqual(processor.productionFieldRoutes.map(\.routeId), ["jinshidong_lucky_baby"])
+        XCTAssertEqual(processor.localTestRouteLegend.map(\.routeId), ["jinshidong_lucky_baby"])
+
+        runtime.serviceOverride = jiulongfengService
+        runtime.injectedCoordinate = (
+            JiulongfengCatalogLocation.location.latitudeDeg,
+            JiulongfengCatalogLocation.location.longitudeDeg
+        )
+        await runtime.start()
+        XCTAssertEqual(runtime.wallId, JiulongfengCatalogLocation.wallId)
+        XCTAssertTrue(runtime.cloudAssetsLoaded)
+        XCTAssertEqual(processor.productionFieldRoutes.map(\.routeId), [JiulongfengCatalogLocation.routeId])
+        XCTAssertEqual(
+            ProductionRouteFieldCopy.displayLines(processor.productionFieldRoutes[0]),
+            ["白墙测试线"]
+        )
+        XCTAssertFalse(processor.productionFieldRoutes.contains { $0.routeId.hasPrefix("jinshidong_") })
+        XCTAssertEqual(processor.localTestRouteLegend.map(\.routeId), [JiulongfengCatalogLocation.routeId])
+        XCTAssertEqual(processor.routeRenderPlan, .empty)
+        XCTAssertEqual(processor.pnpSnapshot.inliers, "—")
+        XCTAssertEqual(processor.pnpSnapshot.reproj, "—")
+        XCTAssertEqual(processor.confirmationSnapshot.localization, ConfirmationConfig.localizationIdle)
+        XCTAssertEqual(
+            Stage5DebugHUDModel.diagnosticLine(
+                localization: processor.confirmationSnapshot.localization,
+                pnp: processor.pnpSnapshot,
+                wallId: runtime.wallId,
+                cloudAssetsLoaded: runtime.cloudAssetsLoaded
+            ),
+            "定位失败 | PnP — | — px | \(JiulongfengCatalogLocation.wallId) | 云端已加载"
+        )
+    }
+
+    @MainActor
+    func testLeavingProductionWallClearsPackageRoutesAndHUD() async throws {
+        let (service, _) = try makeProductionStore(
+            wallId: JinshidongCatalogLocation.wallId,
+            releaseId: JinshidongCatalogLocation.releaseId
+        )
+        let processor = OpenCVFrameProcessor()
+        let runtime = ProductionRuntimeController()
+        runtime.processor = processor
+        runtime.serviceOverride = service
+        runtime.injectedCatalog = bothWallsCatalog()
+        runtime.injectedCoordinate = (
+            JinshidongCatalogLocation.location.latitudeDeg,
+            JinshidongCatalogLocation.location.longitudeDeg
+        )
+        await runtime.start()
+        XCTAssertFalse(processor.productionFieldRoutes.isEmpty)
+
+        runtime.injectedCoordinate = (31.23, 121.47)
+        await runtime.start()
+        XCTAssertEqual(runtime.wallId, "—")
+        XCTAssertFalse(runtime.cloudAssetsLoaded)
+        XCTAssertTrue(processor.productionFieldRoutes.isEmpty)
+        XCTAssertTrue(processor.localTestRouteLegend.isEmpty)
+        XCTAssertEqual(processor.routeRenderPlan, .empty)
+        XCTAssertEqual(processor.pnpSnapshot.inliers, "—")
+        XCTAssertEqual(
+            Stage5DebugHUDModel.diagnosticLine(
+                localization: processor.confirmationSnapshot.localization,
+                pnp: processor.pnpSnapshot,
+                wallId: runtime.wallId,
+                cloudAssetsLoaded: runtime.cloudAssetsLoaded
+            ),
+            "定位失败 | PnP — | — px | — | 加载失败"
+        )
+    }
+
+    @MainActor
+    func testMissingOfficialRouteMetadataIsOmittedFromFieldCopy() async throws {
+        let (service, _) = try makeProductionStore(
+            wallId: "wall_example_01",
+            releaseId: "r000001",
+            routeId: "example_unnamed_meta",
+            routeName: "Example Route",
+            grade: "unspecified",
+            quickdraws: "n/a"
+        )
+        let processor = OpenCVFrameProcessor()
+        let runtime = ProductionRuntimeController()
+        runtime.processor = processor
+        runtime.serviceOverride = service
+        runtime.injectedCatalog = WallCatalog(
+            schema: CloudAssetSchema.catalog,
+            walls: [
+                WallCatalogEntry(
+                    wallId: "wall_example_01",
+                    name: "Example Wall",
+                    latestReleaseId: "r000001",
+                    environment: .production,
+                    catalogLocation: JinshidongCatalogLocation.location
+                )
+            ]
+        )
+        runtime.injectedCoordinate = (
+            JinshidongCatalogLocation.location.latitudeDeg,
+            JinshidongCatalogLocation.location.longitudeDeg
+        )
+        await runtime.start()
+        XCTAssertEqual(runtime.wallId, "wall_example_01")
+        XCTAssertEqual(processor.productionFieldRoutes.map(\.routeName), ["Example Route"])
+        XCTAssertEqual(ProductionRouteFieldCopy.displayLines(processor.productionFieldRoutes[0]), ["Example Route"])
+        XCTAssertFalse(ProductionRouteFieldCopy.displayLines(processor.productionFieldRoutes[0]).contains("unspecified"))
+        XCTAssertFalse(ProductionRouteFieldCopy.displayLines(processor.productionFieldRoutes[0]).contains { $0.hasPrefix("🔗") })
+        XCTAssertFalse(ProductionRouteFieldCopy.displayLines(processor.productionFieldRoutes[0]).contains { $0.hasSuffix(" m") })
+    }
+
+    @MainActor
+    func testOfficialLengthAppearsOnlyWhenPresentInPackage() async throws {
+        let (service, _) = try makeProductionStore(
+            wallId: "wall_example_01",
+            releaseId: "r000001",
+            routeId: "example_with_length",
+            routeName: "Measured Route",
+            grade: "5.10a",
+            quickdraws: "8",
+            lengthMeters: 18
+        )
+        let processor = OpenCVFrameProcessor()
+        let runtime = ProductionRuntimeController()
+        runtime.processor = processor
+        runtime.serviceOverride = service
+        runtime.injectedCatalog = WallCatalog(
+            schema: CloudAssetSchema.catalog,
+            walls: [
+                WallCatalogEntry(
+                    wallId: "wall_example_01",
+                    name: "Example Wall",
+                    latestReleaseId: "r000001",
+                    environment: .production,
+                    catalogLocation: JinshidongCatalogLocation.location
+                )
+            ]
+        )
+        runtime.injectedCoordinate = (
+            JinshidongCatalogLocation.location.latitudeDeg,
+            JinshidongCatalogLocation.location.longitudeDeg
+        )
+        await runtime.start()
+        XCTAssertEqual(
+            ProductionRouteFieldCopy.displayLines(processor.productionFieldRoutes[0]),
+            ["Measured Route", "5.10a", "18 m", "🔗 8+2"]
+        )
     }
 
     func testProductionPathDoesNotReadBundleSim3OrLocalTestDefaults() throws {
@@ -337,7 +575,9 @@ final class ProductionPathTests: XCTestCase {
             )
         )
         XCTAssertEqual(routes.map(\.routeId), [JiulongfengCatalogLocation.routeId])
+        XCTAssertEqual(routes[0].polylineSha256, "ff6ff3ee58303634d369b919284ee8c827a80eb57a9403004614cda6194d2f99")
         XCTAssertEqual(routes[0].routeName, "白墙测试线")
+        XCTAssertEqual(ProductionRouteFieldCopy.displayLines(routes[0]), ["白墙测试线"])
         XCTAssertTrue(routes.allSatisfy(\.hashVerified))
 
         let processor = OpenCVFrameProcessor()
@@ -358,11 +598,36 @@ final class ProductionPathTests: XCTestCase {
         #endif
     }
 
+    private func bothWallsCatalog() -> WallCatalog {
+        WallCatalog(
+            schema: CloudAssetSchema.catalog,
+            walls: [
+                WallCatalogEntry(
+                    wallId: JinshidongCatalogLocation.wallId,
+                    name: JinshidongCatalogLocation.displayName,
+                    latestReleaseId: JinshidongCatalogLocation.releaseId,
+                    environment: .production,
+                    catalogLocation: JinshidongCatalogLocation.location
+                ),
+                WallCatalogEntry(
+                    wallId: JiulongfengCatalogLocation.wallId,
+                    name: JiulongfengCatalogLocation.displayName,
+                    latestReleaseId: JiulongfengCatalogLocation.releaseId,
+                    environment: .production,
+                    catalogLocation: JiulongfengCatalogLocation.location
+                )
+            ]
+        )
+    }
+
     private func makeProductionStore(
         wallId: String,
         releaseId: String,
         routeId: String = "jinshidong_lucky_baby",
-        routeName: String = "Lucky Baby"
+        routeName: String = "Lucky Baby",
+        grade: String = "5.7",
+        quickdraws: String = "3+2",
+        lengthMeters: Double? = nil
     ) throws -> (service: CloudAssetService, store: CloudReleaseStore) {
         let descriptors = try makeDescriptorsPayload()
         let landmarks = try makeLandmarksJSONPayload(wallId: wallId)
@@ -378,8 +643,9 @@ final class ProductionPathTests: XCTestCase {
                 VerifiedFrozenRoute.ProductionRoute(
                     routeId: routeId,
                     routeName: routeName,
-                    grade: "5.7",
-                    quickdraws: "3+2",
+                    grade: grade,
+                    quickdraws: quickdraws,
+                    lengthMeters: lengthMeters,
                     source: VerifiedFrozenRoute.ProductionRouteSource(
                         path: "routes/Lucky Baby 5.7.dxf",
                         sha256: String(repeating: "a", count: 64),
@@ -518,11 +784,14 @@ final class ProductionPathTests: XCTestCase {
     }
 
     private func candidateURL(_ relative: String, wallId: String = JinshidongCatalogLocation.wallId) throws -> URL {
+        let releaseId = wallId == JiulongfengCatalogLocation.wallId
+            ? JiulongfengCatalogLocation.releaseId
+            : JinshidongCatalogLocation.releaseId
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("offline/packages/\(wallId)/r000001")
+            .appendingPathComponent("offline/packages/\(wallId)/\(releaseId)")
             .appendingPathComponent(relative)
         guard FileManager.default.isReadableFile(atPath: url.path) else {
             throw XCTSkip("production candidate artifact missing: \(relative)")

@@ -22,6 +22,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
     @Published private(set) var runtimeRouteBinding = RuntimeRouteBinding.unbound
     @Published private(set) var routeRenderPlan = RouteRenderPlan.empty
     @Published private(set) var localTestRouteLegend: [LocalTestRouteLegendItem] = []
+    @Published private(set) var productionFieldRoutes: [VerifiedFrozenRoute] = []
 
     private let queue = DispatchQueue(label: "com.rockvision.v2.opencv", qos: .userInitiated)
     private let lock = NSLock()
@@ -360,7 +361,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
             let routeBindingForSample: RuntimeRouteBinding
             let routePlanForSample: RouteRenderPlan
             if !self.verifiedFrozenRoutes.isEmpty {
-                let overlay = Self.makeJinshidongLocalTestRoutePlan(
+                let overlay = Self.makePackageRoutePlan(
                     routes: self.verifiedFrozenRoutes,
                     alignment: alignmentResult
                 )
@@ -550,6 +551,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                 measurementFixture = nil
                 verifiedFrozenRoute = nil
                 verifiedFrozenRoutes = routes
+                productionFieldRoutes = routes
                 localTestRouteLegend = routes.map {
                     LocalTestRouteLegendItem(
                         routeId: $0.routeId,
@@ -568,6 +570,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                 measurementFixture = nil
                 verifiedFrozenRoute = nil
                 verifiedFrozenRoutes = pack.routes
+                productionFieldRoutes = pack.routes
                 localTestRouteLegend = pack.legend
                 print("Matching: loaded reference source=\(pack.provenance.source) wall=\(pack.provenance.wallId) release=\(pack.provenance.releaseId) rows=\(pack.database.descriptorCount) unique3D=\(Set(pack.database.point3dIds).count) routes=\(pack.routes.count) notACatalogRelease=\(pack.notACatalogRelease)")
             case .bundleDevelopmentFixture, .cloudCurrentJiulongfengDevR000001:
@@ -603,6 +606,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                 measurementFixture = Gate4BMeasurementFixture.loadFromBundle(.main)
                 verifiedFrozenRoute = VerifiedFrozenRoute.loadFromBundle(.main)
                 verifiedFrozenRoutes = []
+                productionFieldRoutes = []
                 localTestRouteLegend = []
                 print("Matching: loaded reference source=\(loaded.provenance.source) wall=\(loaded.provenance.wallId) release=\(loaded.provenance.releaseId) rows=\(loaded.database.descriptorCount) unique3D=\(Set(loaded.database.point3dIds).count) notAWallPackage=\(loaded.database.notAWallPackage)")
             }
@@ -614,6 +618,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
             measurementFixture = nil
             verifiedFrozenRoute = nil
             verifiedFrozenRoutes = []
+            productionFieldRoutes = []
             localTestRouteLegend = []
             print("Matching: inactive \(matchingStatus)")
         }
@@ -624,7 +629,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
         }
     }
 
-    private static func makeJinshidongLocalTestRoutePlan(
+    private static func makePackageRoutePlan(
         routes: [VerifiedFrozenRoute],
         alignment: AlignmentFrameResult
     ) -> (binding: RuntimeRouteBinding, plan: RouteRenderPlan) {
@@ -650,7 +655,7 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
             return (lastUnbound, .empty)
         }
         let binding = RuntimeRouteBinding(
-            routeId: "jinshidong_local_test",
+            routeId: plans.count == 1 ? routes[0].routeId : "package_routes",
             hashVerified: true,
             hasBoundRoute: true,
             routeARWorldPointCount: combined.count,
@@ -671,8 +676,53 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
         referenceDatabase = nil
         referenceAssetProvenance = .unavailable
         matchingStatus = "inactive (select production cloud)"
+        sim3 = nil
+        measurementFixture = nil
+        verifiedFrozenRoute = nil
+        verifiedFrozenRoutes = []
         lock.unlock()
+        confirmationEngine.reset()
+        alignmentRuntime.reset()
+        clearPublishedFieldState()
         ensureFixtureLoaded()
+    }
+
+    func clearProductionCloudRelease() {
+        lock.lock()
+        desiredReferenceSourceMode = .productionCloudUnselected
+        debugCloudAssetServiceOverride = nil
+        loadedReferenceSourceMode = nil
+        referenceDatabase = nil
+        referenceAssetProvenance = .unavailable
+        matchingStatus = "inactive (waiting for wallId)"
+        sim3 = nil
+        measurementFixture = nil
+        verifiedFrozenRoute = nil
+        verifiedFrozenRoutes = []
+        lock.unlock()
+        confirmationEngine.reset()
+        alignmentRuntime.reset()
+        clearPublishedFieldState()
+    }
+
+    private func clearPublishedFieldState() {
+        let apply = {
+            self.referenceAssetProvenance = .unavailable
+            self.pnpSnapshot = PnPRuntimeSnapshot()
+            self.confirmationSnapshot = ConfirmationRuntimeSnapshot()
+            self.alignmentSnapshot = AlignmentRuntimeSnapshot()
+            self.wallDebugSnapshot = WallDebugRuntimeSnapshot()
+            self.wallDebugGeometry = .hidden
+            self.runtimeRouteBinding = .unbound
+            self.routeRenderPlan = .empty
+            self.localTestRouteLegend = []
+            self.productionFieldRoutes = []
+        }
+        if Thread.isMainThread {
+            apply()
+        } else {
+            DispatchQueue.main.sync(execute: apply)
+        }
     }
 
     // MARK: - Diagnostic reference source selection

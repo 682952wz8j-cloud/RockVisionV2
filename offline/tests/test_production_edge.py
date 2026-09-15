@@ -37,6 +37,35 @@ class ProductionEdgeTests(unittest.TestCase):
         self.assertNotIn("124.223.178.91", release_default)
         self.assertNotIn("JinshidongLocalTest", release_default)
 
+    def test_field_engineering_hud_is_generic_and_package_driven(self) -> None:
+        hud = (ROOT / "ios" / "RockVision" / "Features" / "DebugOverlay" / "Stage5DebugHUD.swift").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("ProductionRouteFieldCopy", hud)
+        self.assertIn("officialText", hud)
+        self.assertIn("quickdrawLine", hud)
+        self.assertNotIn("wall_jinshidong_01", hud)
+        self.assertNotIn("wall_jiulongfeng_01", hud)
+        self.assertNotIn("jinshidong_lucky_baby", hud)
+        self.assertNotIn("jiulongfeng_bai_qiang_ce_shi", hud)
+        processor = (ROOT / "ios" / "RockVision" / "Features" / "OpenCV" / "OpenCVFrameProcessor.swift").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("makePackageRoutePlan", processor)
+        self.assertIn("productionFieldRoutes", processor)
+        self.assertIn("clearProductionCloudRelease", processor)
+        self.assertNotIn("makeJinshidongLocalTestRoutePlan", processor)
+        plan = (ROOT / "ios" / "RockVision" / "Features" / "PnP" / "RouteRenderPlan.swift").read_text(encoding="utf-8")
+        self.assertIn("package_routes", plan)
+        self.assertNotIn("jinshidong_local_test", plan)
+        runtime = (ROOT / "ios" / "RockVision" / "Features" / "Cloud" / "ProductionRuntime.swift").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("clearProductionCloudRelease", runtime)
+        self.assertIn("WallCandidateSelector.selectWallId", runtime)
+        self.assertNotIn("wall_jinshidong_01", runtime)
+        self.assertNotIn("wall_jiulongfeng_01", runtime)
+
     def test_enable_https_script_uses_webroot_and_hostname(self) -> None:
         script = (ROOT / "deploy" / "nginx" / "enable-https.sh").read_text(encoding="utf-8")
         self.assertIn("DOMAIN=api.cragpal.com", script)

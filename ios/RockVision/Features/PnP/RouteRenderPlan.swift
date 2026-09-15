@@ -127,15 +127,19 @@ struct RouteRenderPlan: Equatable, Sendable {
         }
         let points = binding.routeARWorldPoints.map { [$0[0], $0[1], $0[2]] }
         let built = makeSegments(points: points)
-        let name = route.routeName ?? route.routeId
-        let grade = route.grade ?? ""
-        let draws = route.displayDraws ?? ""
-        let title = [name, grade, draws].filter { !$0.isEmpty }.joined(separator: " ")
-        let label = RouteOverlayLabel(
-            routeId: route.routeId,
-            title: title,
-            anchorARWorld: points[0]
-        )
+        let title = ProductionRouteFieldCopy.overlayTitle(route)
+        let labels: [RouteOverlayLabel]
+        if title.isEmpty {
+            labels = []
+        } else {
+            labels = [
+                RouteOverlayLabel(
+                    routeId: route.routeId,
+                    title: title,
+                    anchorARWorld: points[0]
+                )
+            ]
+        }
         return RouteRenderPlan(
             routeId: route.routeId,
             wouldRender: true,
@@ -144,7 +148,7 @@ struct RouteRenderPlan: Equatable, Sendable {
             arWorldEndpoints: points,
             segments: built.segments,
             maxFloatConversionErrorMeters: built.maxError,
-            labels: [label],
+            labels: labels,
             stroke: .fieldTestRed
         )
     }
@@ -167,7 +171,7 @@ struct RouteRenderPlan: Equatable, Sendable {
             maxError = max(maxError, plan.maxFloatConversionErrorMeters)
         }
         return RouteRenderPlan(
-            routeId: "jinshidong_local_test",
+            routeId: ready.count == 1 ? ready[0].routeId : "package_routes",
             wouldRender: true,
             pointCount: endpoints.count,
             segmentCount: segments.count,

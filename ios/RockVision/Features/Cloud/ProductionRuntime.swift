@@ -41,7 +41,11 @@ final class ProductionRuntimeController: ObservableObject {
                 wallId = "—"
                 cloudAssetsLoaded = false
                 lastError = "no wall in GPS range"
+                processor?.clearProductionCloudRelease()
                 return
+            }
+            if wallId != selected {
+                processor?.clearProductionCloudRelease()
             }
             wallId = selected
             if injectedCatalog == nil {
@@ -52,7 +56,9 @@ final class ProductionRuntimeController: ObservableObject {
             cloudAssetsLoaded = provenance?.source == "cloud"
                 && provenance?.wallId == selected
                 && provenance?.assetState == "available"
-            if !cloudAssetsLoaded {
+            if cloudAssetsLoaded {
+                lastError = nil
+            } else {
                 lastError = provenance?.assetState
             }
         } catch {

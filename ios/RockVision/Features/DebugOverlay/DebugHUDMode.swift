@@ -11,7 +11,7 @@ enum DebugHUDMode: String, Equatable, Sendable {
     case stage3
     case stage5
 
-    /// DEBUG Jinshidong local-test / Stage 5 route overlay owns the HUD.
+    /// DEBUG Production Field Engineering Mode owns the HUD.
     /// Release keeps the existing Gate 4B field-test surface.
     static var active: DebugHUDMode {
         #if DEBUG

@@ -15,12 +15,14 @@ struct ContentView: View {
             ZStack(alignment: .bottomLeading) {
                 ARCameraPreview(
                     session: sessionHost.session,
-                    debugGeometry: openCV.wallDebugGeometry,
+                    debugGeometry: DebugHUDMode.active.showsStage5HUD ? .hidden : openCV.wallDebugGeometry,
                     routePlan: openCV.routeRenderPlan
                 )
                     .ignoresSafeArea()
-                KeypointOverlayView(points: openCV.siftSnapshot.overlayViewPoints)
-                    .ignoresSafeArea()
+                if !DebugHUDMode.active.showsStage5HUD {
+                    KeypointOverlayView(points: openCV.siftSnapshot.overlayViewPoints)
+                        .ignoresSafeArea()
+                }
                 VStack {
                     HStack {
                         Spacer()
@@ -71,7 +73,8 @@ struct ContentView: View {
                         localization: openCV.confirmationSnapshot.localization,
                         pnp: openCV.pnpSnapshot,
                         wallId: productionRuntime.wallId,
-                        cloudAssetsLoaded: productionRuntime.cloudAssetsLoaded
+                        cloudAssetsLoaded: productionRuntime.cloudAssetsLoaded,
+                        routes: openCV.productionFieldRoutes
                     )
                 }
             }

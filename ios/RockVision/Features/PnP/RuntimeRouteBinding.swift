@@ -72,6 +72,7 @@ struct VerifiedFrozenRoute: Equatable, Sendable {
     var routeName: String? = nil
     var grade: String? = nil
     var displayDraws: String? = nil
+    var lengthMeters: Double? = nil
 
     static func load(from url: URL) -> VerifiedFrozenRoute? {
         guard let data = try? Data(contentsOf: url) else { return nil }
@@ -258,7 +259,8 @@ struct VerifiedFrozenRoute: Equatable, Sendable {
                     sourceArtifact: item.source.path,
                     routeName: item.routeName,
                     grade: item.grade,
-                    displayDraws: item.quickdraws
+                    displayDraws: item.quickdraws,
+                    lengthMeters: item.lengthMeters
                 )
             )
         }
@@ -278,6 +280,7 @@ struct VerifiedFrozenRoute: Equatable, Sendable {
         var routeName: String
         var grade: String
         var quickdraws: String
+        var lengthMeters: Double? = nil
         var source: ProductionRouteSource
         var coordinateFrame: String
         var provenance: String
