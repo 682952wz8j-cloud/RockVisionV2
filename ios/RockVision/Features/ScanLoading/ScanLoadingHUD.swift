@@ -89,6 +89,7 @@ struct ScanLoadingHUD: View {
     var facts: ScanLoadingFacts
     var routes: [VerifiedFrozenRoute]
     var sidebarOpen: Bool = false
+    var sidebarWidth: CGFloat = 0
     @ObservedObject var bridge: ScanSessionBridge
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var playback: ScanLoadingPlayback
@@ -99,12 +100,14 @@ struct ScanLoadingHUD: View {
         facts: ScanLoadingFacts,
         routes: [VerifiedFrozenRoute],
         bridge: ScanSessionBridge,
-        sidebarOpen: Bool = false
+        sidebarOpen: Bool = false,
+        sidebarWidth: CGFloat = 0
     ) {
         self.facts = facts
         self.routes = routes
         self.bridge = bridge
         self.sidebarOpen = sidebarOpen
+        self.sidebarWidth = sidebarWidth
         _playback = StateObject(wrappedValue: ScanLoadingPlayback(bridge: bridge))
     }
 
@@ -183,7 +186,7 @@ struct ScanLoadingHUD: View {
             guard let point = sample.anchor else { return "-" }
             return "\(Int(point.x / 4)):\(Int(point.y / 4))"
         }.joined(separator: ",")
-        return "\(ids)|\(anchors)|\(bridge.selectedRouteId ?? "")|\(playback.state.hideChrome)|\(sidebarOpen)"
+        return "\(ids)|\(anchors)|\(bridge.selectedRouteId ?? "")|\(playback.state.hideChrome)|\(sidebarOpen)|\(Int(sidebarWidth))"
     }
 
     private var statusRow: some View {
@@ -254,7 +257,21 @@ struct ScanLoadingHUD: View {
         }
         var obstacles: [CGRect] = []
         if sidebarOpen {
-            obstacles.append(CGRect(x: 0, y: 0, width: size.width / 3, height: size.height))
+            let panelHeight = max(
+                size.height - CragDirectoryMetrics.bottomHUDClearance(safeBottom: safe.bottom),
+                200
+            )
+            obstacles.append(
+                CGRect(
+                    x: 0,
+                    y: 0,
+                    width: sidebarWidth > 0 ? sidebarWidth : CragDirectoryMetrics.panelWidth(
+                        groups: CragDirectoryBuilder.groups(),
+                        screenWidth: size.width
+                    ),
+                    height: panelHeight
+                )
+            )
         }
         if !playback.state.hideChrome {
             let bottom = 120 + safe.bottom

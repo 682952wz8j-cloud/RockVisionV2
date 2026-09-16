@@ -404,6 +404,52 @@ final class ScanLoadingTests: XCTestCase {
         XCTAssertFalse(content.contains("Stage5DebugHUD("))
         XCTAssertTrue(content.contains("suppressOverlayText: DebugHUDMode.active.showsStage5HUD"))
         XCTAssertTrue(content.contains("sessionBridge:"))
+        XCTAssertTrue(content.contains("KeypointOverlayView("))
+        XCTAssertTrue(content.contains("appearance: DebugHUDMode.active.showsStage5HUD ? .scan : .debug"))
+        XCTAssertTrue(content.contains("featureOverlayVisible"))
+    }
+
+    func testVisualFeaturesHideAfterRouteRenders() {
+        let attempt = UUID()
+        XCTAssertTrue(
+            VisualFeatureOverlay.isVisible(
+                receipt: .none,
+                attemptId: attempt,
+                sceneActive: true
+            )
+        )
+        let shown = RouteApplyReceipt(
+            attemptId: attempt,
+            wallId: "wall_a",
+            renderedRoute: true,
+            routeId: "route_1",
+            visibleSegmentCount: 8
+        )
+        XCTAssertFalse(
+            VisualFeatureOverlay.isVisible(
+                receipt: shown,
+                attemptId: attempt,
+                sceneActive: true
+            )
+        )
+        XCTAssertTrue(
+            VisualFeatureOverlay.isVisible(
+                receipt: shown,
+                attemptId: UUID(),
+                sceneActive: true
+            )
+        )
+        XCTAssertFalse(
+            VisualFeatureOverlay.isVisible(
+                receipt: .none,
+                attemptId: attempt,
+                sceneActive: false
+            )
+        )
+        let points = (0..<200).map { CGPoint(x: CGFloat($0), y: 0) }
+        let sampled = VisualFeatureOverlay.sampled(points, maxCount: 64)
+        XCTAssertEqual(sampled.count, 64)
+        XCTAssertEqual(VisualFeatureOverlay.sampled(Array(points.prefix(10)), maxCount: 64).count, 10)
     }
 
     private func facts(

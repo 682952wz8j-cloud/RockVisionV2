@@ -143,28 +143,103 @@ final class RouteLabelLayoutTests: XCTestCase {
         XCTAssertNil(RouteLabelLayout.nearestRoute(samples: samples, point: CGPoint(x: 120, y: 20), slop: 10))
     }
 
-    func testDirectoryOmitsUnknownAndZeroCountsAndDoesNotHardcodePreviewCrags() {
-        let catalog = WallCatalog(
-            schema: CloudAssetSchema.catalog,
-            walls: [
-                WallCatalogEntry(wallId: "wall_a", name: "金狮洞", latestReleaseId: "r000001", environment: .production),
-                WallCatalogEntry(wallId: "wall_b", name: "九龙峰", latestReleaseId: "r000001", environment: .developmentTest),
-            ]
+    func testDirectoryShowsJinshidongAndComingSoonAndHidesInternalWalls() {
+        let groups = CragDirectoryBuilder.groups(counts: [JinshidongCatalogLocation.wallId: 4])
+        XCTAssertEqual(groups.map(\.title), ["已上线：", "coming soon："])
+        XCTAssertEqual(groups[0].rows.map(\.name), ["安徽｜宣城｜泾县金狮洞"])
+        XCTAssertEqual(
+            CragDirectoryBuilder.line(name: groups[0].rows[0].name, count: groups[0].rows[0].routeCount),
+            "安徽｜宣城｜泾县金狮洞（4条路线）"
         )
-        let groups = CragDirectoryBuilder.groups(catalog: catalog, counts: ["wall_a": 1])
-        XCTAssertEqual(groups[0].title, "已上线：")
-        XCTAssertEqual(CragDirectoryBuilder.line(name: "金狮洞", count: 1), "金狮洞（1条线路）")
-        XCTAssertEqual(CragDirectoryBuilder.line(name: "九龙峰", count: nil), "九龙峰")
-        XCTAssertEqual(CragDirectoryBuilder.line(name: "繁昌戴店", count: 0), "繁昌戴店")
+        XCTAssertEqual(
+            groups[1].rows.map(\.name),
+            ["浙江｜杭州｜临安狮头山", "安徽｜芜湖｜繁昌戴店"]
+        )
+        let names = groups.flatMap(\.rows).map(\.name).joined(separator: "\n")
+        XCTAssertFalse(names.contains("九龙峰"))
+        XCTAssertFalse(names.contains("其他"))
+        XCTAssertFalse(names.contains("example wall"))
+        XCTAssertFalse(names.contains("cragpal publisher e2e test wall"))
+        XCTAssertEqual(CragDirectoryBuilder.line(name: CragDirectoryCopy.wuhuDaidian, count: 0), CragDirectoryCopy.wuhuDaidian)
+        let fitted = CragDirectoryMetrics.panelWidth(groups: groups, screenWidth: 390)
+        let longest = CragDirectoryMetrics.displayedLines(in: groups).map { line in
+            (line as NSString).size(withAttributes: [.font: AppPixelFont.uiFont]).width
+        }.max() ?? 0
+        XCTAssertEqual(fitted, min(ceil(longest) + 20, 390))
+        XCTAssertTrue(CragDirectoryMetrics.displayedLines(in: groups).contains("version 1.0"))
+        XCTAssertTrue(CragDirectoryMetrics.displayedLines(in: groups).contains("www.cragpal.com"))
         let source = try? String(
             contentsOf: URL(fileURLWithPath: #filePath)
                 .deletingLastPathComponent()
                 .deletingLastPathComponent()
                 .appendingPathComponent("RockVision/Features/ScanLoading/CragDirectory.swift")
         )
+        XCTAssertTrue(source?.contains("coming soon：") == true)
+        XCTAssertTrue(source?.contains("临安狮头山") == true)
+        XCTAssertTrue(source?.contains("繁昌戴店") == true)
+        XCTAssertTrue(source?.contains("泾县金狮洞") == true)
         XCTAssertFalse(source?.contains("泾县狮子山") == true)
-        XCTAssertFalse(source?.contains("临安狮头山") == true)
         XCTAssertFalse(source?.contains("Coming soon") == true)
+        XCTAssertFalse(source?.contains("Button(\"关闭\")") == true)
+        XCTAssertFalse(source?.contains("其他：") == true)
+        XCTAssertFalse(source?.contains("geo.size.width / 3") == true)
+        XCTAssertFalse(source?.contains("screenWidth * 2 / 3") == true)
+        XCTAssertFalse(source?.contains("productionFieldRoutes") == true)
+        XCTAssertTrue(source?.contains("fromWallRoutes") == true)
+        XCTAssertTrue(source?.contains("group.title == CragDirectoryCopy.liveTitle") == true)
+        XCTAssertTrue(source?.contains("version 1.0") == true)
+        XCTAssertTrue(source?.contains("www.cragpal.com") == true)
+        XCTAssertTrue(source?.contains("frame(maxWidth: .infinity, alignment: .center)") == true)
+        XCTAssertTrue(source?.contains("Color.black.opacity(0.14)") == true)
+        XCTAssertFalse(source?.contains("Color.black.opacity(0.03)") == true)
+        XCTAssertTrue(source?.contains("geo.size.height - bottomClearance") == true)
+        XCTAssertEqual(CragDirectoryMetrics.bottomHUDClearance(safeBottom: 34), 154)
+    }
+
+    func testDirectoryCountIsProductionWallRoutesLength() throws {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("offline/packages/wall_jinshidong_01/r000001/assets/wall-routes")
+        guard FileManager.default.isReadableFile(atPath: url.path) else {
+            throw XCTSkip("production jinshidong wall-routes missing")
+        }
+        let data = try Data(contentsOf: url)
+        XCTAssertEqual(
+            CragDirectoryBuilder.count(
+                fromWallRoutes: data,
+                wallId: JinshidongCatalogLocation.wallId,
+                releaseId: JinshidongCatalogLocation.releaseId
+            ),
+            4
+        )
+        XCTAssertNil(
+            CragDirectoryBuilder.count(
+                fromWallRoutes: data,
+                wallId: JiulongfengCatalogLocation.wallId,
+                releaseId: "r000001"
+            )
+        )
+        let jiulongfeng = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("offline/packages/wall_jiulongfeng_01/r000001/assets/wall-routes")
+        if FileManager.default.isReadableFile(atPath: jiulongfeng.path) {
+            let other = try Data(contentsOf: jiulongfeng)
+            XCTAssertNil(
+                CragDirectoryBuilder.count(
+                    fromWallRoutes: other,
+                    wallId: JiulongfengCatalogLocation.wallId,
+                    releaseId: JiulongfengCatalogLocation.releaseId
+                )
+            )
+        }
+        XCTAssertEqual(
+            CragDirectoryBuilder.line(name: CragDirectoryCopy.jinshidongLine, count: 4),
+            "安徽｜宣城｜泾县金狮洞（4条路线）"
+        )
     }
 
     func testPixelFontFallbackForMissingHui() throws {

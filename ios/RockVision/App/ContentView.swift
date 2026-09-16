@@ -25,10 +25,12 @@ struct ContentView: View {
                     sessionBridge: DebugHUDMode.active.showsStage5HUD ? scanSession : nil
                 )
                     .ignoresSafeArea()
-                if !DebugHUDMode.active.showsStage5HUD {
-                    KeypointOverlayView(points: openCV.siftSnapshot.overlayViewPoints)
-                        .ignoresSafeArea()
-                }
+                KeypointOverlayView(
+                    points: openCV.siftSnapshot.overlayViewPoints,
+                    appearance: DebugHUDMode.active.showsStage5HUD ? .scan : .debug,
+                    visible: featureOverlayVisible
+                )
+                .ignoresSafeArea()
                 VStack {
                     HStack {
                         Spacer()
@@ -93,7 +95,11 @@ struct ContentView: View {
                         facts: scanLoadingFacts,
                         routes: openCV.productionFieldRoutes,
                         bridge: scanSession,
-                        sidebarOpen: cragDirectory.isOpen
+                        sidebarOpen: cragDirectory.isOpen,
+                        sidebarWidth: CragDirectoryMetrics.panelWidth(
+                            groups: cragDirectory.groups,
+                            screenWidth: geo.size.width
+                        )
                     )
                     .ignoresSafeArea()
                     CragDirectoryOverlay(model: cragDirectory)
@@ -135,6 +141,17 @@ struct ContentView: View {
             }
         }
         .ignoresSafeArea()
+    }
+
+    private var featureOverlayVisible: Bool {
+        if DebugHUDMode.active.showsStage5HUD {
+            return VisualFeatureOverlay.isVisible(
+                receipt: scanSession.receipt,
+                attemptId: scanSession.attemptId,
+                sceneActive: scenePhase == .active
+            )
+        }
+        return true
     }
 
     private var scanLoadingFacts: ScanLoadingFacts {
