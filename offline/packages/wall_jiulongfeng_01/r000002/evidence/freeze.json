@@ -1,0 +1,21 @@
+{
+  "artifactDirectory": "/Users/zhengzhang/Documents/RockVisionV2/offline/work/wall_jiulongfeng_01/reference_matching/baseline_2px",
+  "descriptorsPath": "descriptors.bin",
+  "landmarksPath": "landmarks.json",
+  "descriptorCount": 47207,
+  "descriptorsSha256": "635982437d892870719591ae397cbfc61d6902084e5533114dc32953dc37c8a1",
+  "landmarksSha256": "84b7ed45489854ae186210948a89d1528ba6f08c34353be32f85cfeebab747da",
+  "descriptorsBytes": 24170004,
+  "landmarksBytes": 17651353,
+  "artifactDiskFiles": [
+    "descriptors.bin",
+    "landmarks.json",
+    "association_report.json",
+    "database_stats.json",
+    "freeze.json"
+  ],
+  "artifactDiskBytes": 41865260,
+  "wallId": "wall_jiulongfeng_01",
+  "wallBuildRunId": "wb_20260823T130500Z_6ceebb24",
+  "colmapModelFingerprint": "6ceebb249ec245f0394da46dac94e13bfe29f166d7f2aa11747e66ca4342946f"
+}
