@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "gate5c.development.route.bundle.1",
+  "kind": "development_validation_route_bundle",
+  "developmentValidationOnly": true,
+  "notAProductionRoutePackage": true,
+  "notAStage5Release": true,
+  "wallId": "wall_jinshidong_01",
+  "wallBuildRunId": "wb_20260906T024519Z_6e08b5ff",
+  "colmapModelFingerprint": "32e9791497d9c9584acf455dc0942762f1d3e1993e9b4e682723408c1294350c",
+  "localizationPackageDir": "/Users/zhengzhang/Documents/RockVisionV2/offline/work/wall_jinshidong_01/wall_build/wb_20260906T024519Z_6e08b5ff/localization_package",
+  "routes": [
+    {
+      "routeId": "jinshidong_lucky_baby",
+      "routeName": "Lucky Baby",
+      "grade": "5.7",
+      "quickdraws": "3+2",
+      "pointCount": 6,
+      "polylineSha256": "9473023e60e9fd5a2003ead60d5e7134d0b1386e81b861457e1de569ae62b407",
+      "fixturePath": "jinshidong_lucky_baby.json",
+      "ingestedPath": "ingested/jinshidong_lucky_baby.json"
+    },
+    {
+      "routeId": "jinshidong_shui_tai_shen",
+      "routeName": "水太深",
+      "grade": "5.12d",
+      "quickdraws": "6+2",
+      "pointCount": 3,
+      "polylineSha256": "83e5a754ff42ddc30739d0b52d05cb54f94c74725541af612623b1d9a7ebc509",
+      "fixturePath": "jinshidong_shui_tai_shen.json",
+      "ingestedPath": "ingested/jinshidong_shui_tai_shen.json"
+    },
+    {
+      "routeId": "jinshidong_mei_xiang_hao",
+      "routeName": "没想好",
+      "grade": "5.11b",
+      "quickdraws": "7+2",
+      "pointCount": 6,
+      "polylineSha256": "98a08ad0608795a1a2d1b0c48028870b22b33c20257913ffcc8557239e8b173d",
+      "fixturePath": "jinshidong_mei_xiang_hao.json",
+      "ingestedPath": "ingested/jinshidong_mei_xiang_hao.json"
+    },
+    {
+      "routeId": "jinshidong_long_zhua_shou",
+      "routeName": "龙抓手",
+      "grade": "5.11b",
+      "quickdraws": "5+2",
+      "pointCount": 4,
+      "polylineSha256": "0534fd4a3babefdfb02bb994c15956491052fcf852fa8d1d1c55b4e12006eea7",
+      "fixturePath": "jinshidong_long_zhua_shou.json",
+      "ingestedPath": "ingested/jinshidong_long_zhua_shou.json"
+    }
+  ]
+}

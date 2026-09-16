@@ -21,6 +21,8 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
     @Published private(set) var wallDebugGeometry = WallAlignmentDebugGeometry.hidden
     @Published private(set) var runtimeRouteBinding = RuntimeRouteBinding.unbound
     @Published private(set) var routeRenderPlan = RouteRenderPlan.empty
+    @Published private(set) var localTestRouteLegend: [LocalTestRouteLegendItem] = []
+    @Published private(set) var productionFieldRoutes: [VerifiedFrozenRoute] = []
 
     private let queue = DispatchQueue(label: "com.rockvision.v2.opencv", qos: .userInitiated)
     private let lock = NSLock()
@@ -56,18 +58,22 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
     private var sceneBuckets: [String: [SIFTProcessingPreset: ResolutionAccumulator]] = [:]
     private var referenceDatabase: ReferenceDatabase?
     private enum ReferenceSourceMode: Sendable, Equatable {
+        case productionCloudUnselected
+        case productionCloud(String)
+        case jinshidongLocalTest
         case bundleDevelopmentFixture
         case cloudCurrentJiulongfengDevR000001
     }
 
-    /// Default on fresh launch: Bundle DevelopmentFixture.
-    private var desiredReferenceSourceMode: ReferenceSourceMode = .bundleDevelopmentFixture
+    /// Default: production catalog discovery. Diagnostic local-test is explicit.
+    private var desiredReferenceSourceMode: ReferenceSourceMode = .productionCloudUnselected
     private var loadedReferenceSourceMode: ReferenceSourceMode?
     private var debugCloudAssetServiceOverride: CloudAssetService?
     private var matchingStatus = "inactive"
     private var sim3: ValidatedSim3?
     private var measurementFixture: Gate4BMeasurementFixture?
     private var verifiedFrozenRoute: VerifiedFrozenRoute?
+    private var verifiedFrozenRoutes: [VerifiedFrozenRoute] = []
     private var confirmationEngine = LocalizationConfirmation()
     private var alignmentRuntime = ProductionAlignmentRuntime()
     private var fieldConfirmationBarrier = FieldConfirmationSessionBarrier()
@@ -352,11 +358,22 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
                 )
             }
 
-            let routeBindingForSample = RuntimeRouteBinding.evaluate(
-                verifiedRoute: self.verifiedFrozenRoute,
-                alignment: alignmentResult
-            )
-            let routePlanForSample = RouteRenderPlan.evaluate(from: routeBindingForSample)
+            let routeBindingForSample: RuntimeRouteBinding
+            let routePlanForSample: RouteRenderPlan
+            if !self.verifiedFrozenRoutes.isEmpty {
+                let overlay = Self.makePackageRoutePlan(
+                    routes: self.verifiedFrozenRoutes,
+                    alignment: alignmentResult
+                )
+                routeBindingForSample = overlay.binding
+                routePlanForSample = overlay.plan
+            } else {
+                routeBindingForSample = RuntimeRouteBinding.evaluate(
+                    verifiedRoute: self.verifiedFrozenRoute,
+                    alignment: alignmentResult
+                )
+                routePlanForSample = RouteRenderPlan.evaluate(from: routeBindingForSample)
+            }
             // Persistence / field-test bookkeeping is after SIFT timing and must not
             // mutate preprocess/sift/total latency on the result.
             let recorded = self.fieldSink?.ingest(
@@ -498,42 +515,113 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
         loadedReferenceSourceMode = mode
 
         do {
-            let loaded: LoadedReferenceAssets
             switch mode {
-            case .bundleDevelopmentFixture:
-                loaded = try ReferenceAssetSession.load(.developmentFixture())
-            case .cloudCurrentJiulongfengDevR000001:
-                let expectedWallId = "wall_jiulongfeng_01_dev"
-                let expectedReleaseId = "r000001"
-
+            case .productionCloudUnselected:
+                matchingStatus = "inactive (waiting for wallId)"
+                return
+            case .productionCloud(let wallId):
                 let service: CloudAssetService
                 if let override = debugCloudAssetServiceOverride {
                     service = override
                 } else {
                     service = try CloudAssetService.default()
                 }
-                loaded = try ReferenceAssetSession.load(.cloudValidatedRelease(wallId: expectedWallId, service: service))
-
-                // Fail-closed: CURRENT identity must match this exact release.
-                guard loaded.provenance.wallId == expectedWallId,
-                      loaded.provenance.releaseId == expectedReleaseId else {
-                    throw ReferenceAssetError.integrityRejected("cloud CURRENT identity mismatch (expected \(expectedWallId)/\(expectedReleaseId), got \(loaded.provenance.wallId)/\(loaded.provenance.releaseId))")
+                let loaded = try ReferenceAssetSession.load(.cloudValidatedRelease(wallId: wallId, service: service))
+                let sim3Asset = try CloudStage3AssetSemantics.requiredSim3Asset(in: try service.localValidatedRelease(wallId: wallId).manifest)
+                let sim3URL = try service.localAssetURL(wallId: wallId, assetId: sim3Asset.assetId)
+                let productionSim3 = try ProductionSim3Loader.load(from: sim3URL)
+                var routes: [VerifiedFrozenRoute] = []
+                if let routesAsset = try CloudStage3AssetSemantics.productionRoutesAsset(
+                    in: try service.localValidatedRelease(wallId: wallId).manifest
+                ) {
+                    let routesURL = try service.localAssetURL(wallId: wallId, assetId: routesAsset.assetId)
+                    routes = VerifiedFrozenRoute.loadProductionAsset(
+                        from: routesURL,
+                        expectedWallId: wallId,
+                        expectedReleaseId: loaded.provenance.releaseId
+                    ) ?? []
+                    if routes.isEmpty {
+                        throw ReferenceAssetError.integrityRejected("production routes failed verification")
+                    }
                 }
-            }
+                referenceDatabase = loaded.database
+                referenceAssetProvenance = loaded.provenance
+                matchingStatus = "active"
+                sim3 = productionSim3
+                measurementFixture = nil
+                verifiedFrozenRoute = nil
+                verifiedFrozenRoutes = routes
+                productionFieldRoutes = routes
+                localTestRouteLegend = routes.map {
+                    LocalTestRouteLegendItem(
+                        routeId: $0.routeId,
+                        routeName: $0.routeName ?? $0.routeId,
+                        grade: $0.grade ?? "",
+                        displayDraws: $0.displayDraws ?? ""
+                    )
+                }
+                print("Matching: loaded reference source=\(loaded.provenance.source) wall=\(loaded.provenance.wallId) release=\(loaded.provenance.releaseId) rows=\(loaded.database.descriptorCount) unique3D=\(Set(loaded.database.point3dIds).count) routes=\(routes.count)")
+            case .jinshidongLocalTest:
+                let pack = try JinshidongLocalTestAssets.load(from: Bundle(for: OpenCVFrameProcessor.self))
+                referenceDatabase = pack.database
+                referenceAssetProvenance = pack.provenance
+                matchingStatus = "active"
+                sim3 = pack.sim3
+                measurementFixture = nil
+                verifiedFrozenRoute = nil
+                verifiedFrozenRoutes = pack.routes
+                productionFieldRoutes = pack.routes
+                localTestRouteLegend = pack.legend
+                print("Matching: loaded reference source=\(pack.provenance.source) wall=\(pack.provenance.wallId) release=\(pack.provenance.releaseId) rows=\(pack.database.descriptorCount) unique3D=\(Set(pack.database.point3dIds).count) routes=\(pack.routes.count) notACatalogRelease=\(pack.notACatalogRelease)")
+            case .bundleDevelopmentFixture, .cloudCurrentJiulongfengDevR000001:
+                let loaded: LoadedReferenceAssets
+                switch mode {
+                case .bundleDevelopmentFixture:
+                    loaded = try ReferenceAssetSession.load(.developmentFixture())
+                case .cloudCurrentJiulongfengDevR000001:
+                    let expectedWallId = "wall_jiulongfeng_01_dev"
+                    let expectedReleaseId = "r000001"
 
-            referenceDatabase = loaded.database
-            referenceAssetProvenance = loaded.provenance
-            matchingStatus = "active"
-            print("Matching: loaded reference source=\(loaded.provenance.source) wall=\(loaded.provenance.wallId) release=\(loaded.provenance.releaseId) rows=\(loaded.database.descriptorCount) unique3D=\(Set(loaded.database.point3dIds).count) notAWallPackage=\(loaded.database.notAWallPackage)")
+                    let service: CloudAssetService
+                    if let override = debugCloudAssetServiceOverride {
+                        service = override
+                    } else {
+                        service = try CloudAssetService.default()
+                    }
+                    loaded = try ReferenceAssetSession.load(.cloudValidatedRelease(wallId: expectedWallId, service: service))
+
+                    // Fail-closed: CURRENT identity must match this exact release.
+                    guard loaded.provenance.wallId == expectedWallId,
+                          loaded.provenance.releaseId == expectedReleaseId else {
+                        throw ReferenceAssetError.integrityRejected("cloud CURRENT identity mismatch (expected \(expectedWallId)/\(expectedReleaseId), got \(loaded.provenance.wallId)/\(loaded.provenance.releaseId))")
+                    }
+                case .jinshidongLocalTest, .productionCloud, .productionCloudUnselected:
+                    throw ReferenceAssetError.bundleUnavailable("unreachable")
+                }
+
+                referenceDatabase = loaded.database
+                referenceAssetProvenance = loaded.provenance
+                matchingStatus = "active"
+                sim3 = ValidatedSim3Loader.loadFromBundle(.main)
+                measurementFixture = Gate4BMeasurementFixture.loadFromBundle(.main)
+                verifiedFrozenRoute = VerifiedFrozenRoute.loadFromBundle(.main)
+                verifiedFrozenRoutes = []
+                productionFieldRoutes = []
+                localTestRouteLegend = []
+                print("Matching: loaded reference source=\(loaded.provenance.source) wall=\(loaded.provenance.wallId) release=\(loaded.provenance.releaseId) rows=\(loaded.database.descriptorCount) unique3D=\(Set(loaded.database.point3dIds).count) notAWallPackage=\(loaded.database.notAWallPackage)")
+            }
         } catch {
             referenceDatabase = nil
             referenceAssetProvenance = .unavailable
             matchingStatus = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            sim3 = nil
+            measurementFixture = nil
+            verifiedFrozenRoute = nil
+            verifiedFrozenRoutes = []
+            productionFieldRoutes = []
+            localTestRouteLegend = []
             print("Matching: inactive \(matchingStatus)")
         }
-        sim3 = ValidatedSim3Loader.loadFromBundle(.main)
-        measurementFixture = Gate4BMeasurementFixture.loadFromBundle(.main)
-        verifiedFrozenRoute = VerifiedFrozenRoute.loadFromBundle(.main)
         if let sim3 {
             print("PnP: loaded S_wall_colmap status=\(sim3.status) scale=\(sim3.scale) metric-only")
         } else {
@@ -541,7 +629,113 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
         }
     }
 
-    // MARK: - DEBUG-only reference source selection
+    private static func makePackageRoutePlan(
+        routes: [VerifiedFrozenRoute],
+        alignment: AlignmentFrameResult
+    ) -> (binding: RuntimeRouteBinding, plan: RouteRenderPlan) {
+        var plans: [RouteRenderPlan] = []
+        var combined: [[Double]] = []
+        var allBound = !routes.isEmpty
+        var lastUnbound = RuntimeRouteBinding.unbound
+        for route in routes {
+            let binding = RuntimeRouteBinding.evaluate(
+                verifiedRoute: route,
+                alignment: alignment,
+                requiredPointCount: route.wallMetricMeters.count
+            )
+            if binding.hasBoundRoute {
+                combined.append(contentsOf: binding.routeARWorldPoints)
+                plans.append(RouteRenderPlan.evaluateLocalTest(from: binding, route: route))
+            } else {
+                allBound = false
+                lastUnbound = binding
+            }
+        }
+        guard allBound else {
+            return (lastUnbound, .empty)
+        }
+        let binding = RuntimeRouteBinding(
+            routeId: plans.count == 1 ? routes[0].routeId : "package_routes",
+            hashVerified: true,
+            hasBoundRoute: true,
+            routeARWorldPointCount: combined.count,
+            routeARWorldPoints: combined,
+            renderedRoute: false,
+            reason: nil
+        )
+        return (binding, RouteRenderPlan.concatenateFieldTest(plans))
+    }
+
+    // MARK: - Production runtime discovery
+
+    func selectProductionCloudRelease(wallId: String, service: CloudAssetService) {
+        lock.lock()
+        desiredReferenceSourceMode = .productionCloud(wallId)
+        debugCloudAssetServiceOverride = service
+        loadedReferenceSourceMode = nil
+        referenceDatabase = nil
+        referenceAssetProvenance = .unavailable
+        matchingStatus = "inactive (select production cloud)"
+        sim3 = nil
+        measurementFixture = nil
+        verifiedFrozenRoute = nil
+        verifiedFrozenRoutes = []
+        lock.unlock()
+        confirmationEngine.reset()
+        alignmentRuntime.reset()
+        clearPublishedFieldState()
+        ensureFixtureLoaded()
+    }
+
+    func clearProductionCloudRelease() {
+        lock.lock()
+        desiredReferenceSourceMode = .productionCloudUnselected
+        debugCloudAssetServiceOverride = nil
+        loadedReferenceSourceMode = nil
+        referenceDatabase = nil
+        referenceAssetProvenance = .unavailable
+        matchingStatus = "inactive (waiting for wallId)"
+        sim3 = nil
+        measurementFixture = nil
+        verifiedFrozenRoute = nil
+        verifiedFrozenRoutes = []
+        lock.unlock()
+        confirmationEngine.reset()
+        alignmentRuntime.reset()
+        clearPublishedFieldState()
+    }
+
+    private func clearPublishedFieldState() {
+        let apply = {
+            self.referenceAssetProvenance = .unavailable
+            self.pnpSnapshot = PnPRuntimeSnapshot()
+            self.confirmationSnapshot = ConfirmationRuntimeSnapshot()
+            self.alignmentSnapshot = AlignmentRuntimeSnapshot()
+            self.wallDebugSnapshot = WallDebugRuntimeSnapshot()
+            self.wallDebugGeometry = .hidden
+            self.runtimeRouteBinding = .unbound
+            self.routeRenderPlan = .empty
+            self.localTestRouteLegend = []
+            self.productionFieldRoutes = []
+        }
+        if Thread.isMainThread {
+            apply()
+        } else {
+            DispatchQueue.main.sync(execute: apply)
+        }
+    }
+
+    // MARK: - Diagnostic reference source selection
+
+    func selectReferenceSourceJinshidongLocalTest() {
+        lock.lock()
+        desiredReferenceSourceMode = .jinshidongLocalTest
+        loadedReferenceSourceMode = nil
+        referenceDatabase = nil
+        referenceAssetProvenance = .unavailable
+        matchingStatus = "inactive (select Jinshidong local test)"
+        lock.unlock()
+    }
 
     /// Development-only: allow explicit source selection between Bundle fixture and
     /// Cloud CURRENT (wall_jiulongfeng_01_dev / r000001).
@@ -581,6 +775,8 @@ final class OpenCVFrameProcessor: NSObject, ObservableObject, ARFrameConsumer {
 
     var debugDesiredReferenceSourceMode: String {
         switch desiredReferenceSourceMode {
+        case .productionCloudUnselected, .productionCloud: return "productionCloud"
+        case .jinshidongLocalTest: return "jinshidongLocalTest"
         case .bundleDevelopmentFixture: return "bundleDevelopmentFixture"
         case .cloudCurrentJiulongfengDevR000001: return "cloudCurrentJiulongfengDevR000001"
         }

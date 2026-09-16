@@ -103,6 +103,21 @@ struct WallCatalogEntry: Equatable, Sendable {
     var name: String
     var latestReleaseId: String
     var environment: WallCatalogEnvironment
+    var catalogLocation: WallCatalogLocation?
+
+    init(
+        wallId: String,
+        name: String,
+        latestReleaseId: String,
+        environment: WallCatalogEnvironment,
+        catalogLocation: WallCatalogLocation? = nil
+    ) {
+        self.wallId = wallId
+        self.name = name
+        self.latestReleaseId = latestReleaseId
+        self.environment = environment
+        self.catalogLocation = catalogLocation
+    }
 }
 
 extension WallCatalogEntry: Codable {
@@ -111,6 +126,7 @@ extension WallCatalogEntry: Codable {
         case name
         case latestReleaseId
         case environment
+        case catalogLocation
     }
 
     init(from decoder: Decoder) throws {
@@ -118,6 +134,7 @@ extension WallCatalogEntry: Codable {
         wallId = try container.decode(String.self, forKey: .wallId)
         name = try container.decode(String.self, forKey: .name)
         latestReleaseId = try container.decode(String.self, forKey: .latestReleaseId)
+        catalogLocation = try container.decodeIfPresent(WallCatalogLocation.self, forKey: .catalogLocation)
         if container.contains(.environment) {
             let raw = try container.decode(String.self, forKey: .environment)
             switch raw {
@@ -145,6 +162,7 @@ extension WallCatalogEntry: Codable {
         if let wire = environment.wireValue {
             try container.encode(wire, forKey: .environment)
         }
+        try container.encodeIfPresent(catalogLocation, forKey: .catalogLocation)
     }
 }
 
@@ -171,6 +189,8 @@ enum CloudAssetType {
     static let referenceMap = "reference_map"
     static let referenceDescriptorsRVS1 = "reference_descriptors_rvs1"
     static let referenceLandmarksJSON = "reference_landmarks_json"
+    static let sWallColmapJSON = "s_wall_colmap_json"
+    static let wallRoutesJSON = "wall_routes_json"
 }
 
 /// Stage 3 localization consumption: exactly one required asset of each
@@ -203,6 +223,23 @@ enum CloudStage3AssetSemantics {
             in: manifest
         )
         return (descriptors, landmarks)
+    }
+
+    static func requiredSim3Asset(in manifest: WallManifest) throws -> WallAssetDescriptor {
+        try uniquelyRequiredAsset(type: CloudAssetType.sWallColmapJSON, in: manifest)
+    }
+
+    static func productionRoutesAsset(in manifest: WallManifest) throws -> WallAssetDescriptor? {
+        let matches = manifest.assets.filter { $0.type == CloudAssetType.wallRoutesJSON }
+        if matches.isEmpty { return nil }
+        if matches.count > 1 {
+            throw CloudAssetError.duplicateSemanticType(CloudAssetType.wallRoutesJSON)
+        }
+        let asset = matches[0]
+        if !asset.required {
+            throw CloudAssetError.semanticTypeNotRequired(CloudAssetType.wallRoutesJSON)
+        }
+        return asset
     }
 }
 

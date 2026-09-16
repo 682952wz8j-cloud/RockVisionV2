@@ -1,0 +1,28 @@
+# Enable only after Let's Encrypt certs exist for api.cragpal.com.
+# Do not symlink this file until:
+#   /etc/letsencrypt/live/api.cragpal.com/fullchain.pem
+#   /etc/letsencrypt/live/api.cragpal.com/privkey.pem
+# are present. HTTP-01 uses the port-80 server_name block.
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name api.cragpal.com;
+
+    ssl_certificate /etc/letsencrypt/live/api.cragpal.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.cragpal.com/privkey.pem;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:CragPalSSL:10m;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    location / {
+        proxy_pass http://cragpal_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Connection "";
+    }
+}

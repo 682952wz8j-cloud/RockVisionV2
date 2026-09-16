@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "gate5c.development.route.fixture.1",
+  "kind": "development_validation_route_fixture",
+  "developmentValidationOnly": true,
+  "notAProductionRoutePackage": true,
+  "sourceArtifact": "ingested/jinshidong_lucky_baby.json",
+  "routeId": "jinshidong_lucky_baby",
+  "routeName": "Lucky Baby",
+  "grade": "5.7",
+  "quickdraws": "3+2",
+  "wallId": "wall_jinshidong_01",
+  "wallBuildRunId": "wb_20260906T024519Z_6e08b5ff",
+  "colmapModelFingerprint": "32e9791497d9c9584acf455dc0942762f1d3e1993e9b4e682723408c1294350c",
+  "coordinateFrame": "WallMetricMeters",
+  "provenance": "IDENTITY_SUPPORTED",
+  "dummyOriginExcluded": true,
+  "pointCount": 6,
+  "polyline": [
+    [
+      -9.145891189575195,
+      -33.03070068359375,
+      14.691120147705078
+    ],
+    [
+      -8.93558406829834,
+      -32.82399368286133,
+      13.039535522460938
+    ],
+    [
+      -8.314493179321289,
+      -33.47356033325195,
+      11.001001358032227
+    ],
+    [
+      -8.410008430480957,
+      -34.26354217529297,
+      9.245091438293457
+    ],
+    [
+      -8.04168701171875,
+      -34.570289611816406,
+      7.721412658691406
+    ],
+    [
+      -8.212965965270996,
+      -35.018524169921875,
+      6.559218406677246
+    ]
+  ],
+  "polylineSha256": "9473023e60e9fd5a2003ead60d5e7134d0b1386e81b861457e1de569ae62b407"
+}

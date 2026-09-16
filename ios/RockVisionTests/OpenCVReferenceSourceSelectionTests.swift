@@ -6,10 +6,10 @@ final class OpenCVReferenceSourceSelectionTests: XCTestCase {
     private let expectedWallId = "wall_jiulongfeng_01_dev"
     private let expectedReleaseId = "r000001"
 
-    func testDefaultReferenceSourceRemainsBundleDevelopmentFixture() throws {
+    func testDefaultReferenceSourceIsProductionCloud() throws {
         let processor = OpenCVFrameProcessor()
         #if DEBUG
-        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "bundleDevelopmentFixture")
+        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "productionCloud")
         #else
         throw XCTSkip("Only meaningful in DEBUG test builds.")
         #endif

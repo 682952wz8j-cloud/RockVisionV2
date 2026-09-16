@@ -412,7 +412,12 @@ class JinshidongHeightEnforcementTests(unittest.TestCase):
         incoming = ROOT / "incoming" / "wall_jinshidong_01"
         if not incoming.is_dir():
             self.skipTest("incoming/wall_jinshidong_01 not present")
-        artifact = select_stage2_inputs("wall_jinshidong_01", ROOT)
+        artifact = select_stage2_inputs(
+            "wall_jinshidong_01",
+            ROOT,
+            capture_group="DJI_202609051628_009_九龙峰",
+        )
+        self.assertEqual(artifact["selectionStatus"], "AUTO_PASS")
         sources = sources_from_selection(artifact)
         self.assertIsNotNone(sources)
         result = evaluate_generic_height_from_sources(incoming, sources)
@@ -709,7 +714,12 @@ class VerticalOverrideAbsenceTests(unittest.TestCase):
         incoming = ROOT / "incoming" / "wall_jinshidong_01"
         if not incoming.is_dir():
             self.skipTest("incoming/wall_jinshidong_01 not present")
-        artifact = select_stage2_inputs("wall_jinshidong_01", ROOT)
+        artifact = select_stage2_inputs(
+            "wall_jinshidong_01",
+            ROOT,
+            capture_group="DJI_202609051628_009_九龙峰",
+        )
+        self.assertEqual(artifact["selectionStatus"], "AUTO_PASS")
         export = (artifact.get("terraExportRoot") or {}).get("relativePath")
         collected = collect_terra_vertical_evidence(incoming, export)
         rows = _override_rows(collected)
@@ -721,6 +731,7 @@ class VerticalOverrideAbsenceTests(unittest.TestCase):
         self.assertEqual(rows[0]["rawValues"], [""])
         self.assertEqual(vertical_override_state_from_terra_evidence(collected["evidence"]), "NO")
         sources = sources_from_selection(artifact)
+        self.assertIsNotNone(sources)
         result = evaluate_generic_height_from_sources(incoming, sources)
         self.assertEqual(result["verticalOverrideConfigured"], "NO")
         self.assertEqual(result["heightVerticalDatumProvenance"], "AUTO_PASS")

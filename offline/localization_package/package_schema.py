@@ -14,6 +14,7 @@ from .schema import (
     TYPE_DESCRIPTORS,
     TYPE_LANDMARKS,
     TYPE_S_WALL_COLMAP,
+    TYPE_WALL_ROUTES,
 )
 
 _RELEASE_ID = re.compile(r"^r[0-9]{6}$")
@@ -124,8 +125,21 @@ def decode_package_json(payload: object) -> dict:
     routes = payload.get("routes")
     if not isinstance(routes, dict):
         raise PackageSchemaError(ReasonCode.INVALID_PACKAGE_SCHEMA, "routes must be an object")
-    if routes.get("present") is not False or routes.get("authorized") is not False:
-        raise PackageSchemaError(ReasonCode.ROUTES_NOT_AUTHORIZED, "routes must be present=false authorized=false")
+    present = routes.get("present")
+    authorized = routes.get("authorized")
+    if present is False and authorized is False:
+        pass
+    elif present is True and authorized is True:
+        _require_asset_identity(routes, expected_type=TYPE_WALL_ROUTES, name="routes")
+    else:
+        raise PackageSchemaError(ReasonCode.ROUTES_NOT_AUTHORIZED, "routes must be absent or a production wall-routes asset")
+    if "catalogLocation" in payload:
+        from offline.catalog_promotion.location import CatalogLocationError, decode_catalog_location
+
+        try:
+            decode_catalog_location(payload.get("catalogLocation"))
+        except CatalogLocationError as exc:
+            raise PackageSchemaError(ReasonCode.INVALID_PACKAGE_SCHEMA, str(exc)) from exc
     return payload
 
 

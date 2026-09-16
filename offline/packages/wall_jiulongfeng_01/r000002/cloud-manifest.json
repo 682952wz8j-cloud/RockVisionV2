@@ -1,0 +1,36 @@
+{
+  "schema": "cragpal.wall-manifest.v1",
+  "wallId": "wall_jiulongfeng_01",
+  "releaseId": "r000002",
+  "createdAt": "2026-09-15T08:32:00Z",
+  "assets": [
+    {
+      "assetId": "stage3-descriptors",
+      "type": "reference_descriptors_rvs1",
+      "required": true,
+      "sha256": "635982437d892870719591ae397cbfc61d6902084e5533114dc32953dc37c8a1",
+      "bytes": 24170004
+    },
+    {
+      "assetId": "stage3-landmarks",
+      "type": "reference_landmarks_json",
+      "required": true,
+      "sha256": "84b7ed45489854ae186210948a89d1528ba6f08c34353be32f85cfeebab747da",
+      "bytes": 17651353
+    },
+    {
+      "assetId": "s-wall-colmap",
+      "type": "s_wall_colmap_json",
+      "required": true,
+      "sha256": "9a66ef828c366769e7c22056fa3cb12541b0f3f0bf521a88f2ff6742f8f82bd8",
+      "bytes": 4996
+    },
+    {
+      "assetId": "wall-routes",
+      "type": "wall_routes_json",
+      "required": true,
+      "sha256": "f506c5004b3c8d01fb54b5faf6577afdb1703bd54527f8968cb92a570b7e4182",
+      "bytes": 2126
+    }
+  ]
+}

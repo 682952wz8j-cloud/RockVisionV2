@@ -1,0 +1,163 @@
+{
+  "schemaVersion": "S_wall_colmap.1",
+  "name": "S_wall_colmap",
+  "status": "VALIDATED",
+  "sourceFrame": "colmap_reconstruction_rhs_opencv_units",
+  "targetFrame": "wall_local_metres",
+  "convention": "X_wall = s * R * X_colmap + t  (column vectors)",
+  "units": {
+    "source": "arbitrary_reconstruction_units",
+    "target": "meters",
+    "scale": "meters_per_colmap_unit"
+  },
+  "scale": 3.19764417024824,
+  "rotationMatrix": {
+    "layout": "row-major 3x3",
+    "values": [
+      [
+        -0.800165030903251,
+        0.4649656470515442,
+        -0.37887051928269444
+      ],
+      [
+        0.599600894353238,
+        0.6355562104532535,
+        -0.4863610498848536
+      ],
+      [
+        0.01465233122738616,
+        -0.6163402067172307,
+        -0.7873436725937185
+      ]
+    ]
+  },
+  "quaternion": {
+    "order": "wxyz",
+    "values": [
+      0.10959870774361839,
+      -0.2964887987923044,
+      -0.897644823127475,
+      0.307109568336888
+    ]
+  },
+  "axisAngle": {
+    "axis": [
+      -0.2982856966338134,
+      -0.9030850827652406,
+      0.30897083433647826
+    ],
+    "angleRad": 2.9219540202597423,
+    "angleDeg": 167.41563329216666
+  },
+  "translationMeters": [
+    -14.05705977150447,
+    31.486410778244565,
+    -36.569903167581565
+  ],
+  "matrix4x4": {
+    "layout": "row-major",
+    "vector": "column 4-vector [x,y,z,1]",
+    "action": "X_wall_h = M * X_colmap_h",
+    "values": [
+      [
+        -2.558643046304283,
+        1.486794690660071,
+        -1.2114931072632313,
+        -14.05705977150447
+      ],
+      [
+        1.9173103043042623,
+        2.0322826112209094,
+        -1.5552095758001157,
+        31.486410778244565
+      ],
+      [
+        0.04685294152979759,
+        -1.9708366688989476,
+        -2.517644904651143,
+        -36.569903167581565
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  "wallLocalOrigin": {
+    "values": [
+      597786.8584244546,
+      3333597.1281958264,
+      352.50399999973473
+    ],
+    "source": "/Users/zhengzhang/Documents/RockVisionV2/incoming/wall_jiulongfeng_01/九龙峰森林站大楼/models/pc/0/terra_ply/metadata.xml",
+    "relativePath": "九龙峰森林站大楼/models/pc/0/terra_ply/metadata.xml",
+    "srs": "EPSG:32650",
+    "note": "WallLocal = (UTM_E - E0, UTM_N - N0, Ellh - H0). Translation only."
+  },
+  "wallLocalOriginSource": "metadata.xml SRSOrigin re-read from incoming",
+  "coordinateConvention": {
+    "colmapPose": "x_cam = R * x_world + t; camera_center = -R^T t",
+    "mrkHeight": "ellipsoidal",
+    "projectedMetric": "EPSG:32650 easting/northing + MRK Ellh (not a full 3D EPSG:32650 CRS)",
+    "wallLocal": "metres relative to SRSOrigin; no axis swap or ENU rotation applied"
+  },
+  "fitImageCount": 35,
+  "holdoutImageCount": 12,
+  "inlierImageCount": 35,
+  "inlierThresholdMeters": 1.0,
+  "fitMetrics": {
+    "min": 0.013126307793413287,
+    "median": 0.03592222731564994,
+    "mean": 0.046229589361719996,
+    "p90": 0.09166195513484417,
+    "max": 0.11207547468796203,
+    "rmse": 0.053002486651012065,
+    "horizontal": {
+      "median": 0.03160215381656205,
+      "p90": 0.07238224003834534,
+      "max": 0.09703526238301088
+    },
+    "vertical": {
+      "median": 0.016906042546700917,
+      "p90": 0.044921327906301656,
+      "max": 0.07668901141106588
+    },
+    "count": 35
+  },
+  "holdoutMetrics": {
+    "min": 0.01416769409194394,
+    "median": 0.032347461196594395,
+    "mean": 0.039464448051976936,
+    "p90": 0.07020759913438009,
+    "max": 0.11531986077139623,
+    "rmse": 0.047911755730514795,
+    "horizontal": {
+      "median": 0.022992030819424893,
+      "p90": 0.048278406999488085,
+      "max": 0.06469630656851592
+    },
+    "vertical": {
+      "median": 0.015179409719646486,
+      "p90": 0.052384372987680554,
+      "max": 0.09546233919576252
+    },
+    "count": 12
+  },
+  "solver": "Umeyama 1991 similarity",
+  "robustMethod": "RANSAC + Umeyama refit, seed=20260823, iters=2000",
+  "createdFrom": {
+    "captureSession": "dji_20260823",
+    "colmapSparse": "offline/work/wall_jiulongfeng_01/colmap/sparse/0",
+    "mrk": "DJI_202608231218_006_九龙峰/DJI_20260823122214_0002_D.MRK",
+    "gpsRuntimeUse": "offline Sim(3) only; GPS must not enter future visual localization / PnP"
+  },
+  "sWallColmapRuntimeNote": "Future iPhone pose is T_opencvCam_colmap in reconstruction units until this Sim(3) is applied offline to landmarks/routes.",
+  "gateResult": "PASS",
+  "gpsRuntimePolicy": "MRK/GNSS is used only to compute this offline Sim(3). Future iPhone visual localization must not use GPS for reference matching, 2D–3D correspondence, PnP, camera pose refinement, or Wall alignment. GPS may be used only for Wall ID / coarse site selection.",
+  "wallId": "wall_jiulongfeng_01",
+  "wallBuildRunId": "wb_20260823T130500Z_6ceebb24",
+  "colmapModelFingerprint": "6ceebb249ec245f0394da46dac94e13bfe29f166d7f2aa11747e66ca4342946f",
+  "modelFingerprint": "6ceebb249ec245f0394da46dac94e13bfe29f166d7f2aa11747e66ca4342946f"
+}

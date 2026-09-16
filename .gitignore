@@ -20,6 +20,10 @@ incoming/**
 offline/work/**
 !offline/work/README.md
 
+# Unpublished production-candidate binaries. Metadata JSON is committed.
+offline/packages/**/assets/stage3-descriptors
+offline/packages/**/assets/stage3-landmarks
+
 # Generated Wall Package binaries (schema JSON may be committed later)
 walls/**/localization/*.bin
 walls/**/visual/
@@ -36,6 +40,10 @@ offline/vendor/opencv414/
 # Gate 3C development fixture binaries. Commit the manifest only.
 ios/RockVision/Resources/DevelopmentFixture/descriptors.bin
 ios/RockVision/Resources/DevelopmentFixture/landmarks.json
+
+# Jinshidong local-test binaries. Commit manifest, package identity, Sim(3) JSON, and route JSON.
+ios/RockVision/Resources/JinshidongLocalTest/descriptors.bin
+ios/RockVision/Resources/JinshidongLocalTest/landmarks.json
 
 # Field Test exports if copied from an iPhone into this repo
 **/FieldTests/

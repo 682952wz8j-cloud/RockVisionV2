@@ -1,0 +1,20 @@
+{
+  "schema": "jinshidong.local_test.1",
+  "kind": "development_local_test_assets",
+  "wallId": "wall_jinshidong_01",
+  "wallBuildRunId": "wb_20260906T024519Z_6e08b5ff",
+  "colmapModelFingerprint": "32e9791497d9c9584acf455dc0942762f1d3e1993e9b4e682723408c1294350c",
+  "releaseId": "r000000",
+  "developmentLocalTestOnly": true,
+  "notAProductionRelease": true,
+  "notACatalogRelease": true,
+  "notAProductionRoutePackage": true,
+  "descriptorsPath": "descriptors.bin",
+  "landmarksPath": "landmarks.json",
+  "sim3Path": "jinshidong_s_wall_colmap.json",
+  "packagePath": "package.json",
+  "routeBundlePath": "route_bundle.json",
+  "descriptorsSha256": "120b38d654d059d431638abe0b48310aea240d4081a7a044598487d21b3bf49e",
+  "landmarksSha256": "949a6ff0c4bdf4ed2df481ae9c5c7a50b3c6ca7996bdb7b13bd6009c9b7814f3",
+  "sim3Sha256": "c5a855eca2858b7bdf840c53974bfe2bb1daa05037d3d64b5f67f7b9c43486f8"
+}

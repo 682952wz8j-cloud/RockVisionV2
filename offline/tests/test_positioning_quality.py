@@ -355,7 +355,13 @@ class PositioningQualityRealRegressionTests(unittest.TestCase):
         incoming = ROOT / "incoming" / "wall_jinshidong_01"
         if not incoming.is_dir():
             self.skipTest("incoming/wall_jinshidong_01 not present")
-        artifact = select_stage2_inputs("wall_jinshidong_01", ROOT)
+        artifact = select_stage2_inputs(
+            "wall_jinshidong_01",
+            ROOT,
+            capture_group="DJI_202608291029_008_九龙峰",
+        )
+        self.assertEqual(artifact["selectionStatus"], "AUTO_PASS")
+        self.assertEqual(artifact["selectedCapture"]["memberCount"], 179)
         sources = sources_from_selection(artifact)
         self.assertIsNotNone(sources)
         result = evaluate_positioning_quality_from_sources(incoming, sources)

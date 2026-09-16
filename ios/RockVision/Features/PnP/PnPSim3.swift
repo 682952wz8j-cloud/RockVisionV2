@@ -74,3 +74,52 @@ enum ValidatedSim3Loader {
         var translationMeters: [Double]
     }
 }
+
+/// Production release Sim(3). Scale is per-wall; not the Jiulongfeng bundle constant.
+enum ProductionSim3Loader {
+    static func load(from url: URL) throws -> ValidatedSim3 {
+        let object = try JSONSerialization.jsonObject(with: try Data(contentsOf: url))
+        guard let dict = object as? [String: Any] else {
+            throw Sim3LoadError.invalidStatus("not-an-object")
+        }
+        guard (dict["status"] as? String) == "VALIDATED" else {
+            throw Sim3LoadError.invalidStatus(String(describing: dict["status"]))
+        }
+        guard let name = dict["name"] as? String,
+              let convention = dict["convention"] as? String,
+              let scale = dict["scale"] as? Double,
+              scale.isFinite, scale > 0
+        else {
+            throw Sim3LoadError.scaleMismatch(0)
+        }
+        guard let translation = dict["translationMeters"] as? [Double],
+              translation.count == 3,
+              translation.allSatisfy(\.isFinite)
+        else {
+            throw Sim3LoadError.invalidStatus("translation")
+        }
+        return ValidatedSim3(
+            name: name,
+            status: "VALIDATED",
+            convention: convention,
+            scale: scale,
+            rotationMatrix: try rotationMatrix(from: dict["rotationMatrix"]),
+            translationMeters: translation
+        )
+    }
+
+    private static func rotationMatrix(from raw: Any?) throws -> [[Double]] {
+        if let flat = raw as? [[Double]],
+           flat.count == 3,
+           flat.allSatisfy({ $0.count == 3 && $0.allSatisfy(\.isFinite) }) {
+            return flat
+        }
+        if let nested = raw as? [String: Any],
+           let values = nested["values"] as? [[Double]],
+           values.count == 3,
+           values.allSatisfy({ $0.count == 3 && $0.allSatisfy(\.isFinite) }) {
+            return values
+        }
+        throw Sim3LoadError.invalidStatus("rotationMatrix")
+    }
+}

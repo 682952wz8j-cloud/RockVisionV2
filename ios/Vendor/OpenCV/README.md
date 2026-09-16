@@ -57,3 +57,14 @@ ios/Vendor/OpenCV/
 ```
 
 Do not drop in an unverified prebuilt framework from the internet.
+
+## Privacy resource packaging
+
+OpenCV is linked as a static archive. Its pinned upstream privacy manifest
+is shipped separately as `RockVision/Resources/OpenCVPrivacy.bundle`,
+without modifying the XCFramework or its frozen checksum. The app's own
+`PrivacyInfo.xcprivacy` is a separate resource. After rebuilding the pinned
+SDK, verify that the resource bundle manifest is byte-identical to
+`opencv2.xcframework/ios-arm64/opencv2.framework/Versions/A/Resources/PrivacyInfo.xcprivacy`.
+Use `ios/scripts/verify_release_bundle.py` on the built Release `.app` to
+check the shipped resources and production ATS settings.

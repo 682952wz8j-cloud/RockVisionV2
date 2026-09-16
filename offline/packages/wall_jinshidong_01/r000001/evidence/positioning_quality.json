@@ -1,0 +1,901 @@
+{
+  "policyVersion": "POSITIONING_QUALITY_POLICY_V1",
+  "tier2Enabled": false,
+  "selectedFrameCount": 87,
+  "fixedFrameCount": 87,
+  "nonFixedFrameCount": 0,
+  "missingOrUnparseableFrameCount": 0,
+  "conflictFrameCount": 0,
+  "rtkFlagDistribution": [
+    {
+      "value": "50",
+      "count": 87
+    }
+  ],
+  "positioningQualityProvenance": "AUTO_PASS",
+  "positioningQualityReasonCode": "POSITIONING_QUALITY_FIXED",
+  "positioningQualityExecutionAllowed": true,
+  "positioningQualityGatePass": false,
+  "genericStage2Pass": true,
+  "genericStage2Capability": "PASS",
+  "productionBuildStage2Enabled": true,
+  "blockingFrames": [],
+  "frames": [
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163700_0001_V.JPG",
+      "sequence": 1,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163710_0003_V.JPG",
+      "sequence": 3,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163714_0004_V.JPG",
+      "sequence": 4,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163716_0005_V.JPG",
+      "sequence": 5,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163743_0006_V.JPG",
+      "sequence": 6,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163757_0007_V.JPG",
+      "sequence": 7,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163802_0008_V.JPG",
+      "sequence": 8,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163812_0009_V.JPG",
+      "sequence": 9,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163824_0010_V.JPG",
+      "sequence": 10,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163833_0011_V.JPG",
+      "sequence": 11,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163838_0012_V.JPG",
+      "sequence": 12,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163842_0013_V.JPG",
+      "sequence": 13,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163844_0014_V.JPG",
+      "sequence": 14,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163849_0015_V.JPG",
+      "sequence": 15,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163857_0016_V.JPG",
+      "sequence": 16,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163901_0017_V.JPG",
+      "sequence": 17,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163903_0018_V.JPG",
+      "sequence": 18,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163907_0019_V.JPG",
+      "sequence": 19,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163911_0020_V.JPG",
+      "sequence": 20,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163914_0021_V.JPG",
+      "sequence": 21,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163917_0022_V.JPG",
+      "sequence": 22,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163920_0023_V.JPG",
+      "sequence": 23,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163921_0024_V.JPG",
+      "sequence": 24,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163923_0025_V.JPG",
+      "sequence": 25,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163926_0026_V.JPG",
+      "sequence": 26,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163938_0027_V.JPG",
+      "sequence": 27,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163942_0028_V.JPG",
+      "sequence": 28,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163945_0029_V.JPG",
+      "sequence": 29,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163950_0030_V.JPG",
+      "sequence": 30,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163956_0031_V.JPG",
+      "sequence": 31,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905163958_0032_V.JPG",
+      "sequence": 32,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164009_0033_V.JPG",
+      "sequence": 33,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164011_0034_V.JPG",
+      "sequence": 34,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164015_0035_V.JPG",
+      "sequence": 35,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164018_0036_V.JPG",
+      "sequence": 36,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164030_0037_V.JPG",
+      "sequence": 37,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164033_0038_V.JPG",
+      "sequence": 38,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164039_0039_V.JPG",
+      "sequence": 39,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164046_0040_V.JPG",
+      "sequence": 40,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164100_0041_V.JPG",
+      "sequence": 41,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164110_0042_V.JPG",
+      "sequence": 42,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164124_0043_V.JPG",
+      "sequence": 43,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164133_0044_V.JPG",
+      "sequence": 44,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164139_0045_V.JPG",
+      "sequence": 45,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164146_0046_V.JPG",
+      "sequence": 46,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164155_0047_V.JPG",
+      "sequence": 47,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164212_0048_V.JPG",
+      "sequence": 48,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164219_0049_V.JPG",
+      "sequence": 49,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164224_0050_V.JPG",
+      "sequence": 50,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164236_0051_V.JPG",
+      "sequence": 51,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164238_0052_V.JPG",
+      "sequence": 52,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164242_0053_V.JPG",
+      "sequence": 53,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164252_0054_V.JPG",
+      "sequence": 54,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164334_0055_V.JPG",
+      "sequence": 55,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164348_0056_V.JPG",
+      "sequence": 56,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164349_0057_V.JPG",
+      "sequence": 57,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164352_0058_V.JPG",
+      "sequence": 58,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164359_0059_V.JPG",
+      "sequence": 59,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164401_0060_V.JPG",
+      "sequence": 60,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164403_0061_V.JPG",
+      "sequence": 61,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164410_0062_V.JPG",
+      "sequence": 62,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164412_0063_V.JPG",
+      "sequence": 63,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164414_0064_V.JPG",
+      "sequence": 64,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164427_0065_V.JPG",
+      "sequence": 65,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164432_0066_V.JPG",
+      "sequence": 66,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164505_0070_V.JPG",
+      "sequence": 70,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164509_0071_V.JPG",
+      "sequence": 71,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164524_0072_V.JPG",
+      "sequence": 72,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164527_0073_V.JPG",
+      "sequence": 73,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164529_0074_V.JPG",
+      "sequence": 74,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164536_0075_V.JPG",
+      "sequence": 75,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164546_0076_V.JPG",
+      "sequence": 76,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164548_0077_V.JPG",
+      "sequence": 77,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164551_0078_V.JPG",
+      "sequence": 78,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164626_0079_V.JPG",
+      "sequence": 79,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164627_0080_V.JPG",
+      "sequence": 80,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164629_0081_V.JPG",
+      "sequence": 81,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164636_0082_V.JPG",
+      "sequence": 82,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164641_0083_V.JPG",
+      "sequence": 83,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164645_0084_V.JPG",
+      "sequence": 84,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164648_0085_V.JPG",
+      "sequence": 85,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164704_0086_V.JPG",
+      "sequence": 86,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164721_0087_V.JPG",
+      "sequence": 87,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164731_0088_V.JPG",
+      "sequence": 88,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164738_0089_V.JPG",
+      "sequence": 89,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905164741_0090_V.JPG",
+      "sequence": 90,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    },
+    {
+      "imageRelativePath": "DJI_202609051628_009_九龙峰/DJI_20260905165917_0136_V.JPG",
+      "sequence": 136,
+      "classification": "TIER_1_FIXED",
+      "reasonCode": "POSITIONING_QUALITY_FIXED",
+      "positioningQualityEligible": true,
+      "rtkFlag": 50,
+      "rtkFlagRaw": "50",
+      "distributionKey": "50"
+    }
+  ],
+  "reasonCounts": {
+    "POSITIONING_QUALITY_CONFLICT": 0,
+    "POSITIONING_QUALITY_NOT_PROVEN": 0,
+    "POSITIONING_QUALITY_NOT_SUPPORTED": 0,
+    "POSITIONING_QUALITY_FIXED": 87
+  }
+}

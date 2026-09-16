@@ -15,6 +15,7 @@ from .schema import (
     TYPE_DESCRIPTORS,
     TYPE_LANDMARKS,
     TYPE_S_WALL_COLMAP,
+    TYPE_WALL_ROUTES,
 )
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -89,18 +90,22 @@ def local_cloud_manifest(
     descriptors: dict,
     landmarks: dict,
     metric: dict,
+    routes: dict | None = None,
 ) -> dict:
-    """Local candidate only. Not uploaded. Not consumed by current iOS."""
+    """Local candidate only. Not uploaded."""
+    assets = [
+        _manifest_asset(descriptors, TYPE_DESCRIPTORS),
+        _manifest_asset(landmarks, TYPE_LANDMARKS),
+        _manifest_asset(metric, TYPE_S_WALL_COLMAP),
+    ]
+    if routes is not None:
+        assets.append(_manifest_asset(routes, TYPE_WALL_ROUTES))
     return {
         "schema": CLOUD_MANIFEST_SCHEMA,
         "wallId": wall_id,
         "releaseId": release_id,
         "createdAt": created_at,
-        "assets": [
-            _manifest_asset(descriptors, TYPE_DESCRIPTORS),
-            _manifest_asset(landmarks, TYPE_LANDMARKS),
-            _manifest_asset(metric, TYPE_S_WALL_COLMAP),
-        ],
+        "assets": assets,
     }
 
 

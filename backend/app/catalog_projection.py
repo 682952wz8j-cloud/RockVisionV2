@@ -97,6 +97,7 @@ def project_promotions(records: list[dict]) -> dict:
                 name=str(latest["name"]),
                 latest_release_id=str(latest["releaseId"]),
                 environment=next(iter(environments)),
+                catalog_location=latest.get("catalogLocation"),
             )
         )
     catalog = empty_catalog()
@@ -126,6 +127,7 @@ def merge_legacy_and_projected(legacy: dict, projected: dict) -> dict:
                     name=str(left["name"]),
                     latest_release_id=str(left["latestReleaseId"]),
                     environment=_entry_environment(left),
+                    catalog_location=left.get("catalogLocation"),
                 )
             )
             continue
@@ -136,6 +138,7 @@ def merge_legacy_and_projected(legacy: dict, projected: dict) -> dict:
                     name=str(right["name"]),
                     latest_release_id=str(right["latestReleaseId"]),
                     environment=_entry_environment(right),
+                    catalog_location=right.get("catalogLocation"),
                 )
             )
             continue
@@ -158,6 +161,7 @@ def merge_legacy_and_projected(legacy: dict, projected: dict) -> dict:
                 name=str(right["name"]),
                 latest_release_id=str(right["latestReleaseId"]),
                 environment=right_env,
+                catalog_location=right.get("catalogLocation") or left.get("catalogLocation"),
             )
         )
     catalog = empty_catalog()

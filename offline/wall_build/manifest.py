@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from offline.ingestion.hashing import sha256_file
+from offline.ingestion.route_namespace import is_route_namespace_relative
 from offline.ingestion.scan import iter_files
 from offline.ingestion.detect import classify_file
 
@@ -21,7 +22,13 @@ def utc_now() -> str:
 def list_incoming_files(incoming: Path) -> list[Path]:
     if not incoming.is_dir():
         return []
-    return iter_files(incoming)
+    files = []
+    for path in iter_files(incoming):
+        rel = path.relative_to(incoming).as_posix()
+        if is_route_namespace_relative(rel):
+            continue
+        files.append(path)
+    return files
 
 
 def file_entry(incoming: Path, path: Path) -> dict:

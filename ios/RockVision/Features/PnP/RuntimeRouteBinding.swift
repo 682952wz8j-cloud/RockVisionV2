@@ -8,23 +8,41 @@ enum FrozenRoutePolylineHash {
     static let expectedPointCount = 11
 
     static func canonicalBytes(_ points: [[Double]]) -> Data? {
-        guard points.count == expectedPointCount,
+        canonicalBytes(points, pointCount: expectedPointCount, expectedByteCount: expectedByteCount)
+    }
+
+    /// Development/local-test polylines may have any finite 3D point count.
+    /// Production Gate 5C still uses the 11-point / 264-byte overload above.
+    static func canonicalBytes(
+        _ points: [[Double]],
+        pointCount: Int,
+        expectedByteCount: Int? = nil
+    ) -> Data? {
+        guard pointCount > 0,
+              points.count == pointCount,
               points.allSatisfy({ $0.count == 3 && $0.allSatisfy(\.isFinite) })
         else { return nil }
         var data = Data()
-        data.reserveCapacity(expectedByteCount)
+        data.reserveCapacity(pointCount * 24)
         for point in points {
             for coord in point {
                 var bits = coord.bitPattern.littleEndian
                 withUnsafeBytes(of: &bits) { data.append(contentsOf: $0) }
             }
         }
-        guard data.count == expectedByteCount else { return nil }
+        if let expectedByteCount {
+            guard data.count == expectedByteCount else { return nil }
+        }
         return data
     }
 
     static func sha256Hex(_ points: [[Double]]) -> String? {
         guard let bytes = canonicalBytes(points) else { return nil }
+        return SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
+    }
+
+    static func sha256Hex(_ points: [[Double]], pointCount: Int) -> String? {
+        guard let bytes = canonicalBytes(points, pointCount: pointCount) else { return nil }
         return SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
     }
 
@@ -51,6 +69,10 @@ struct VerifiedFrozenRoute: Equatable, Sendable {
     var hashVerified: Bool
     var developmentValidationOnly: Bool
     var sourceArtifact: String
+    var routeName: String? = nil
+    var grade: String? = nil
+    var displayDraws: String? = nil
+    var lengthMeters: Double? = nil
 
     static func load(from url: URL) -> VerifiedFrozenRoute? {
         guard let data = try? Data(contentsOf: url) else { return nil }
@@ -158,6 +180,120 @@ struct VerifiedFrozenRoute: Equatable, Sendable {
         var pointCount: Int
         var polyline: [[Double]]
         var polylineSha256: String
+        var routeName: String? = nil
+        var grade: String? = nil
+        var quickdraws: String? = nil
+    }
+
+    /// Development/local-test only. Does not use the production Gate 5C
+    /// `route_test_01` / `IDENTITY_PROVEN` / 11-point contract.
+    static func loadLocalTest(from url: URL, expectedWallId: String) -> VerifiedFrozenRoute? {
+        guard let data = try? Data(contentsOf: url),
+              let payload = try? JSONDecoder().decode(FixtureFile.self, from: data)
+        else { return nil }
+        guard payload.developmentValidationOnly,
+              payload.notAProductionRoutePackage,
+              payload.wallId == expectedWallId,
+              payload.coordinateFrame == expectedCoordinateFrame,
+              payload.provenance == "IDENTITY_SUPPORTED",
+              payload.dummyOriginExcluded,
+              payload.pointCount >= 2,
+              payload.polyline.count == payload.pointCount,
+              !payload.polyline.contains(where: { $0 == [0.0, 0.0, 0.0] }),
+              payload.routeId != expectedRouteId
+        else { return nil }
+        guard FrozenRoutePolylineHash.sha256Hex(payload.polyline, pointCount: payload.pointCount)
+                == payload.polylineSha256
+        else { return nil }
+        return VerifiedFrozenRoute(
+            routeId: payload.routeId,
+            wallId: payload.wallId,
+            coordinateFrame: payload.coordinateFrame,
+            provenance: payload.provenance,
+            dummyOriginExcluded: payload.dummyOriginExcluded,
+            polylineSha256: payload.polylineSha256,
+            wallMetricMeters: payload.polyline,
+            hashVerified: true,
+            developmentValidationOnly: payload.developmentValidationOnly,
+            sourceArtifact: payload.sourceArtifact,
+            routeName: payload.routeName,
+            grade: payload.grade,
+            displayDraws: payload.quickdraws
+        )
+    }
+
+    static func loadProductionAsset(from url: URL, expectedWallId: String, expectedReleaseId: String) -> [VerifiedFrozenRoute]? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return loadProductionAsset(from: data, expectedWallId: expectedWallId, expectedReleaseId: expectedReleaseId)
+    }
+
+    static func loadProductionAsset(from data: Data, expectedWallId: String, expectedReleaseId: String) -> [VerifiedFrozenRoute]? {
+        guard let payload = try? JSONDecoder().decode(ProductionRoutesFile.self, from: data) else { return nil }
+        guard payload.schema == "cragpal.wall-routes.v1",
+              payload.wallId == expectedWallId,
+              payload.releaseId == expectedReleaseId,
+              payload.coordinateFrame == expectedCoordinateFrame,
+              !payload.routes.isEmpty
+        else { return nil }
+        var routes: [VerifiedFrozenRoute] = []
+        for item in payload.routes {
+            guard item.coordinateFrame == expectedCoordinateFrame,
+                  item.dummyOriginExcluded,
+                  item.pointCount >= 2,
+                  item.polyline.count == item.pointCount,
+                  !item.polyline.contains(where: { $0 == [0.0, 0.0, 0.0] }),
+                  item.routeId != expectedRouteId,
+                  FrozenRoutePolylineHash.sha256Hex(item.polyline, pointCount: item.pointCount) == item.polylineSha256
+            else { return nil }
+            routes.append(
+                VerifiedFrozenRoute(
+                    routeId: item.routeId,
+                    wallId: payload.wallId,
+                    coordinateFrame: item.coordinateFrame,
+                    provenance: item.provenance,
+                    dummyOriginExcluded: true,
+                    polylineSha256: item.polylineSha256,
+                    wallMetricMeters: item.polyline,
+                    hashVerified: true,
+                    developmentValidationOnly: false,
+                    sourceArtifact: item.source.path,
+                    routeName: item.routeName,
+                    grade: item.grade,
+                    displayDraws: item.quickdraws,
+                    lengthMeters: item.lengthMeters
+                )
+            )
+        }
+        return routes
+    }
+
+    struct ProductionRoutesFile: Codable, Equatable, Sendable {
+        var schema: String
+        var wallId: String
+        var releaseId: String
+        var coordinateFrame: String
+        var routes: [ProductionRoute]
+    }
+
+    struct ProductionRoute: Codable, Equatable, Sendable {
+        var routeId: String
+        var routeName: String
+        var grade: String
+        var quickdraws: String
+        var lengthMeters: Double? = nil
+        var source: ProductionRouteSource
+        var coordinateFrame: String
+        var provenance: String
+        var dummyOriginExcluded: Bool
+        var pointCount: Int
+        var polyline: [[Double]]
+        var polylineSha256: String
+    }
+
+    struct ProductionRouteSource: Codable, Equatable, Sendable {
+        var path: String
+        var sha256: String
+        var sizeBytes: Int
     }
 }
 
@@ -185,7 +321,8 @@ struct RuntimeRouteBinding: Equatable, Sendable {
     /// Does not construct T. Does not take Sim(3). Does not inspect localizationState.
     static func evaluate(
         verifiedRoute: VerifiedFrozenRoute?,
-        alignment: AlignmentFrameResult
+        alignment: AlignmentFrameResult,
+        requiredPointCount: Int = FrozenRoutePolylineHash.expectedPointCount
     ) -> RuntimeRouteBinding {
         guard let route = verifiedRoute, route.hashVerified else {
             return RuntimeRouteBinding(
@@ -222,7 +359,7 @@ struct RuntimeRouteBinding: Equatable, Sendable {
                 }
                 points.append(arWorld)
             }
-            guard points.count == FrozenRoutePolylineHash.expectedPointCount else {
+            guard points.count == requiredPointCount else {
                 return failClosed(routeId: route.routeId, reason: "pointCount")
             }
             return RuntimeRouteBinding(

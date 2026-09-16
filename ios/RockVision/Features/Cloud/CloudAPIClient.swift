@@ -12,21 +12,23 @@ struct URLSessionCloudTransport: CloudHTTPTransport {
     }
 
     func data(for request: URLRequest) async throws -> (Data, URLResponse) {
-        do {
-            return try await session.data(for: request)
-        } catch {
-            throw CloudAssetError.network
-        }
+        try await session.data(for: request)
     }
 }
 
 struct CloudAPIClient: Sendable {
     var configuration: CloudAPIConfiguration
     var transport: any CloudHTTPTransport
+    var diagnosticSession: CloudInstallDiagnosticSession?
 
-    init(configuration: CloudAPIConfiguration, transport: any CloudHTTPTransport = URLSessionCloudTransport()) {
+    init(
+        configuration: CloudAPIConfiguration,
+        transport: any CloudHTTPTransport = URLSessionCloudTransport(),
+        diagnosticSession: CloudInstallDiagnosticSession? = nil
+    ) {
         self.configuration = configuration
         self.transport = transport
+        self.diagnosticSession = diagnosticSession
     }
 
     func fetchCatalog() async throws -> WallCatalog {
@@ -114,11 +116,13 @@ struct CloudAPIClient: Sendable {
         } catch let error as CloudAssetError {
             throw error
         } catch {
+            diagnosticSession?.recordURLSessionError(error as NSError, url: request.url)
             throw CloudAssetError.network
         }
         guard let http = response as? HTTPURLResponse else {
             throw CloudAssetError.network
         }
+        diagnosticSession?.recordHTTPResponse(url: request.url, status: http.statusCode, data: data)
         guard (200..<300).contains(http.statusCode) else {
             throw CloudAssetError.httpStatus(http.statusCode)
         }

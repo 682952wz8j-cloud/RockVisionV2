@@ -29,6 +29,9 @@ V1 is not a starting branch.
 
 ## Current position
 
+Release preparation audit (2026-09-16): [current release evidence and blockers](RELEASE_PREPARATION_20260916.md). Production HTTPS catalog/packages now exist; this observation does not close Stage 5 or supersede the formal Gate status below.
+
+
 **Live status source of truth: [`README.md`](../README.md).**
 
 ```text

@@ -65,6 +65,7 @@ def promote_localization_release(
     approve: bool,
     store: PromotionStore | None,
     promoted_at: str | None = None,
+    catalog_location: dict | None = None,
 ) -> PromotionResult:
     base = PromotionResult(
         state=PromotionState.PROMOTION_NOT_AUTHORIZED.value,
@@ -109,6 +110,7 @@ def promote_localization_release(
         promoted_at=promoted_at or _utc_now(),
         release_manifest_sha256=manifest_sha,
         environment=ENVIRONMENT_PRODUCTION,
+        catalog_location=catalog_location,
     )
     if existing is not None:
         return _existing_record_result(base, existing, candidate)

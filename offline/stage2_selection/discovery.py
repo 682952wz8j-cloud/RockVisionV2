@@ -6,6 +6,7 @@ from pathlib import Path
 
 from offline.ingestion.detect import classify_file
 from offline.ingestion.hashing import is_os_metadata_noise, sha256_file
+from offline.ingestion.route_namespace import is_route_namespace_relative
 from offline.ingestion.images import image_to_json, inspect_image
 from offline.qualification.associate import dji_filename_parts
 from offline.qualification.images import classify_image, collect_ply_texture_names
@@ -49,6 +50,8 @@ def discover_candidates(incoming: Path) -> dict:
 
     for path in files:
         rel = _rel(incoming, path)
+        if is_route_namespace_relative(rel):
+            continue
         ext = path.suffix.lower()
         name = path.name
         if ext in _IMAGE_EXT:

@@ -90,6 +90,34 @@
 		A10000000000000100000056 /* ReferenceAssetSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000056 /* ReferenceAssetSource.swift */; };
 		A10000000000000100000057 /* ReferenceAssetSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000057 /* ReferenceAssetSourceTests.swift */; };
 		A10000000000000100000058 /* DebugHUDMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000058 /* DebugHUDMode.swift */; };
+		A10000000000000100000059 /* JinshidongLocalTestAssets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000059 /* JinshidongLocalTestAssets.swift */; };
+		A1000000000000010000005A /* JinshidongLocalTest in Resources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000005A /* JinshidongLocalTest */; };
+		A1000000000000010000005B /* JinshidongLocalTestAssetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000005B /* JinshidongLocalTestAssetTests.swift */; };
+		A1000000000000010000005C /* Stage5DebugHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000005C /* Stage5DebugHUD.swift */; };
+		A1000000000000010000005D /* Stage5DebugHUDTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000005D /* Stage5DebugHUDTests.swift */; };
+		A1000000000000010000005E /* WallCandidateSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000005E /* WallCandidateSelector.swift */; };
+		A1000000000000010000005F /* WallLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000010000005F /* WallLocationProvider.swift */; };
+		A10000000000000100000060 /* ProductionRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000060 /* ProductionRuntime.swift */; };
+		A10000000000000100000061 /* WallCandidateSelectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000061 /* WallCandidateSelectorTests.swift */; };
+		A10000000000000100000062 /* ProductionPathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000062 /* ProductionPathTests.swift */; };
+		A10000000000000100000063 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A20000000000000100000063 /* CoreLocation.framework */; };
+		A10000000000000100000064 /* CloudInstallDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000064 /* CloudInstallDiagnostics.swift */; };
+		A10000000000000100000065 /* CloudInstallDiagnosticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000065 /* CloudInstallDiagnosticsTests.swift */; };
+		A10000000000000100000066 /* ScanLoadingModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000066 /* ScanLoadingModel.swift */; };
+		A10000000000000100000067 /* ScanLoadingHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000067 /* ScanLoadingHUD.swift */; };
+		A10000000000000100000068 /* MascotSequence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000068 /* MascotSequence.swift */; };
+		A10000000000000100000069 /* RouteApplyReceipt.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000069 /* RouteApplyReceipt.swift */; };
+		A10000000000000100000070 /* EngineeringDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000070 /* EngineeringDiagnostics.swift */; };
+		A10000000000000100000071 /* ScanLoadingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000071 /* ScanLoadingTests.swift */; };
+		A10000000000000100000072 /* MascotLime in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000072 /* MascotLime */; };
+		A10000000000000100000073 /* AppPixelFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000073 /* AppPixelFont.swift */; };
+		A10000000000000100000074 /* RouteLabelLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000074 /* RouteLabelLayout.swift */; };
+		A10000000000000100000075 /* CragDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000075 /* CragDirectory.swift */; };
+		A10000000000000100000076 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000076 /* Fonts */; };
+		A10000000000000100000077 /* RouteLabelLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000077 /* RouteLabelLayoutTests.swift */; };
+		B10000000000000100000081 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000100000081; };
+		B10000000000000100000082 /* OpenCVPrivacy.bundle in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000100000082; };
+		B10000000000000100000083 /* AppInformation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000100000083; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -180,6 +208,34 @@
 		A20000000000000100000056 /* ReferenceAssetSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceAssetSource.swift; sourceTree = "<group>"; };
 		A20000000000000100000057 /* ReferenceAssetSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceAssetSourceTests.swift; sourceTree = "<group>"; };
 		A20000000000000100000058 /* DebugHUDMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugHUDMode.swift; sourceTree = "<group>"; };
+		A20000000000000100000059 /* JinshidongLocalTestAssets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JinshidongLocalTestAssets.swift; sourceTree = "<group>"; };
+		A2000000000000010000005A /* JinshidongLocalTest */ = {isa = PBXFileReference; lastKnownFileType = folder; path = JinshidongLocalTest; sourceTree = "<group>"; };
+		A2000000000000010000005B /* JinshidongLocalTestAssetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JinshidongLocalTestAssetTests.swift; sourceTree = "<group>"; };
+		A2000000000000010000005C /* Stage5DebugHUD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stage5DebugHUD.swift; sourceTree = "<group>"; };
+		A2000000000000010000005D /* Stage5DebugHUDTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stage5DebugHUDTests.swift; sourceTree = "<group>"; };
+		A2000000000000010000005E /* WallCandidateSelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallCandidateSelector.swift; sourceTree = "<group>"; };
+		A2000000000000010000005F /* WallLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallLocationProvider.swift; sourceTree = "<group>"; };
+		A20000000000000100000060 /* ProductionRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductionRuntime.swift; sourceTree = "<group>"; };
+		A20000000000000100000061 /* WallCandidateSelectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallCandidateSelectorTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000062 /* ProductionPathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductionPathTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000063 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
+		A20000000000000100000064 /* CloudInstallDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudInstallDiagnostics.swift; sourceTree = "<group>"; };
+		A20000000000000100000065 /* CloudInstallDiagnosticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudInstallDiagnosticsTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000066 /* ScanLoadingModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanLoadingModel.swift; sourceTree = "<group>"; };
+		A20000000000000100000067 /* ScanLoadingHUD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanLoadingHUD.swift; sourceTree = "<group>"; };
+		A20000000000000100000068 /* MascotSequence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotSequence.swift; sourceTree = "<group>"; };
+		A20000000000000100000069 /* RouteApplyReceipt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteApplyReceipt.swift; sourceTree = "<group>"; };
+		A20000000000000100000070 /* EngineeringDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineeringDiagnostics.swift; sourceTree = "<group>"; };
+		A20000000000000100000071 /* ScanLoadingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanLoadingTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000072 /* MascotLime */ = {isa = PBXFileReference; lastKnownFileType = folder; path = MascotLime; sourceTree = "<group>"; };
+		A20000000000000100000073 /* AppPixelFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPixelFont.swift; sourceTree = "<group>"; };
+		A20000000000000100000074 /* RouteLabelLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteLabelLayout.swift; sourceTree = "<group>"; };
+		A20000000000000100000075 /* CragDirectory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CragDirectory.swift; sourceTree = "<group>"; };
+		A20000000000000100000076 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fonts; sourceTree = "<group>"; };
+		A20000000000000100000077 /* RouteLabelLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteLabelLayoutTests.swift; sourceTree = "<group>"; };
+		B20000000000000100000081 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = RockVision/PrivacyInfo.xcprivacy; sourceTree = SOURCE_ROOT; };
+		B20000000000000100000082 /* OpenCVPrivacy.bundle */ = {isa = PBXFileReference; lastKnownFileType = wrapper.cfbundle; path = RockVision/Resources/OpenCVPrivacy.bundle; sourceTree = SOURCE_ROOT; };
+		B20000000000000100000083 /* AppInformation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RockVision/App/AppInformation.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -193,6 +249,7 @@
 				A1000000000000010000000D /* Accelerate.framework in Frameworks */,
 				A1000000000000010000000E /* CoreVideo.framework in Frameworks */,
 				A1000000000000010000000F /* CoreMedia.framework in Frameworks */,
+				A10000000000000100000063 /* CoreLocation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -221,6 +278,9 @@
 			isa = PBXGroup;
 			children = (
 				A40000000000000100000003 /* App */,
+				B20000000000000100000083 /* AppInformation.swift */,
+				B20000000000000100000082 /* OpenCVPrivacy.bundle */,
+				B20000000000000100000081 /* PrivacyInfo.xcprivacy */,
 				A40000000000000100000009 /* Bridge */,
 				A40000000000000100000004 /* Features */,
 				A20000000000000100000006 /* Assets.xcassets */,
@@ -251,6 +311,7 @@
 				A40000000000000100000010 /* PnP */,
 				A40000000000000100000011 /* RouteOverlay */,
 				A40000000000000100000012 /* Cloud */,
+				A40000000000000100000013 /* ScanLoading */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -271,6 +332,7 @@
 				A20000000000000100000017 /* KeypointOverlayView.swift */,
 				A2000000000000010000003F /* WallAlignmentDebugOverlay.swift */,
 				A20000000000000100000058 /* DebugHUDMode.swift */,
+				A2000000000000010000005C /* Stage5DebugHUD.swift */,
 			);
 			path = DebugOverlay;
 			sourceTree = "<group>";
@@ -325,6 +387,7 @@
 				A20000000000000100000023 /* RVS1Artifact.swift */,
 				A20000000000000100000024 /* ReferenceDatabase.swift */,
 				A20000000000000100000026 /* DevelopmentFixture.swift */,
+				A20000000000000100000059 /* JinshidongLocalTestAssets.swift */,
 				A20000000000000100000056 /* ReferenceAssetSource.swift */,
 				A20000000000000100000029 /* MatchingRuntime.swift */,
 			);
@@ -367,16 +430,38 @@
 				A20000000000000100000050 /* CloudIntegrity.swift */,
 				A20000000000000100000051 /* CloudReleaseStore.swift */,
 				A20000000000000100000052 /* CloudReleaseInstaller.swift */,
+				A20000000000000100000064 /* CloudInstallDiagnostics.swift */,
 				A20000000000000100000053 /* CloudAssetService.swift */,
 				A20000000000000100000054 /* CloudDebugPanel.swift */,
+				A2000000000000010000005E /* WallCandidateSelector.swift */,
+				A2000000000000010000005F /* WallLocationProvider.swift */,
+				A20000000000000100000060 /* ProductionRuntime.swift */,
 			);
 			path = Cloud;
+			sourceTree = "<group>";
+		};
+		A40000000000000100000013 /* ScanLoading */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000100000066 /* ScanLoadingModel.swift */,
+				A20000000000000100000067 /* ScanLoadingHUD.swift */,
+				A20000000000000100000068 /* MascotSequence.swift */,
+				A20000000000000100000069 /* RouteApplyReceipt.swift */,
+				A20000000000000100000070 /* EngineeringDiagnostics.swift */,
+				A20000000000000100000073 /* AppPixelFont.swift */,
+				A20000000000000100000074 /* RouteLabelLayout.swift */,
+				A20000000000000100000075 /* CragDirectory.swift */,
+			);
+			path = ScanLoading;
 			sourceTree = "<group>";
 		};
 		A4000000000000010000000F /* Resources */ = {
 			isa = PBXGroup;
 			children = (
 				A20000000000000100000027 /* DevelopmentFixture */,
+				A2000000000000010000005A /* JinshidongLocalTest */,
+				A20000000000000100000072 /* MascotLime */,
+				A20000000000000100000076 /* Fonts */,
 				A20000000000000100000033 /* S_wall_colmap.json */,
 				A20000000000000100000042 /* Gate4BMeasurementFixture.json */,
 				A20000000000000100000048 /* Gate5CRouteFixture.json */,
@@ -409,7 +494,14 @@
 				A20000000000000100000049 /* Gate5CRuntimeRouteBindingTests.swift */,
 				A2000000000000010000004C /* Gate5DARendererCorrectnessTests.swift */,
 				A20000000000000100000055 /* CloudAssetClientTests.swift */,
+				A20000000000000100000065 /* CloudInstallDiagnosticsTests.swift */,
+				A20000000000000100000071 /* ScanLoadingTests.swift */,
+				A20000000000000100000077 /* RouteLabelLayoutTests.swift */,
 				A20000000000000100000057 /* ReferenceAssetSourceTests.swift */,
+				A2000000000000010000005B /* JinshidongLocalTestAssetTests.swift */,
+				A2000000000000010000005D /* Stage5DebugHUDTests.swift */,
+				A20000000000000100000061 /* WallCandidateSelectorTests.swift */,
+				A20000000000000100000062 /* ProductionPathTests.swift */,
 			);
 			path = RockVisionTests;
 			sourceTree = "<group>";
@@ -423,6 +515,7 @@
 				A20000000000000100000011 /* Accelerate.framework */,
 				A20000000000000100000012 /* CoreVideo.framework */,
 				A20000000000000100000013 /* CoreMedia.framework */,
+				A20000000000000100000063 /* CoreLocation.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -518,7 +611,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000100000006 /* Assets.xcassets in Resources */,
+				B10000000000000100000082 /* OpenCVPrivacy.bundle in Resources */,
+				B10000000000000100000081 /* PrivacyInfo.xcprivacy in Resources */,
 				A10000000000000100000027 /* DevelopmentFixture in Resources */,
+				A1000000000000010000005A /* JinshidongLocalTest in Resources */,
+				A10000000000000100000072 /* MascotLime in Resources */,
+				A10000000000000100000076 /* Fonts in Resources */,
 				A10000000000000100000033 /* S_wall_colmap.json in Resources */,
 				A10000000000000100000042 /* Gate4BMeasurementFixture.json in Resources */,
 				A10000000000000100000048 /* Gate5CRouteFixture.json in Resources */,
@@ -535,6 +633,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000100000001 /* RockVisionApp.swift in Sources */,
+				B10000000000000100000083 /* AppInformation.swift in Sources */,
 				A10000000000000100000002 /* ContentView.swift in Sources */,
 				A10000000000000100000003 /* ARSessionHost.swift in Sources */,
 				A10000000000000100000004 /* ARCameraPreview.swift in Sources */,
@@ -558,6 +657,7 @@
 				A10000000000000100000023 /* RVS1Artifact.swift in Sources */,
 				A10000000000000100000024 /* ReferenceDatabase.swift in Sources */,
 				A10000000000000100000026 /* DevelopmentFixture.swift in Sources */,
+				A10000000000000100000059 /* JinshidongLocalTestAssets.swift in Sources */,
 				A10000000000000100000056 /* ReferenceAssetSource.swift in Sources */,
 				A10000000000000100000029 /* MatchingRuntime.swift in Sources */,
 				A1000000000000010000002A /* PnPConstants.swift in Sources */,
@@ -579,9 +679,22 @@
 				A10000000000000100000050 /* CloudIntegrity.swift in Sources */,
 				A10000000000000100000051 /* CloudReleaseStore.swift in Sources */,
 				A10000000000000100000052 /* CloudReleaseInstaller.swift in Sources */,
+				A10000000000000100000064 /* CloudInstallDiagnostics.swift in Sources */,
 				A10000000000000100000053 /* CloudAssetService.swift in Sources */,
 				A10000000000000100000054 /* CloudDebugPanel.swift in Sources */,
+				A1000000000000010000005E /* WallCandidateSelector.swift in Sources */,
+				A1000000000000010000005F /* WallLocationProvider.swift in Sources */,
+				A10000000000000100000060 /* ProductionRuntime.swift in Sources */,
 				A10000000000000100000058 /* DebugHUDMode.swift in Sources */,
+				A1000000000000010000005C /* Stage5DebugHUD.swift in Sources */,
+				A10000000000000100000066 /* ScanLoadingModel.swift in Sources */,
+				A10000000000000100000067 /* ScanLoadingHUD.swift in Sources */,
+				A10000000000000100000068 /* MascotSequence.swift in Sources */,
+				A10000000000000100000069 /* RouteApplyReceipt.swift in Sources */,
+				A10000000000000100000070 /* EngineeringDiagnostics.swift in Sources */,
+				A10000000000000100000073 /* AppPixelFont.swift in Sources */,
+				A10000000000000100000074 /* RouteLabelLayout.swift in Sources */,
+				A10000000000000100000075 /* CragDirectory.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -609,7 +722,14 @@
 				A10000000000000100000049 /* Gate5CRuntimeRouteBindingTests.swift in Sources */,
 				A1000000000000010000004C /* Gate5DARendererCorrectnessTests.swift in Sources */,
 				A10000000000000100000055 /* CloudAssetClientTests.swift in Sources */,
+				A10000000000000100000065 /* CloudInstallDiagnosticsTests.swift in Sources */,
+				A10000000000000100000071 /* ScanLoadingTests.swift in Sources */,
+				A10000000000000100000077 /* RouteLabelLayoutTests.swift in Sources */,
 				A10000000000000100000057 /* ReferenceAssetSourceTests.swift in Sources */,
+				A1000000000000010000005B /* JinshidongLocalTestAssetTests.swift in Sources */,
+				A1000000000000010000005D /* Stage5DebugHUDTests.swift in Sources */,
+				A10000000000000100000061 /* WallCandidateSelectorTests.swift in Sources */,
+				A10000000000000100000062 /* ProductionPathTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -738,7 +858,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = RockVision/Info.plist;
+				INFOPLIST_FILE = RockVision/Info.Debug.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CragPal;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_RUNPATH_SEARCH_PATHS = (

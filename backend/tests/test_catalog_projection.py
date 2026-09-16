@@ -15,9 +15,16 @@ if str(BACKEND_ROOT) not in sys.path:
 from fastapi.testclient import TestClient
 from qcloud_cos.cos_exception import CosServiceError
 
-from app.catalog_projection import ProjectionError, merge_legacy_and_projected, project_promotions
+from app.catalog_projection import (
+    ProjectionError,
+    filter_catalog_for_audience,
+    merge_legacy_and_projected,
+    project_promotions,
+)
 from app.contract import (
+    AUDIENCE_PRODUCTION,
     CATALOG_SCHEMA,
+    ENVIRONMENT_PRODUCTION,
     empty_catalog,
     published_catalog_key,
     published_manifest_key,
@@ -50,6 +57,13 @@ WHEN = "2026-09-04T15:48:58Z"
 SHA_A = "a" * 64
 SHA_B = "b" * 64
 SHA_C = "c" * 64
+JINSHIDONG_WALL = "wall_jinshidong_01"
+JINSHIDONG_LOCATION = {
+    "purpose": "wall_candidate_selection_only",
+    "latitudeDeg": 30.623418333479282,
+    "longitudeDeg": 118.72756872205237,
+    "altitudeMeters": 211.89499999933113,
+}
 
 
 def _record(
@@ -60,6 +74,7 @@ def _record(
     sha: str = SHA_A,
     promoted_at: str = WHEN,
     environment: str | None = None,
+    catalog_location: dict | None = None,
 ) -> dict:
     return promotion_record(
         wall_id=wall_id,
@@ -68,6 +83,7 @@ def _record(
         promoted_at=promoted_at,
         release_manifest_sha256=sha,
         environment=environment,
+        catalog_location=catalog_location,
     )
 
 
@@ -398,6 +414,29 @@ class ReadOnlyAndIdentityTests(unittest.TestCase):
         explicit = _client(store).get(_explicit_manifest_path(EXAMPLE_WALL_ID, EXAMPLE_RELEASE_ID))
         self.assertEqual(explicit.status_code, 200)
         self.assertEqual(explicit.json()["releaseId"], EXAMPLE_RELEASE_ID)
+
+    def test_21_production_audience_projects_catalog_location(self) -> None:
+        record = _record(
+            wall_id=JINSHIDONG_WALL,
+            name="金狮洞",
+            environment=ENVIRONMENT_PRODUCTION,
+            catalog_location=JINSHIDONG_LOCATION,
+        )
+        projected = project_promotions([record])
+        production = filter_catalog_for_audience(projected, AUDIENCE_PRODUCTION)
+        entry = production["walls"][0]
+        self.assertEqual(entry["wallId"], JINSHIDONG_WALL)
+        self.assertEqual(entry["name"], "金狮洞")
+        self.assertEqual(entry["latestReleaseId"], SYNTHETIC_RELEASE)
+        self.assertEqual(entry["catalogLocation"], JINSHIDONG_LOCATION)
+        fake = FakeCosClient()
+        _put_json(fake, published_catalog_key(), empty_catalog())
+        _put_json(fake, published_promotion_key(JINSHIDONG_WALL, SYNTHETIC_RELEASE), record)
+        response = _client(CosStore(client=fake, bucket="example-bucket")).get("/v1/walls")
+        self.assertEqual(response.status_code, 200)
+        live = response.json()["walls"][0]
+        self.assertEqual(live["wallId"], JINSHIDONG_WALL)
+        self.assertEqual(live["catalogLocation"], JINSHIDONG_LOCATION)
 
     def test_list_uses_promotions_prefix_only(self) -> None:
         fake = _cos_example_client()

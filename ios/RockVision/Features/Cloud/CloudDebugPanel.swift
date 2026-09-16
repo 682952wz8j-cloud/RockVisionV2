@@ -216,6 +216,7 @@ struct CloudDebugPanel: View {
     var cameraProvenance: ReferenceAssetProvenance = .unavailable
     var onSelectReferenceSourceBundle: () -> Void = {}
     var onSelectReferenceSourceCloudCurrent: () -> Void = {}
+    var onSelectReferenceSourceJinshidongLocalTest: () -> Void = {}
 
     var body: some View {
         Group {
@@ -285,6 +286,7 @@ struct CloudDebugPanel: View {
                 guard cameraProvenance.assetState == "available" else { return "—" }
                 if cameraProvenance.source == "developmentFixture" { return "Bundle" }
                 if cameraProvenance.source == "cloud" { return "Cloud CURRENT" }
+                if cameraProvenance.source == "jinshidongLocalTest" { return "Jinshidong local test" }
                 return cameraProvenance.source
             }()
             Text("Reference source: \(referenceSourceLabel)")
@@ -337,6 +339,7 @@ struct CloudDebugPanel: View {
                 cloudButton("Use Bundle Fixture", action: onSelectReferenceSourceBundle)
                 cloudButton("Use Cloud CURRENT r000001", action: onSelectReferenceSourceCloudCurrent)
             }
+            cloudButton("Use Jinshidong local test", action: onSelectReferenceSourceJinshidongLocalTest)
         }
     }
 

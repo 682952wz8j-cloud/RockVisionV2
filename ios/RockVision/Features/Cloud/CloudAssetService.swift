@@ -5,18 +5,29 @@ final class CloudAssetService: @unchecked Sendable {
     let client: CloudAPIClient
     let store: CloudReleaseStore
     let installer: CloudReleaseInstaller
+    let diagnostics: CloudInstallDiagnosticsStore?
 
-    init(client: CloudAPIClient, store: CloudReleaseStore) {
+    init(
+        client: CloudAPIClient,
+        store: CloudReleaseStore,
+        diagnostics: CloudInstallDiagnosticsStore? = nil
+    ) {
         self.client = client
         self.store = store
-        self.installer = CloudReleaseInstaller(client: client, store: store)
+        self.diagnostics = diagnostics
+        self.installer = CloudReleaseInstaller(client: client, store: store, diagnostics: diagnostics)
     }
 
     static func `default`() throws -> CloudAssetService {
         CloudAssetService(
             client: CloudAPIClient(configuration: .default),
-            store: try CloudReleaseStore.applicationSupportStore()
+            store: try CloudReleaseStore.applicationSupportStore(),
+            diagnostics: try? CloudInstallDiagnosticsStore.applicationSupportStore()
         )
+    }
+
+    func recordProductionRuntimeCatch(_ error: Error) {
+        diagnostics?.recordProductionRuntimeCatch(error)
     }
 
     func localValidatedRelease(wallId: String) throws -> LocalValidatedRelease {

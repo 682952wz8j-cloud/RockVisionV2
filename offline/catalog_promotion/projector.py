@@ -73,6 +73,7 @@ def project_catalog(records: list[dict]) -> dict:
                     name=str(latest["name"]),
                     latest_release_id=str(latest["releaseId"]),
                     environment=next(iter(environments)),
+                    catalog_location=latest.get("catalogLocation"),
                 )
             )
         except CatalogError as exc:

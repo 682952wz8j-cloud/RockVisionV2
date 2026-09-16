@@ -9,6 +9,7 @@ final class MockCloudTransport: CloudHTTPTransport, @unchecked Sendable {
     var assetBytes: [String: Data] = [:]
     var statusByPath: [String: Int] = [:]
     var networkError = false
+    var urlSessionErrorOnAssets: NSError?
     var failNetworkAfterAssetRequests: Int?
     private var assetRequestCount = 0
     private(set) var requestedPaths: [String] = []
@@ -23,6 +24,9 @@ final class MockCloudTransport: CloudHTTPTransport, @unchecked Sendable {
         requestedPaths.append(path)
         if path.contains("/assets/") {
             assetRequestCount += 1
+            if let nsError = urlSessionErrorOnAssets {
+                throw nsError
+            }
             if let limit = failNetworkAfterAssetRequests, assetRequestCount > limit {
                 throw CloudAssetError.network
             }
@@ -394,7 +398,19 @@ final class CloudAssetClientTests: XCTestCase {
         let client = CloudAPIClient(configuration: custom, transport: MockCloudTransport())
         XCTAssertEqual(try client.catalogURL().absoluteString, "https://example.invalid\(catalogDiscoveryPath)")
         XCTAssertEqual(CloudAPIConfiguration.production.baseURL, CloudAPIConfiguration.productionHTTPSURL)
+        XCTAssertEqual(CloudAPIConfiguration.productionHTTPSURL.absoluteString, "https://api.cragpal.com")
         XCTAssertNotEqual(CloudAPIConfiguration.production.baseURL, CloudAPIConfiguration.developmentTemporaryHTTPURL)
+        XCTAssertFalse(CloudAPIConfiguration.productionHTTPSURL.absoluteString.contains("124.223.178.91"))
+        let source = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("RockVision/Features/Cloud/CloudAPIConfiguration.swift")
+        )
+        let releaseDefault = source.components(separatedBy: "#else").last!.components(separatedBy: "#endif")[0]
+        XCTAssertTrue(releaseDefault.contains("CloudAPIConfiguration.production"))
+        XCTAssertFalse(releaseDefault.contains("developmentTemporaryHTTP"))
+        XCTAssertFalse(releaseDefault.contains("124.223.178.91"))
     }
 
     func testHTTPStatusIsNotSwallowedAsEmpty() async {
@@ -1116,7 +1132,7 @@ final class CloudCatalogDiscoveryInstallTests: XCTestCase {
     func testSyntheticWallIsNeverAutomaticallySelectedAsLocalizationSource() throws {
         let processor = OpenCVFrameProcessor()
         #if DEBUG
-        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "bundleDevelopmentFixture")
+        XCTAssertEqual(processor.debugDesiredReferenceSourceMode, "productionCloud")
         #else
         throw XCTSkip("Only meaningful in DEBUG test builds.")
         #endif
@@ -1350,8 +1366,9 @@ final class CloudCatalogAudienceTests: XCTestCase {
 final class CloudDebugHUDScopeTests: XCTestCase {
     func testDebugActiveModeIsCloudD5InDebugBuilds() {
         #if DEBUG
-        XCTAssertEqual(DebugHUDMode.active, .cloudD5)
-        XCTAssertTrue(DebugHUDMode.active.showsCloudD5HUD)
+        XCTAssertEqual(DebugHUDMode.active, .stage5)
+        XCTAssertTrue(DebugHUDMode.active.showsStage5HUD)
+        XCTAssertFalse(DebugHUDMode.active.showsCloudD5HUD)
         XCTAssertFalse(DebugHUDMode.active.showsGate4BHUD)
         #else
         XCTAssertEqual(DebugHUDMode.active, .gate4b)
@@ -1366,15 +1383,19 @@ final class CloudDebugHUDScopeTests: XCTestCase {
         let content = try String(contentsOf: sourceFile("RockVision/App/ContentView.swift"))
         XCTAssertTrue(content.contains("DebugHUDMode.active.showsCloudD5HUD"))
         XCTAssertTrue(content.contains("presentation: .d5Discovery"))
-        XCTAssertTrue(content.contains("if DebugHUDMode.active.showsGate4BHUD"))
+        XCTAssertTrue(content.contains("if DebugHUDMode.active.showsGate4BHUD {"))
+        XCTAssertTrue(content.contains("if DebugHUDMode.active.showsStage5HUD {"))
         let d5Range = content.range(of: "if DebugHUDMode.active.showsCloudD5HUD")!
-        let gateRange = content.range(of: "if DebugHUDMode.active.showsGate4BHUD")!
+        let gateRange = content.range(of: "if DebugHUDMode.active.showsGate4BHUD {")!
         let d5Block = String(content[d5Range.lowerBound..<gateRange.lowerBound])
         XCTAssertTrue(d5Block.contains("CloudDebugPanel"))
         XCTAssertFalse(d5Block.contains("FieldTestPanel"))
         XCTAssertFalse(d5Block.contains("Gate 4B"))
+        XCTAssertFalse(d5Block.contains("Stage5DebugHUD"))
         let gateBlock = String(content[gateRange.lowerBound...])
         XCTAssertTrue(gateBlock.contains("FieldTestPanel("))
+        XCTAssertTrue(gateBlock.contains("ScanLoadingHUD("))
+        XCTAssertFalse(d5Block.contains("ScanLoadingHUD"))
     }
 
     func testD5PrimaryHUDExposesFetchCatalogAndInstallWithoutHistoricalControls() throws {

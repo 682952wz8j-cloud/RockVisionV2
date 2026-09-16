@@ -8,6 +8,7 @@ from .contract import (
     SHA256_RE,
     ContractError,
     classified_environment_from_payload,
+    decode_catalog_location,
     is_release_id,
     is_safe_id,
 )
@@ -58,6 +59,11 @@ def decode_promotion_record(
         classified_environment_from_payload(payload)
     except ContractError as exc:
         raise PromotionRecordError("PROMOTION_ENVIRONMENT_INVALID", str(exc)) from exc
+    if "catalogLocation" in payload:
+        try:
+            payload["catalogLocation"] = decode_catalog_location(payload.get("catalogLocation"))
+        except ContractError as exc:
+            raise PromotionRecordError("CATALOG_LOCATION_INVALID", str(exc)) from exc
     return payload
 
 
@@ -88,6 +94,7 @@ def promotion_record(
     promoted_at: str,
     release_manifest_sha256: str,
     environment: str | None = None,
+    catalog_location: dict | None = None,
 ) -> dict:
     payload = {
         "schema": PROMOTION_SCHEMA,
@@ -101,4 +108,6 @@ def promotion_record(
         if environment not in CLASSIFIED_ENVIRONMENTS:
             raise PromotionRecordError("PROMOTION_ENVIRONMENT_INVALID", "invalid environment")
         payload["environment"] = environment
+    if catalog_location is not None:
+        payload["catalogLocation"] = decode_catalog_location(catalog_location)
     return payload

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from offline.ingestion.route_namespace import is_route_namespace_relative
 from offline.ingestion.types import RawAssetType
 from offline.ingestion.validate import is_readable_image
 
@@ -63,7 +64,12 @@ def run_preflight(
     images = [r for r in records if r.detected_type == RawAssetType.IMAGE]
     readable = [r for r in images if is_readable_image(r)]
     zero_byte = [r for r in recognized if r.file_size == 0]
-    zero_byte_route = [r for r in zero_byte if r.detected_type == RawAssetType.ROUTE_GEOMETRY]
+    zero_byte_route = [
+        r
+        for r in zero_byte
+        if r.detected_type == RawAssetType.ROUTE_GEOMETRY
+        and not is_route_namespace_relative(r.relative_path)
+    ]
     zero_byte_other = [r for r in zero_byte if r.detected_type != RawAssetType.ROUTE_GEOMETRY]
     if zero_byte_other:
         warnings.append(ReasonCode.ZERO_BYTE_RECOGNIZED_INPUT.value)
@@ -86,6 +92,7 @@ def run_preflight(
         item
         for item in discovery.get("dxfParseResults") or []
         if item.get("parseStatus") == StageStatus.AUTO_FAIL.value
+        and not is_route_namespace_relative(str(item.get("relativePath") or ""))
     ]
     corrupt_names: list[str] = []
     seen: set[str] = set()

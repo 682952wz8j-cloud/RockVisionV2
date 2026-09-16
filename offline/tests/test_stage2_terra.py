@@ -359,6 +359,10 @@ class Stage2TerraProvenanceTests(unittest.TestCase):
         self.assertFalse(artifact["selectionEvidence"]["plyUsedInFit"])
 
 
+JINSHIDONG_CAPTURE_008 = "DJI_202608291029_008_九龙峰"
+JINSHIDONG_CAPTURE_009 = "DJI_202609051628_009_九龙峰"
+
+
 class JinshidongReadOnlySelectionTests(unittest.TestCase):
     def test_jinshidong_generic_selection_and_folder_token_is_not_wall_id(self) -> None:
         incoming = ROOT / "incoming" / "wall_jinshidong_01"
@@ -368,17 +372,30 @@ class JinshidongReadOnlySelectionTests(unittest.TestCase):
             for p in sorted(incoming.rglob("*"))
             if p.is_file() and p.name != ".DS_Store"
         ]
-        artifact = select_stage2_inputs("wall_jinshidong_01", ROOT)
+        unresolved = select_stage2_inputs("wall_jinshidong_01", ROOT)
         after = [
             (p.relative_to(incoming).as_posix(), p.stat().st_mtime_ns, p.stat().st_size)
             for p in sorted(incoming.rglob("*"))
             if p.is_file() and p.name != ".DS_Store"
         ]
         self.assertEqual(before, after)
-        self.assertEqual(artifact["wallId"], "wall_jinshidong_01")
+        self.assertEqual(unresolved["wallId"], "wall_jinshidong_01")
+        self.assertEqual(unresolved["selectionStatus"], "HUMAN_REVIEW_REQUIRED")
+        self.assertIn("MULTIPLE_SELECTABLE_CAPTURE_GROUPS", unresolved["selectionReasonCodes"])
+        self.assertIsNone(unresolved.get("selectedCapture"))
+
+        artifact = select_stage2_inputs(
+            "wall_jinshidong_01",
+            ROOT,
+            capture_group=JINSHIDONG_CAPTURE_009,
+        )
         self.assertEqual(artifact["selectionStatus"], "AUTO_PASS")
-        self.assertEqual(artifact["selectedCapture"]["memberCount"], 179)
-        self.assertEqual(artifact["selectedMRKSource"]["recordCount"], 179)
+        self.assertEqual(artifact["selectedCapture"]["parentDirectory"], JINSHIDONG_CAPTURE_009)
+        self.assertEqual(artifact["selectedCapture"]["memberCount"], 87)
+        self.assertTrue(
+            str(artifact["selectedMRKSource"]["relativePath"]).startswith(JINSHIDONG_CAPTURE_009 + "/")
+        )
+        self.assertGreaterEqual(artifact["selectedMRKSource"]["recordCount"], 87)
         self.assertIn("九龙峰", artifact["selectedCapture"]["parentDirectory"])
         self.assertNotIn("九龙峰", artifact["wallId"])
         self.assertEqual(artifact["terraExportRoot"]["relativePath"], "0")
@@ -406,6 +423,16 @@ class JinshidongReadOnlySelectionTests(unittest.TestCase):
         self.assertEqual(artifact["wallMetricMetersProvenance"], "NOT_CLAIMED")
         self.assertEqual(artifact["heightVerticalDatumProvenance"], "SEPARATE_DEVELOPMENT_GATE")
         self.assertFalse(artifact["selectionEvidence"]["frozenIdentityRegressionEvidenceApplied"])
+
+        snapshot_008 = select_stage2_inputs(
+            "wall_jinshidong_01",
+            ROOT,
+            capture_group=JINSHIDONG_CAPTURE_008,
+        )
+        self.assertEqual(snapshot_008["selectionStatus"], "AUTO_PASS")
+        self.assertEqual(snapshot_008["selectedCapture"]["parentDirectory"], JINSHIDONG_CAPTURE_008)
+        self.assertEqual(snapshot_008["selectedCapture"]["memberCount"], 179)
+        self.assertEqual(snapshot_008["selectedMRKSource"]["recordCount"], 179)
 
 
 if __name__ == "__main__":

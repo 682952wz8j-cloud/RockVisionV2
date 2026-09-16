@@ -11,18 +11,18 @@ enum DebugHUDMode: String, Equatable, Sendable {
     case stage3
     case stage5
 
-    /// DEBUG D5 evidence collection uses the Cloud discovery HUD.
-    /// Release keeps the existing Gate 4B field-test surface; D5 Cloud UI
-    /// is not production UI.
+    /// DEBUG Production Field Engineering Mode owns the HUD.
+    /// Release uses the product scan surface; engineering controls are DEBUG-only.
     static var active: DebugHUDMode {
         #if DEBUG
-        .cloudD5
+        .stage5
         #else
-        .gate4b
+        .stage5
         #endif
     }
 
     var showsCloudD5HUD: Bool { self == .cloudD5 }
     var showsGate4BHUD: Bool { self == .gate4b }
     var showsFullCloudDebugHUD: Bool { self == .stage3 }
+    var showsStage5HUD: Bool { self == .stage5 }
 }

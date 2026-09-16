@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+from offline.catalog_promotion.location import CatalogLocationError, decode_catalog_location
+
 from offline.localization_package.package_schema import is_release_id, is_safe_id
 from offline.localization_package.schema import ENVIRONMENTS
 
@@ -49,6 +51,11 @@ def decode_catalog(payload: object) -> dict:
         if not is_release_id(release_id):
             raise CatalogError("CATALOG_INVALID", "invalid catalog latestReleaseId")
         catalog_environment(item)
+        if "catalogLocation" in item:
+            try:
+                decode_catalog_location(item.get("catalogLocation"))
+            except CatalogLocationError as exc:
+                raise CatalogError("CATALOG_LOCATION_INVALID", str(exc)) from exc
     return payload
 
 
@@ -61,7 +68,14 @@ def catalog_environment(item: dict) -> str | None:
     return value
 
 
-def catalog_entry(*, wall_id: str, name: str, latest_release_id: str, environment: str | None) -> dict:
+def catalog_entry(
+    *,
+    wall_id: str,
+    name: str,
+    latest_release_id: str,
+    environment: str | None,
+    catalog_location: dict | None = None,
+) -> dict:
     entry = {
         "wallId": wall_id,
         "name": name,
@@ -71,6 +85,8 @@ def catalog_entry(*, wall_id: str, name: str, latest_release_id: str, environmen
         if environment not in ENVIRONMENTS:
             raise CatalogError("CATALOG_ENVIRONMENT_INVALID", "invalid environment")
         entry["environment"] = environment
+    if catalog_location is not None:
+        entry["catalogLocation"] = decode_catalog_location(catalog_location)
     return entry
 
 
