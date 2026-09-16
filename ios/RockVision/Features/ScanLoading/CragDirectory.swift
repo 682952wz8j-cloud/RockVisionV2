@@ -25,7 +25,7 @@ enum CragDirectoryCopy {
     static let jinshidongLine = "安徽｜宣城｜泾县金狮洞"
     static let linanShitoushan = "浙江｜杭州｜临安狮头山"
     static let wuhuDaidian = "安徽｜芜湖｜繁昌戴店"
-    static let version = "version 1.0"
+    static var version: String { "version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")" }
     static let site = "www.cragpal.com"
 }
 
@@ -198,6 +198,7 @@ final class CragDirectoryModel: ObservableObject {
 }
 
 struct CragDirectoryOverlay: View {
+    @State private var showsInformation = false
     @ObservedObject var model: CragDirectoryModel
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -308,6 +309,11 @@ struct CragDirectoryOverlay: View {
                     }
                 }
             }
+            Button("隐私政策与支持") { showsInformation = true }
+                .font(AppPixelFont.font)
+                .foregroundStyle(ScanLoadingStyle.success)
+                .padding(.vertical, 12)
+                .sheet(isPresented: $showsInformation) { AppInformationView() }
             Text(CragDirectoryCopy.site)
                 .font(AppPixelFont.font)
                 .foregroundStyle(ScanLoadingStyle.success)

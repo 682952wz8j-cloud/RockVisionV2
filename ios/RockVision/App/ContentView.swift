@@ -5,8 +5,10 @@ import UIKit
 struct ContentView: View {
     @StateObject private var sessionHost = ARSessionHost()
     @StateObject private var openCV = OpenCVFrameProcessor()
+    #if DEBUG
     @StateObject private var fieldTest = FieldTestController()
     @StateObject private var cloudDebug = CloudDebugController()
+    #endif
     @StateObject private var productionRuntime = ProductionRuntimeController()
     @StateObject private var scanSession = ScanSessionBridge()
     @StateObject private var cragDirectory = CragDirectoryModel()
@@ -31,6 +33,7 @@ struct ContentView: View {
                     visible: featureOverlayVisible
                 )
                 .ignoresSafeArea()
+                #if DEBUG
                 VStack {
                     HStack {
                         Spacer()
@@ -90,6 +93,7 @@ struct ContentView: View {
                         pnp: openCV.pnpSnapshot
                     )
                 }
+                #endif
                 if DebugHUDMode.active.showsStage5HUD {
                     ScanLoadingHUD(
                         facts: scanLoadingFacts,
@@ -108,6 +112,7 @@ struct ContentView: View {
             }
             .onAppear {
                 sessionHost.frameConsumer = openCV
+                #if DEBUG
                 openCV.fieldSink = fieldTest
                 fieldTest.onApplyScene = { openCV.applyFieldTestScene($0) }
                 fieldTest.onApplyPreset = { openCV.applyFieldTestPreset($0) }
@@ -116,6 +121,7 @@ struct ContentView: View {
                     openCV.resetConfirmation(completion: completion)
                 }
                 fieldTest.enterFieldTest()
+                #endif
                 productionRuntime.processor = openCV
                 openCV.updateViewContext(size: geo.size, orientation: currentOrientation())
                 sessionHost.start()
@@ -126,16 +132,20 @@ struct ContentView: View {
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active {
+                    #if DEBUG
                     fieldTest.flush()
                     openCV.dumpAllBuckets()
+                    #endif
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
                 openCV.updateViewContext(size: geo.size, orientation: currentOrientation())
             }
             .onDisappear {
+                #if DEBUG
                 fieldTest.flush()
                 openCV.dumpAllBuckets()
+                #endif
                 sessionHost.frameConsumer = nil
                 sessionHost.pause()
             }

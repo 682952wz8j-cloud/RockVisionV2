@@ -28,6 +28,9 @@ chapters are historical numbering — see that file’s live-numbering note.
 
 ## Current Development Status
 
+Release preparation audit (2026-09-16): [current release evidence and blockers](docs/RELEASE_PREPARATION_20260916.md). Production HTTPS catalog/packages now exist; this observation does not close Stage 5 or supersede the formal Gate status below.
+
+
 ```text
 Stage 1 — iPhone Runtime Foundation          PASS
 Stage 2 — Metric Wall Reference Map          PASS

@@ -12,12 +12,12 @@ enum DebugHUDMode: String, Equatable, Sendable {
     case stage5
 
     /// DEBUG Production Field Engineering Mode owns the HUD.
-    /// Release keeps the existing Gate 4B field-test surface.
+    /// Release uses the product scan surface; engineering controls are DEBUG-only.
     static var active: DebugHUDMode {
         #if DEBUG
         .stage5
         #else
-        .gate4b
+        .stage5
         #endif
     }
 

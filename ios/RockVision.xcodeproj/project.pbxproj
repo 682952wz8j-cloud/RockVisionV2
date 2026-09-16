@@ -115,6 +115,9 @@
 		A10000000000000100000075 /* CragDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000075 /* CragDirectory.swift */; };
 		A10000000000000100000076 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000076 /* Fonts */; };
 		A10000000000000100000077 /* RouteLabelLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000077 /* RouteLabelLayoutTests.swift */; };
+		B10000000000000100000081 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000100000081; };
+		B10000000000000100000082 /* OpenCVPrivacy.bundle in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000100000082; };
+		B10000000000000100000083 /* AppInformation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000100000083; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -230,6 +233,9 @@
 		A20000000000000100000075 /* CragDirectory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CragDirectory.swift; sourceTree = "<group>"; };
 		A20000000000000100000076 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fonts; sourceTree = "<group>"; };
 		A20000000000000100000077 /* RouteLabelLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteLabelLayoutTests.swift; sourceTree = "<group>"; };
+		B20000000000000100000081 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = RockVision/PrivacyInfo.xcprivacy; sourceTree = SOURCE_ROOT; };
+		B20000000000000100000082 /* OpenCVPrivacy.bundle */ = {isa = PBXFileReference; lastKnownFileType = wrapper.cfbundle; path = RockVision/Resources/OpenCVPrivacy.bundle; sourceTree = SOURCE_ROOT; };
+		B20000000000000100000083 /* AppInformation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RockVision/App/AppInformation.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -272,6 +278,9 @@
 			isa = PBXGroup;
 			children = (
 				A40000000000000100000003 /* App */,
+				B20000000000000100000083 /* AppInformation.swift */,
+				B20000000000000100000082 /* OpenCVPrivacy.bundle */,
+				B20000000000000100000081 /* PrivacyInfo.xcprivacy */,
 				A40000000000000100000009 /* Bridge */,
 				A40000000000000100000004 /* Features */,
 				A20000000000000100000006 /* Assets.xcassets */,
@@ -602,6 +611,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000100000006 /* Assets.xcassets in Resources */,
+				B10000000000000100000082 /* OpenCVPrivacy.bundle in Resources */,
+				B10000000000000100000081 /* PrivacyInfo.xcprivacy in Resources */,
 				A10000000000000100000027 /* DevelopmentFixture in Resources */,
 				A1000000000000010000005A /* JinshidongLocalTest in Resources */,
 				A10000000000000100000072 /* MascotLime in Resources */,
@@ -622,6 +633,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000100000001 /* RockVisionApp.swift in Sources */,
+				B10000000000000100000083 /* AppInformation.swift in Sources */,
 				A10000000000000100000002 /* ContentView.swift in Sources */,
 				A10000000000000100000003 /* ARSessionHost.swift in Sources */,
 				A10000000000000100000004 /* ARCameraPreview.swift in Sources */,
@@ -846,7 +858,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = RockVision/Info.plist;
+				INFOPLIST_FILE = RockVision/Info.Debug.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CragPal;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_RUNPATH_SEARCH_PATHS = (
