@@ -45,6 +45,10 @@
 	<string>RockVision V2 uses the camera for an ARKit world-tracking session. OpenCV currently only inspects the camera frame for diagnostics. Visual localization is not running.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>RockVision uses your location only to choose the nearby climbing wall. GPS is never used for pose, route placement, or visual localization.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Fonts/ark-pixel-12px-monospaced-zh_cn.otf</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UIRequiredDeviceCapabilities</key>

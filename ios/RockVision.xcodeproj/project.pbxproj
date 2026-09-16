@@ -103,6 +103,18 @@
 		A10000000000000100000063 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A20000000000000100000063 /* CoreLocation.framework */; };
 		A10000000000000100000064 /* CloudInstallDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000064 /* CloudInstallDiagnostics.swift */; };
 		A10000000000000100000065 /* CloudInstallDiagnosticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000065 /* CloudInstallDiagnosticsTests.swift */; };
+		A10000000000000100000066 /* ScanLoadingModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000066 /* ScanLoadingModel.swift */; };
+		A10000000000000100000067 /* ScanLoadingHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000067 /* ScanLoadingHUD.swift */; };
+		A10000000000000100000068 /* MascotSequence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000068 /* MascotSequence.swift */; };
+		A10000000000000100000069 /* RouteApplyReceipt.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000069 /* RouteApplyReceipt.swift */; };
+		A10000000000000100000070 /* EngineeringDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000070 /* EngineeringDiagnostics.swift */; };
+		A10000000000000100000071 /* ScanLoadingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000071 /* ScanLoadingTests.swift */; };
+		A10000000000000100000072 /* MascotLime in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000072 /* MascotLime */; };
+		A10000000000000100000073 /* AppPixelFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000073 /* AppPixelFont.swift */; };
+		A10000000000000100000074 /* RouteLabelLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000074 /* RouteLabelLayout.swift */; };
+		A10000000000000100000075 /* CragDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000075 /* CragDirectory.swift */; };
+		A10000000000000100000076 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000076 /* Fonts */; };
+		A10000000000000100000077 /* RouteLabelLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000100000077 /* RouteLabelLayoutTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -206,6 +218,18 @@
 		A20000000000000100000063 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 		A20000000000000100000064 /* CloudInstallDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudInstallDiagnostics.swift; sourceTree = "<group>"; };
 		A20000000000000100000065 /* CloudInstallDiagnosticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudInstallDiagnosticsTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000066 /* ScanLoadingModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanLoadingModel.swift; sourceTree = "<group>"; };
+		A20000000000000100000067 /* ScanLoadingHUD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanLoadingHUD.swift; sourceTree = "<group>"; };
+		A20000000000000100000068 /* MascotSequence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotSequence.swift; sourceTree = "<group>"; };
+		A20000000000000100000069 /* RouteApplyReceipt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteApplyReceipt.swift; sourceTree = "<group>"; };
+		A20000000000000100000070 /* EngineeringDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineeringDiagnostics.swift; sourceTree = "<group>"; };
+		A20000000000000100000071 /* ScanLoadingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanLoadingTests.swift; sourceTree = "<group>"; };
+		A20000000000000100000072 /* MascotLime */ = {isa = PBXFileReference; lastKnownFileType = folder; path = MascotLime; sourceTree = "<group>"; };
+		A20000000000000100000073 /* AppPixelFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPixelFont.swift; sourceTree = "<group>"; };
+		A20000000000000100000074 /* RouteLabelLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteLabelLayout.swift; sourceTree = "<group>"; };
+		A20000000000000100000075 /* CragDirectory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CragDirectory.swift; sourceTree = "<group>"; };
+		A20000000000000100000076 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fonts; sourceTree = "<group>"; };
+		A20000000000000100000077 /* RouteLabelLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteLabelLayoutTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -278,6 +302,7 @@
 				A40000000000000100000010 /* PnP */,
 				A40000000000000100000011 /* RouteOverlay */,
 				A40000000000000100000012 /* Cloud */,
+				A40000000000000100000013 /* ScanLoading */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -406,11 +431,28 @@
 			path = Cloud;
 			sourceTree = "<group>";
 		};
+		A40000000000000100000013 /* ScanLoading */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000100000066 /* ScanLoadingModel.swift */,
+				A20000000000000100000067 /* ScanLoadingHUD.swift */,
+				A20000000000000100000068 /* MascotSequence.swift */,
+				A20000000000000100000069 /* RouteApplyReceipt.swift */,
+				A20000000000000100000070 /* EngineeringDiagnostics.swift */,
+				A20000000000000100000073 /* AppPixelFont.swift */,
+				A20000000000000100000074 /* RouteLabelLayout.swift */,
+				A20000000000000100000075 /* CragDirectory.swift */,
+			);
+			path = ScanLoading;
+			sourceTree = "<group>";
+		};
 		A4000000000000010000000F /* Resources */ = {
 			isa = PBXGroup;
 			children = (
 				A20000000000000100000027 /* DevelopmentFixture */,
 				A2000000000000010000005A /* JinshidongLocalTest */,
+				A20000000000000100000072 /* MascotLime */,
+				A20000000000000100000076 /* Fonts */,
 				A20000000000000100000033 /* S_wall_colmap.json */,
 				A20000000000000100000042 /* Gate4BMeasurementFixture.json */,
 				A20000000000000100000048 /* Gate5CRouteFixture.json */,
@@ -444,6 +486,8 @@
 				A2000000000000010000004C /* Gate5DARendererCorrectnessTests.swift */,
 				A20000000000000100000055 /* CloudAssetClientTests.swift */,
 				A20000000000000100000065 /* CloudInstallDiagnosticsTests.swift */,
+				A20000000000000100000071 /* ScanLoadingTests.swift */,
+				A20000000000000100000077 /* RouteLabelLayoutTests.swift */,
 				A20000000000000100000057 /* ReferenceAssetSourceTests.swift */,
 				A2000000000000010000005B /* JinshidongLocalTestAssetTests.swift */,
 				A2000000000000010000005D /* Stage5DebugHUDTests.swift */,
@@ -560,6 +604,8 @@
 				A10000000000000100000006 /* Assets.xcassets in Resources */,
 				A10000000000000100000027 /* DevelopmentFixture in Resources */,
 				A1000000000000010000005A /* JinshidongLocalTest in Resources */,
+				A10000000000000100000072 /* MascotLime in Resources */,
+				A10000000000000100000076 /* Fonts in Resources */,
 				A10000000000000100000033 /* S_wall_colmap.json in Resources */,
 				A10000000000000100000042 /* Gate4BMeasurementFixture.json in Resources */,
 				A10000000000000100000048 /* Gate5CRouteFixture.json in Resources */,
@@ -629,6 +675,14 @@
 				A10000000000000100000060 /* ProductionRuntime.swift in Sources */,
 				A10000000000000100000058 /* DebugHUDMode.swift in Sources */,
 				A1000000000000010000005C /* Stage5DebugHUD.swift in Sources */,
+				A10000000000000100000066 /* ScanLoadingModel.swift in Sources */,
+				A10000000000000100000067 /* ScanLoadingHUD.swift in Sources */,
+				A10000000000000100000068 /* MascotSequence.swift in Sources */,
+				A10000000000000100000069 /* RouteApplyReceipt.swift in Sources */,
+				A10000000000000100000070 /* EngineeringDiagnostics.swift in Sources */,
+				A10000000000000100000073 /* AppPixelFont.swift in Sources */,
+				A10000000000000100000074 /* RouteLabelLayout.swift in Sources */,
+				A10000000000000100000075 /* CragDirectory.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -657,6 +711,8 @@
 				A1000000000000010000004C /* Gate5DARendererCorrectnessTests.swift in Sources */,
 				A10000000000000100000055 /* CloudAssetClientTests.swift in Sources */,
 				A10000000000000100000065 /* CloudInstallDiagnosticsTests.swift in Sources */,
+				A10000000000000100000071 /* ScanLoadingTests.swift in Sources */,
+				A10000000000000100000077 /* RouteLabelLayoutTests.swift in Sources */,
 				A10000000000000100000057 /* ReferenceAssetSourceTests.swift in Sources */,
 				A1000000000000010000005B /* JinshidongLocalTestAssetTests.swift in Sources */,
 				A1000000000000010000005D /* Stage5DebugHUDTests.swift in Sources */,

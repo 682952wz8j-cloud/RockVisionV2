@@ -1394,7 +1394,8 @@ final class CloudDebugHUDScopeTests: XCTestCase {
         XCTAssertFalse(d5Block.contains("Stage5DebugHUD"))
         let gateBlock = String(content[gateRange.lowerBound...])
         XCTAssertTrue(gateBlock.contains("FieldTestPanel("))
-        XCTAssertTrue(gateBlock.contains("Stage5DebugHUD("))
+        XCTAssertTrue(gateBlock.contains("ScanLoadingHUD("))
+        XCTAssertFalse(d5Block.contains("ScanLoadingHUD"))
     }
 
     func testD5PrimaryHUDExposesFetchCatalogAndInstallWithoutHistoricalControls() throws {

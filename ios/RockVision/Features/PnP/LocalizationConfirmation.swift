@@ -72,6 +72,8 @@ struct ConfirmationRuntimeSnapshot: Equatable, Sendable {
     var localization: String = ConfirmationConfig.localizationIdle
     var window: String = "0/\(ConfirmationConfig.confirmWindow)"
     var lastReset: String = "—"
+    var enteredLocalized: Bool = false
+    var lostLocalized: Bool = false
 }
 
 /// Same-queue confirmation. Consumes qualified same-frame PnP candidates only.
@@ -380,7 +382,9 @@ enum ConfirmationSnapshot {
         ConfirmationRuntimeSnapshot(
             localization: tick.localizationState,
             window: "\(tick.windowCount)/\(ConfirmationConfig.confirmWindow)",
-            lastReset: tick.resetReason ?? "—"
+            lastReset: tick.resetReason ?? "—",
+            enteredLocalized: tick.enteredLocalized,
+            lostLocalized: tick.lostLocalized
         )
     }
 }

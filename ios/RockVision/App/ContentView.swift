@@ -8,6 +8,8 @@ struct ContentView: View {
     @StateObject private var fieldTest = FieldTestController()
     @StateObject private var cloudDebug = CloudDebugController()
     @StateObject private var productionRuntime = ProductionRuntimeController()
+    @StateObject private var scanSession = ScanSessionBridge()
+    @StateObject private var cragDirectory = CragDirectoryModel()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -16,7 +18,11 @@ struct ContentView: View {
                 ARCameraPreview(
                     session: sessionHost.session,
                     debugGeometry: DebugHUDMode.active.showsStage5HUD ? .hidden : openCV.wallDebugGeometry,
-                    routePlan: openCV.routeRenderPlan
+                    routePlan: openCV.routeRenderPlan,
+                    suppressOverlayText: DebugHUDMode.active.showsStage5HUD,
+                    attemptId: scanSession.attemptId,
+                    wallId: productionRuntime.wallId,
+                    sessionBridge: DebugHUDMode.active.showsStage5HUD ? scanSession : nil
                 )
                     .ignoresSafeArea()
                 if !DebugHUDMode.active.showsStage5HUD {
@@ -42,8 +48,22 @@ struct ContentView: View {
                                 onSelectReferenceSourceJinshidongLocalTest: { openCV.selectReferenceSourceJinshidongLocalTest() }
                             )
                             .frame(maxHeight: geo.size.height * 0.78, alignment: .top)
+                        } else if EngineeringDiagnostics.isEnabled {
+                            EngineeringDiagnosticsPanel(
+                                localization: openCV.confirmationSnapshot.localization,
+                                window: openCV.confirmationSnapshot.window,
+                                pnp: openCV.pnpSnapshot,
+                                wallId: productionRuntime.wallId,
+                                cloudAssetsLoaded: productionRuntime.cloudAssetsLoaded,
+                                renderedRoute: scanSession.receipt.renderedRoute
+                                    && scanSession.receipt.attemptId == scanSession.attemptId,
+                                matchingStatus: openCV.matchingSnapshot.status,
+                                lastError: productionRuntime.lastError
+                            )
                         }
                     }
+                    .padding(.top, 10)
+                    .padding(.trailing, 10)
                     Spacer()
                 }
                 .ignoresSafeArea(edges: .top)
@@ -69,13 +89,15 @@ struct ContentView: View {
                     )
                 }
                 if DebugHUDMode.active.showsStage5HUD {
-                    Stage5DebugHUD(
-                        localization: openCV.confirmationSnapshot.localization,
-                        pnp: openCV.pnpSnapshot,
-                        wallId: productionRuntime.wallId,
-                        cloudAssetsLoaded: productionRuntime.cloudAssetsLoaded,
-                        routes: openCV.productionFieldRoutes
+                    ScanLoadingHUD(
+                        facts: scanLoadingFacts,
+                        routes: openCV.productionFieldRoutes,
+                        bridge: scanSession,
+                        sidebarOpen: cragDirectory.isOpen
                     )
+                    .ignoresSafeArea()
+                    CragDirectoryOverlay(model: cragDirectory)
+                        .ignoresSafeArea()
                 }
             }
             .onAppear {
@@ -113,6 +135,19 @@ struct ContentView: View {
             }
         }
         .ignoresSafeArea()
+    }
+
+    private var scanLoadingFacts: ScanLoadingFacts {
+        ScanLoadingFacts(
+            localization: openCV.confirmationSnapshot.localization,
+            lostLocalized: openCV.confirmationSnapshot.lostLocalized,
+            matchingStatus: openCV.matchingSnapshot.status,
+            cloudAssetsLoaded: productionRuntime.cloudAssetsLoaded,
+            wallId: productionRuntime.wallId,
+            lastError: productionRuntime.lastError,
+            receipt: scanSession.receipt,
+            sceneActive: scenePhase == .active
+        )
     }
 
     private func currentOrientation() -> UIInterfaceOrientation {

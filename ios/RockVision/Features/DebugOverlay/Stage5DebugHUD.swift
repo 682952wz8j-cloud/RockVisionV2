@@ -66,6 +66,43 @@ enum ProductionRouteFieldCopy {
             .joined(separator: "\n")
     }
 
+    struct ScreenCard: Equatable, Sendable {
+        var name: String
+        var grade: String?
+        var secondary: [String]
+    }
+
+    /// Screen-space card after apply. `displayDraws` stays `x+2` (hangers + anchors), never bolt counts.
+    static func screenCard(_ route: VerifiedFrozenRoute) -> ScreenCard {
+        var secondary: [String] = []
+        if let length = officialLength(route.lengthMeters) {
+            secondary.append(length)
+        }
+        if let draws = quickdrawLine(route.displayDraws) {
+            secondary.append(draws)
+        }
+        return ScreenCard(
+            name: officialText(route.routeName) ?? "",
+            grade: officialText(route.grade),
+            secondary: secondary
+        )
+    }
+
+    static func compactLine(_ route: VerifiedFrozenRoute) -> String {
+        RouteLabelLayout.compactText(
+            name: officialText(route.routeName) ?? "",
+            grade: officialText(route.grade)
+        )
+    }
+
+    /// Selected-card caption. Keeps hanger+2 meaning; does not use emoji.
+    static func quickdrawCaption(_ route: VerifiedFrozenRoute) -> String? {
+        guard let text = officialText(route.displayDraws), let count = hangerCount(from: text) else {
+            return nil
+        }
+        return "快挂 \(count)+2"
+    }
+
     private static let absentTokens: Set<String> = [
         "unspecified", "n/a", "na", "none", "unknown", "tbd", "—", "-",
     ]
@@ -132,47 +169,14 @@ enum Stage5DebugHUDModel {
     }
 }
 
-/// Field Engineering Mode: package route copy + one weak live diagnostic line.
+/// Diagnostic copy helpers. Product Field Engineering HUD lives in ScanLoadingHUD.
 struct Stage5DebugHUD: View {
     var localization: String
     var pnp: PnPRuntimeSnapshot
     var wallId: String
     var cloudAssetsLoaded: Bool
-    var routes: [VerifiedFrozenRoute] = []
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Spacer()
-            VStack(alignment: .leading, spacing: 14) {
-                ForEach(routes, id: \.routeId) { route in
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(
-                            Array(ProductionRouteFieldCopy.displayLines(route).enumerated()),
-                            id: \.offset
-                        ) { _, line in
-                            Text(line)
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundStyle(ProductionRouteFieldCopy.copyColor)
-                        }
-                    }
-                }
-            }
-            .padding(.leading, 16)
-            .padding(.bottom, 16)
-            Text(
-                Stage5DebugHUDModel.diagnosticLine(
-                    localization: localization,
-                    pnp: pnp,
-                    wallId: wallId,
-                    cloudAssetsLoaded: cloudAssetsLoaded
-                )
-            )
-            .font(.system(size: 11, weight: .regular, design: .monospaced))
-            .foregroundStyle(.white.opacity(0.38))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12)
-            .padding(.bottom, 8)
-        }
-        .allowsHitTesting(false)
+        EmptyView()
     }
 }

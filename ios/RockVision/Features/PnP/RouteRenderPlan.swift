@@ -13,6 +13,7 @@ struct RouteRenderSegment: Equatable, Sendable {
     var startFloat: [Float]
     var endFloat: [Float]
     var floatConversionErrorMeters: Double
+    var routeId: String? = nil
 
     /// Longitudinal endpoints implied by center + length along direction.
     /// Thickness is orthogonal and must not appear here.
@@ -90,7 +91,7 @@ struct RouteRenderPlan: Equatable, Sendable {
             )
         }
         let points = binding.routeARWorldPoints.map { [$0[0], $0[1], $0[2]] }
-        let built = makeSegments(points: points)
+        let built = makeSegments(points: points, routeId: binding.routeId)
         return RouteRenderPlan(
             routeId: binding.routeId,
             wouldRender: true,
@@ -126,7 +127,7 @@ struct RouteRenderPlan: Equatable, Sendable {
             )
         }
         let points = binding.routeARWorldPoints.map { [$0[0], $0[1], $0[2]] }
-        let built = makeSegments(points: points)
+        let built = makeSegments(points: points, routeId: route.routeId)
         let title = ProductionRouteFieldCopy.overlayTitle(route)
         let labels: [RouteOverlayLabel]
         if title.isEmpty {
@@ -151,6 +152,13 @@ struct RouteRenderPlan: Equatable, Sendable {
             labels: labels,
             stroke: .fieldTestRed
         )
+    }
+
+    /// Display-layer copy used to apply geometry without 3D overlay text.
+    func geometryOnly() -> RouteRenderPlan {
+        var copy = self
+        copy.labels = []
+        return copy
     }
 
     static func concatenateFieldTest(_ plans: [RouteRenderPlan]) -> RouteRenderPlan {
@@ -183,7 +191,7 @@ struct RouteRenderPlan: Equatable, Sendable {
         )
     }
 
-    private static func makeSegments(points: [[Double]]) -> (segments: [RouteRenderSegment], maxError: Double) {
+    private static func makeSegments(points: [[Double]], routeId: String? = nil) -> (segments: [RouteRenderSegment], maxError: Double) {
         guard points.count >= 2 else { return ([], 0) }
         var segments: [RouteRenderSegment] = []
         segments.reserveCapacity(points.count - 1)
@@ -213,7 +221,8 @@ struct RouteRenderPlan: Equatable, Sendable {
                     thicknessMeters: visualThicknessMeters,
                     startFloat: startConv.floats,
                     endFloat: endConv.floats,
-                    floatConversionErrorMeters: error
+                    floatConversionErrorMeters: error,
+                    routeId: routeId
                 )
             )
         }

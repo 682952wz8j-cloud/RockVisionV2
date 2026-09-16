@@ -238,7 +238,8 @@ final class Gate5DARendererCorrectnessTests: XCTestCase {
 
         let preview = try readHostSource("RockVision/Features/ARSessionHost/ARCameraPreview.swift")
         XCTAssertTrue(preview.contains("let routeRoot = AnchorEntity(world: .zero)"))
-        XCTAssertTrue(preview.contains("RouteOverlay.apply(plan: plan, root: routeRoot)"))
+        XCTAssertTrue(preview.contains("RouteOverlay.apply(plan:"))
+        XCTAssertTrue(preview.contains("root: routeRoot"))
         XCTAssertTrue(preview.contains("WallAlignmentDebugOverlay.apply"))
         XCTAssertNotEqual(
             preview.range(of: "let root = AnchorEntity(world: .zero)"),
