@@ -47,3 +47,10 @@ A local RC-preparation tag pins source for further verification. It does not cer
 - Independent read-only review: no merge-blocking defect introduced by this change; all privacy/plist resources parse; upstream OpenCV manifest is byte-identical.
 - Known pre-existing behavior: returning from Settings after granting location does not restart production loading; users may need to restart the app. Location denial is currently reported using a generic network error. Neither recovery nor error copy is represented as fixed by this change.
 - Broad `rockvision verify` attempts were deliberately stopped after entering real COLMAP reconstruction (including a 47-image regression). These attempts have no passing result. The narrower publishing/catalog/production-package suite is recorded separately; this is not a full verify PASS.
+
+## Final contract check and source merge
+
+- Seven targeted Python suites ran 135 tests in 127.373 seconds: 132 passed, 2 failed, 1 skipped. The two failures are pre-existing live expectations for Jiulongfeng r000001 / route name instead of the deployed r000002 / updated route name. They are NOT marked PASS or silently rewritten in this change.
+- The live Jiulongfeng test downloaded all four r000002 assets and verified every byte count and SHA-256 before reaching the stale route-name assertion. This upgrades Jiulongfeng full cloud asset integrity evidence; it does not prove iPhone installation, remaining downstream assertions, or physical route alignment. Jinshidong full-download evidence remains incomplete.
+- Main merge: `2f5bb3a69068383e13050601736741c329fa48c6`, with the same file tree as reviewed implementation `7ce034f`. Origin main was checked at `c8b25f44a5889489b1984e17122a152850d9a49c`; no remote push was performed.
+- The release-preparation source checkpoint is tagged `cragpal-2.0.0-rc-prep.1`. It remains a preparation candidate, NOT a submission-ready RC, because tests/evidence and external release prerequisites listed above remain open.
