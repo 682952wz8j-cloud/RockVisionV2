@@ -294,7 +294,7 @@ class JiulongfengProductionCandidateTests(unittest.TestCase):
         if entry is None:
             self.skipTest("Jiulongfeng not yet in live production catalog")
         self.assertEqual(entry["name"], JIULONGFENG_DISPLAY_NAME)
-        self.assertEqual(entry["latestReleaseId"], PRODUCTION_RELEASE_ID)
+        self.assertEqual(entry["latestReleaseId"], "r000002")
         self.assertEqual(entry["catalogLocation"], JIULONGFENG_CATALOG_LOCATION)
         chosen = select_wall_id(
             latitude_deg=JIULONGFENG_CATALOG_LOCATION["latitudeDeg"],
@@ -333,6 +333,9 @@ class JiulongfengLiveRuntimeDiscoveryTests(unittest.TestCase):
         self.assertEqual(convenience, exact)
         self.assertEqual(exact["wallId"], JIULONGFENG_WALL_ID)
         self.assertEqual(exact["releaseId"], release_id)
+        self.assertEqual(release_id, "r000002")
+        frozen = ROOT / "offline" / "packages" / JIULONGFENG_WALL_ID / release_id
+        self.assertEqual(exact, json.loads((frozen / "cloud-manifest.json").read_text(encoding="utf-8")))
         downloaded = {}
         for item in exact["assets"]:
             url = f"{LIVE_PRODUCTION}/v1/walls/{JIULONGFENG_WALL_ID}/releases/{release_id}/assets/{item['assetId']}"
@@ -347,7 +350,7 @@ class JiulongfengLiveRuntimeDiscoveryTests(unittest.TestCase):
         routes = json.loads(downloaded["wall-routes"].decode("utf-8"))
         self.assertEqual(routes["schema"], "cragpal.wall-routes.v1")
         self.assertEqual(routes["routes"][0]["routeId"], PRODUCTION_ROUTE_ID)
-        self.assertEqual(routes["routes"][0]["routeName"], PRODUCTION_ROUTE_NAME)
+        self.assertEqual(routes, json.loads((frozen / "assets" / "wall-routes").read_text(encoding="utf-8")))
         self.assertEqual(routes["routes"][0]["polylineSha256"], FROZEN_POLYLINE_SHA256)
         self.assertEqual(downloaded["stage3-descriptors"][:4], b"RVS1")
         landmarks = json.loads(downloaded["stage3-landmarks"].decode("utf-8"))

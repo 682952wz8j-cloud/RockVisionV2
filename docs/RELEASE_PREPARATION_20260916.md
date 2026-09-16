@@ -54,3 +54,12 @@ A local RC-preparation tag pins source for further verification. It does not cer
 - The live Jiulongfeng test downloaded all four r000002 assets and verified every byte count and SHA-256 before reaching the stale route-name assertion. This upgrades Jiulongfeng full cloud asset integrity evidence; it does not prove iPhone installation, remaining downstream assertions, or physical route alignment. Jinshidong full-download evidence remains incomplete.
 - Main merge: `2f5bb3a69068383e13050601736741c329fa48c6`, with the same file tree as reviewed implementation `7ce034f`. Origin main was checked at `c8b25f44a5889489b1984e17122a152850d9a49c`; no remote push was performed.
 - The release-preparation source checkpoint is tagged `cragpal-2.0.0-rc-prep.1`. It remains a preparation candidate, NOT a submission-ready RC, because tests/evidence and external release prerequisites listed above remain open.
+
+## Follow-up: TestFlight preparation
+
+- User authorized correcting the two stale live tests, pushing main and candidate tags, signing/archive, and uploading for internal TestFlight.
+- Only the two live expectations were updated: catalog must select r000002; its complete manifest and route asset must equal the tracked frozen r000002 files. Historical r000001 construction tests remain unchanged. All hash, byte-count, Sim(3), route identity and frozen geometry assertions remain.
+- Jiulongfeng suite: all 10 tests PASS in 122.464 seconds, including full live HTTPS asset download and integrity checks. The two previous stale-expectation failures are resolved. Full COLMAP verify and physical acceptance remain open.
+- Release 2.0.0 (1) signed Archive generated successfully at `/private/tmp/CragPal-2.0.0-1.xcarchive`. Actual archived app passed release-resource validation and `codesign --verify --deep --strict` with host keychain access. This is development-signed archive evidence, not App Store distribution/export evidence.
+- Apple Developer account showed the Join Apple Developer Program prompt; user confirmed no program enrollment yet and intends organization enrollment. App Store Connect reports INVALIDITCUSER. Distribution export/upload and internal TestFlight are blocked on organization membership activation. No upload has been completed.
+- New source checkpoint: `cragpal-2.0.0-rc-prep.2`; retain prep.1 as historical. App source/config is unchanged from the verified archive; this follow-up changes only tests and release records.
