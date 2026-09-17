@@ -166,8 +166,9 @@ final class RouteLabelLayoutTests: XCTestCase {
             (line as NSString).size(withAttributes: [.font: AppPixelFont.uiFont]).width
         }.max() ?? 0
         XCTAssertEqual(fitted, min(ceil(longest) + 20, 390))
-        XCTAssertTrue(CragDirectoryMetrics.displayedLines(in: groups).contains("version 1.0"))
+        XCTAssertTrue(CragDirectoryMetrics.displayedLines(in: groups).contains(CragDirectoryCopy.version))
         XCTAssertTrue(CragDirectoryMetrics.displayedLines(in: groups).contains("www.cragpal.com"))
+        XCTAssertTrue(CragDirectoryMetrics.displayedLines(in: groups).contains("隐私政策与支持"))
         let source = try? String(
             contentsOf: URL(fileURLWithPath: #filePath)
                 .deletingLastPathComponent()
@@ -187,9 +188,21 @@ final class RouteLabelLayoutTests: XCTestCase {
         XCTAssertFalse(source?.contains("productionFieldRoutes") == true)
         XCTAssertTrue(source?.contains("fromWallRoutes") == true)
         XCTAssertTrue(source?.contains("group.title == CragDirectoryCopy.liveTitle") == true)
-        XCTAssertTrue(source?.contains("version 1.0") == true)
+        XCTAssertTrue(source?.contains("CFBundleShortVersionString") == true)
         XCTAssertTrue(source?.contains("www.cragpal.com") == true)
+        XCTAssertTrue(source?.contains("https://www.cragpal.com") == true)
+        XCTAssertTrue(source?.contains("Link(destination: CragDirectoryCopy.siteURL)") == true)
+        XCTAssertTrue(source?.contains("隐私政策与支持") == true)
         XCTAssertTrue(source?.contains("frame(maxWidth: .infinity, alignment: .center)") == true)
+        if let source {
+            let siteRange = source.range(of: "Link(destination: CragDirectoryCopy.siteURL)")
+            let infoRange = source.range(of: "Button(CragDirectoryCopy.information)")
+            XCTAssertNotNil(siteRange)
+            XCTAssertNotNil(infoRange)
+            if let siteRange, let infoRange {
+                XCTAssertLessThan(siteRange.lowerBound, infoRange.lowerBound)
+            }
+        }
         XCTAssertTrue(source?.contains("Color.black.opacity(0.14)") == true)
         XCTAssertFalse(source?.contains("Color.black.opacity(0.03)") == true)
         XCTAssertTrue(source?.contains("geo.size.height - bottomClearance") == true)

@@ -27,6 +27,8 @@ enum CragDirectoryCopy {
     static let wuhuDaidian = "安徽｜芜湖｜繁昌戴店"
     static var version: String { "version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")" }
     static let site = "www.cragpal.com"
+    static let siteURL = URL(string: "https://www.cragpal.com")!
+    static let information = "隐私政策与支持"
 }
 
 enum CragDirectoryMetrics {
@@ -34,7 +36,7 @@ enum CragDirectoryMetrics {
     static let topInset: CGFloat = 54
 
     static func displayedLines(in groups: [CragDirectoryGroup]) -> [String] {
-        var lines = [CragDirectoryCopy.version, CragDirectoryCopy.site]
+        var lines = [CragDirectoryCopy.version, CragDirectoryCopy.site, CragDirectoryCopy.information]
         for group in groups {
             lines.append(group.title)
             lines.append(contentsOf: group.rows.map {
@@ -309,16 +311,20 @@ struct CragDirectoryOverlay: View {
                     }
                 }
             }
-            Button("隐私政策与支持") { showsInformation = true }
-                .font(AppPixelFont.font)
-                .foregroundStyle(ScanLoadingStyle.success)
-                .padding(.vertical, 12)
-                .sheet(isPresented: $showsInformation) { AppInformationView() }
-            Text(CragDirectoryCopy.site)
+            Link(destination: CragDirectoryCopy.siteURL) {
+                Text(CragDirectoryCopy.site)
+                    .font(AppPixelFont.font)
+                    .foregroundStyle(ScanLoadingStyle.success)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 12)
+            Button(CragDirectoryCopy.information) { showsInformation = true }
                 .font(AppPixelFont.font)
                 .foregroundStyle(ScanLoadingStyle.success)
                 .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top, 12)
+                .padding(.top, 8)
+                .sheet(isPresented: $showsInformation) { AppInformationView() }
         }
         .padding(.top, CragDirectoryMetrics.topInset)
         .padding(.horizontal, CragDirectoryMetrics.horizontalPadding)
