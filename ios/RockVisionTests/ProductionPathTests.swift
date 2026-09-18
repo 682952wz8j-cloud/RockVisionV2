@@ -2,6 +2,81 @@ import XCTest
 @testable import RockVision
 
 final class ProductionPathTests: XCTestCase {
+    func testPrivacyConsentOnlyAcceptsCurrentPolicyVersion() {
+        XCTAssertFalse(PrivacyConsent.isGranted(version: 0))
+        XCTAssertTrue(PrivacyConsent.isGranted(version: PrivacyConsent.currentVersion))
+        XCTAssertFalse(PrivacyConsent.isGranted(version: PrivacyConsent.currentVersion + 1))
+    }
+
+    @MainActor
+    func testCragDirectoryDoesNotFetchBeforePrivacyConsent() async {
+        let transport = MockCloudTransport()
+        let service = CloudAssetService(
+            client: CloudAPIClient(configuration: .production, transport: transport),
+            store: CloudReleaseStore(rootURL: uniqueRoot())
+        )
+        let model = CragDirectoryModel()
+        model.serviceOverride = service
+
+        await model.refresh(privacyConsentGranted: false)
+
+        XCTAssertTrue(transport.requestedPaths.isEmpty)
+        XCTAssertEqual(model.loadState, .ready)
+        XCTAssertEqual(model.groups, CragDirectoryBuilder.groups())
+    }
+
+    func testStartupPermissionAndNetworkWorkAreBehindPrivacyConsent() throws {
+        let app = try readHostSource("RockVision/App/RockVisionApp.swift")
+        XCTAssertTrue(app.contains("if PrivacyConsent.isGranted(version: privacyConsentVersion)"))
+        XCTAssertTrue(app.contains("PrivacyConsentGate(consentVersion: $privacyConsentVersion)"))
+
+        let content = try readHostSource("RockVision/App/ContentView.swift")
+        let resumeScan = content.slice(after: "private func resumeScan", before: "private func currentOrientation")
+        let consentGuard = try XCTUnwrap(resumeScan.range(of: "guard privacyConsentGranted else"))
+        let cameraCheck = try XCTUnwrap(resumeScan.range(of: "AVCaptureDevice.authorizationStatus"))
+        XCTAssertLessThan(consentGuard.lowerBound, cameraCheck.lowerBound)
+
+        let directory = try readHostSource("RockVision/Features/ScanLoading/CragDirectory.swift")
+        XCTAssertTrue(directory.contains("func refresh(privacyConsentGranted: Bool) async"))
+        XCTAssertTrue(directory.contains("guard privacyConsentGranted else { return }"))
+        XCTAssertTrue(directory.contains("model.refresh(privacyConsentGranted: privacyConsentGranted)"))
+    }
+
+    @MainActor
+    func testPermissionFailureCanRetryWithoutRecreatingController() async throws {
+        let runtime = ProductionRuntimeController()
+        runtime.coordinateProviderOverride = { throw WallLocationError.permissionDenied }
+        await runtime.start()
+        XCTAssertEqual(runtime.lastError, "location permission denied")
+        XCTAssertFalse(runtime.isLoading)
+        runtime.coordinateProviderOverride = { throw WallLocationError.unavailable }
+        await runtime.start()
+        XCTAssertEqual(runtime.lastError, "location unavailable")
+        XCTAssertFalse(runtime.isLoading)
+        XCTAssertFalse(runtime.cloudAssetsLoaded)
+    }
+
+    @MainActor
+    func testRepeatedStartDoesNotCreateOverlappingLocationRequests() async throws {
+        let runtime = ProductionRuntimeController()
+        var requests = 0
+        var pending: CheckedContinuation<Void, Never>?
+        runtime.coordinateProviderOverride = {
+            requests += 1
+            await withCheckedContinuation { pending = $0 }
+            throw WallLocationError.unavailable
+        }
+        let first = Task { await runtime.start() }
+        while pending == nil { await Task.yield() }
+        XCTAssertTrue(runtime.isLoading)
+        await runtime.start()
+        XCTAssertEqual(requests, 1)
+        pending?.resume()
+        await first.value
+        XCTAssertFalse(runtime.isLoading)
+        XCTAssertEqual(runtime.lastError, "location unavailable")
+    }
+
     func testDefaultReferenceSourceIsProductionCloudNotLocalTest() throws {
         let processor = OpenCVFrameProcessor()
         #if DEBUG
@@ -433,10 +508,12 @@ final class ProductionPathTests: XCTestCase {
         XCTAssertFalse(productionCase.contains("PnPConfig.expectedSim3Scale"))
         XCTAssertFalse(productionCase.contains("JinshidongLocalTestAssets.load"))
         let content = try readHostSource("RockVision/App/ContentView.swift")
+        let resumeScan = content.slice(after: "private func resumeScan", before: "private func currentOrientation")
         XCTAssertTrue(content.contains("productionRuntime.start()"))
         XCTAssertTrue(content.contains("onSelectReferenceSourceJinshidongLocalTest"))
         let appear = content.slice(after: ".onAppear {", before: ".onChange(of: geo.size)")
-        XCTAssertTrue(appear.contains("productionRuntime.start()"))
+        XCTAssertTrue(appear.contains("resumeScan()"))
+        XCTAssertTrue(resumeScan.contains("productionRuntime.start()"))
         XCTAssertFalse(appear.contains("selectReferenceSourceJinshidongLocalTest()"))
         XCTAssertFalse(appear.contains("selectReferenceSourceCloudCurrentJiulongfengDevR000001()"))
         let api = try readHostSource("RockVision/Features/Cloud/CloudAPIConfiguration.swift")

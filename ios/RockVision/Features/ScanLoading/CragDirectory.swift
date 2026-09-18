@@ -172,16 +172,14 @@ final class CragDirectoryModel: ObservableObject {
 
     func toggle() {
         isOpen.toggle()
-        if isOpen {
-            Task { await refresh() }
-        }
     }
 
     func closeFromOutside() {
         isOpen = false
     }
 
-    func refresh() async {
+    func refresh(privacyConsentGranted: Bool) async {
+        guard privacyConsentGranted else { return }
         var counts: [String: Int] = [:]
         do {
             let service = try serviceOverride ?? CloudAssetService.default()
@@ -202,6 +200,7 @@ final class CragDirectoryModel: ObservableObject {
 struct CragDirectoryOverlay: View {
     @State private var showsInformation = false
     @ObservedObject var model: CragDirectoryModel
+    let privacyConsentGranted: Bool
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -231,11 +230,11 @@ struct CragDirectoryOverlay: View {
             }
         }
         .onAppear {
-            Task { await model.refresh() }
+            Task { await model.refresh(privacyConsentGranted: privacyConsentGranted) }
         }
         .onChange(of: model.isOpen) { _, open in
-            if open {
-                Task { await model.refresh() }
+            if open, privacyConsentGranted {
+                Task { await model.refresh(privacyConsentGranted: true) }
             }
         }
     }

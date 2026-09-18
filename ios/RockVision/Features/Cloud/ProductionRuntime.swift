@@ -8,6 +8,8 @@ final class ProductionRuntimeController: ObservableObject {
     @Published var wallId = "—"
     @Published var cloudAssetsLoaded = false
     @Published var lastError: String?
+    @Published private(set) var isLoading = false
+    var coordinateProviderOverride: (() async throws -> (latitude: Double, longitude: Double))?
 
     var processor: OpenCVFrameProcessor?
     var serviceOverride: CloudAssetService?
@@ -17,23 +19,28 @@ final class ProductionRuntimeController: ObservableObject {
     private let locationProvider = WallLocationProvider()
 
     func start() async {
+        guard !isLoading else { return }
+        isLoading = true
+        lastError = nil
+        defer { isLoading = false }
         var service: CloudAssetService?
         do {
             let resolved = try serviceOverride ?? CloudAssetService.default()
             service = resolved
+            let coordinate: (latitude: Double, longitude: Double)
+            if let injectedCoordinate {
+                coordinate = injectedCoordinate
+            } else if let coordinateProviderOverride {
+                coordinate = try await coordinateProviderOverride()
+            } else {
+                let live = try await locationProvider.requestCoordinate()
+                coordinate = (live.latitude, live.longitude)
+            }
             let catalog: WallCatalog
             if let injectedCatalog {
                 catalog = injectedCatalog
             } else {
                 catalog = try await resolved.fetchCatalog()
-            }
-            let coordinate: (latitude: Double, longitude: Double)
-            if let injectedCoordinate {
-                coordinate = injectedCoordinate
-            } else if let live = await locationProvider.requestCoordinate() {
-                coordinate = (live.latitude, live.longitude)
-            } else {
-                throw CloudAssetError.offlineNoCache
             }
             guard let selected = WallCandidateSelector.selectWallId(
                 latitude: coordinate.latitude,

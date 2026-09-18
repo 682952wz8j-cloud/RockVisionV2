@@ -20,6 +20,8 @@ final class ARSessionHost: NSObject, ObservableObject, ARSessionDelegate {
     weak var frameConsumer: ARFrameConsumer?
 
     private var isRunning = false
+    private var hasStarted = false
+    @Published private(set) var cameraError: String?
     private let lock = NSLock()
     private let log = Logger(subsystem: "com.rockvision.v2", category: "ARSessionHost")
     private var lastLoggedFrameCount = 0
@@ -35,6 +37,7 @@ final class ARSessionHost: NSObject, ObservableObject, ARSessionDelegate {
         defer { lock.unlock() }
         guard !isRunning else { return }
         guard ARWorldTrackingConfiguration.isSupported else {
+            DispatchQueue.main.async { self.cameraError = "camera unavailable" }
             publish { snapshot in
                 snapshot.trackingState = "notAvailable (world tracking unsupported)"
             }
@@ -43,7 +46,9 @@ final class ARSessionHost: NSObject, ObservableObject, ARSessionDelegate {
         let configuration = ARWorldTrackingConfiguration()
         configuration.worldAlignment = .gravity
         configuration.planeDetection = []
-        session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
+        session.run(configuration, options: hasStarted ? [] : [.resetTracking, .removeExistingAnchors])
+        hasStarted = true
+        DispatchQueue.main.async { self.cameraError = nil }
         isRunning = true
         log.info("ARSession started with ARWorldTrackingConfiguration")
         print("ARSessionHost: ARSession started with ARWorldTrackingConfiguration")
@@ -84,6 +89,10 @@ final class ARSessionHost: NSObject, ObservableObject, ARSessionDelegate {
     }
 
     func session(_ session: ARSession, didFailWithError error: Error) {
+        lock.lock()
+        isRunning = false
+        lock.unlock()
+        DispatchQueue.main.async { self.cameraError = "camera unavailable" }
         publish { snapshot in
             snapshot.trackingState = "failed: \(error.localizedDescription)"
         }

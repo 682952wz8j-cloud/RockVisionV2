@@ -2,6 +2,32 @@ import XCTest
 @testable import RockVision
 
 final class ScanLoadingTests: XCTestCase {
+    func testSessionResetDropsPreviousSuccessAndIgnoresOldReceipt() {
+        let old = UUID()
+        let next = UUID()
+        var state = ScanLoadingState.fresh(attemptId: old, wallId: "wall_a", now: 0)
+        let receipt = RouteApplyReceipt(attemptId: old, wallId: "wall_a", renderedRoute: true, routeId: "route_1", visibleSegmentCount: 2)
+        ScanLoadingReducer.ingest(&state, facts: facts(localization: ConfirmationConfig.localizationLocalized, matching: "active", cloud: true, wallId: "wall_a", receipt: receipt), now: 1, newAttemptId: { UUID() })
+        XCTAssertEqual(state.load, .success)
+        ScanLoadingReducer.ingest(&state, facts: facts(localization: "idle", matching: "active", cloud: true, wallId: "wall_a", receipt: receipt), now: 2, newAttemptId: { next })
+        XCTAssertEqual(state.attemptId, next)
+        XCTAssertEqual(state.identify, .pending)
+        XCTAssertEqual(state.load, .pending)
+        XCTAssertFalse(state.didJump)
+    }
+
+    func testPermissionAndLocationErrorsAreNotNetworkErrors() {
+        XCTAssertEqual(ScanLoadingReducer.classifiedError(WallLocationError.permissionDenied.errorDescription), .locationPermission)
+        XCTAssertEqual(ScanLoadingReducer.classifiedError(WallLocationError.unavailable.errorDescription), .locationUnavailable)
+        XCTAssertEqual(ScanLoadingReducer.classifiedError("camera permission denied"), .cameraPermission)
+        XCTAssertEqual(ScanLoadingReducer.classifiedError("camera unavailable"), .cameraUnavailable)
+        var state = ScanLoadingState.fresh(attemptId: UUID(), wallId: "—", now: 0)
+        ScanLoadingReducer.ingest(&state, facts: facts(localization: "idle", matching: "inactive", cloud: false, wallId: "—", error: "location permission denied"), now: 1, newAttemptId: { UUID() })
+        XCTAssertTrue(state.hardError)
+        XCTAssertEqual(state.hint, .locationPermission)
+        XCTAssertEqual(state.identify, .pending)
+    }
+
     func testCloudReadyDoesNotMarkIdentifySuccess() {
         var state = ScanLoadingState.fresh(attemptId: UUID(), wallId: "wall_a", now: 0)
         ScanLoadingReducer.ingest(

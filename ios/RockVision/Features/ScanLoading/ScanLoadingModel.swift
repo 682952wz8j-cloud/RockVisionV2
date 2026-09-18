@@ -9,6 +9,10 @@ enum ScanHintKind: Equatable, Sendable {
     case none
     case aimAtWall
     case network
+    case locationPermission
+    case locationUnavailable
+    case cameraPermission
+    case cameraUnavailable
     case package
     case noWall
     case failed
@@ -104,6 +108,10 @@ enum ScanLoadingReducer {
             state = .fresh(attemptId: newAttemptId(), wallId: facts.wallId, now: now)
         }
 
+        // A background/session reset can return directly to idle without a lost pulse.
+        if facts.localization == "idle", !facts.lostLocalized, state.seenLocalized {
+            state = .fresh(attemptId: newAttemptId(), wallId: facts.wallId, now: now)
+        }
         if facts.lostLocalized, state.seenLocalized, !state.handledLostPulse {
             state = .fresh(attemptId: newAttemptId(), wallId: facts.wallId, now: now)
             state.handledLostPulse = true
@@ -114,7 +122,7 @@ enum ScanLoadingReducer {
         state.hardError = {
             let kind = classifiedError(facts.lastError)
             switch kind {
-            case .network, .package, .noWall, .failed:
+            case .network, .package, .noWall, .failed, .locationPermission, .locationUnavailable, .cameraPermission, .cameraUnavailable:
                 return facts.localization != ConfirmationConfig.localizationLocalized
                     && !facts.receipt.renderedRoute
             case .none, .aimAtWall:
@@ -223,6 +231,10 @@ enum ScanLoadingReducer {
         if text == "unavailable" || text == "—" {
             return .none
         }
+        if text.contains("location permission") { return .locationPermission }
+        if text.contains("location unavailable") { return .locationUnavailable }
+        if text.contains("camera permission") { return .cameraPermission }
+        if text.contains("camera unavailable") { return .cameraUnavailable }
         if text.contains("no wall in gps") {
             return .noWall
         }
@@ -266,6 +278,10 @@ enum ScanLoadingReducer {
         switch kind {
         case .none: return nil
         case .aimAtWall: return "请对准岩壁重新扫描"
+        case .locationPermission: return "请在设置中允许 CragPal 使用定位"
+        case .locationUnavailable: return "暂时无法获取位置，请移至开阔处重试"
+        case .cameraPermission: return "请在设置中允许 CragPal 使用相机"
+        case .cameraUnavailable: return "相机暂时不可用，请重试"
         case .network: return "网络异常，请稍后重试"
         case .package: return "路线包加载失败"
         case .noWall: return "附近没有可扫描的岩壁"

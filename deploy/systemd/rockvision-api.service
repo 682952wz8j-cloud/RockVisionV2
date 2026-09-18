@@ -1,0 +1,22 @@
+[Unit]
+Description=CragPal Cloud Asset API v1
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+ExecStartPre=-/usr/bin/docker rm -f rockvision-api
+ExecStart=/usr/bin/docker run --name rockvision-api \
+  --log-opt max-size=10m \
+  --log-opt max-file=5 \
+  --env-file /etc/rockvision/cos.env \
+  -e TENCENT_COS_BUCKET=rockvision-prod-assets-1314262053 \
+  -p 127.0.0.1:8000:8000 \
+  cragpal-backend:v1
+ExecStop=/usr/bin/docker stop -t 10 rockvision-api
+
+[Install]
+WantedBy=multi-user.target

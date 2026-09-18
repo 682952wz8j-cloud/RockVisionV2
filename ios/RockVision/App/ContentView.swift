@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 import UIKit
 
@@ -12,6 +13,9 @@ struct ContentView: View {
     @StateObject private var productionRuntime = ProductionRuntimeController()
     @StateObject private var scanSession = ScanSessionBridge()
     @StateObject private var cragDirectory = CragDirectoryModel()
+    @AppStorage(PrivacyConsent.storageKey) private var privacyConsentVersion = 0
+    @State private var cameraPermissionError: String?
+    @State private var cameraRequestPending = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -106,8 +110,38 @@ struct ContentView: View {
                         )
                     )
                     .ignoresSafeArea()
-                    CragDirectoryOverlay(model: cragDirectory)
+                    CragDirectoryOverlay(
+                        model: cragDirectory,
+                        privacyConsentGranted: privacyConsentGranted
+                    )
                         .ignoresSafeArea()
+                }
+                if let error = scanLoadingFacts.lastError,
+                   ScanLoadingReducer.classifiedError(error) != .none {
+                    VStack(spacing: 12) {
+                        Text(ScanLoadingReducer.hintText(ScanLoadingReducer.classifiedError(error)) ?? "扫描失败")
+                            .multilineTextAlignment(.center)
+                        HStack(spacing: 24) {
+                            Button("重试") { resumeScan(retry: true) }
+                                .disabled(productionRuntime.isLoading || cameraRequestPending)
+                            if error.contains("permission") {
+                                Button("打开设置") {
+                                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                                        UIApplication.shared.open(url)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .font(.callout)
+                    .padding(16)
+                    .foregroundStyle(.white)
+                    .background(.black.opacity(0.8), in: RoundedRectangle(cornerRadius: 14))
+                    .frame(maxWidth: 340)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .padding(.top, geo.safeAreaInsets.top + 64)
+                    .allowsHitTesting(!cragDirectory.isOpen)
+                    .opacity(cragDirectory.isOpen ? 0 : 1)
                 }
             }
             .onAppear {
@@ -124,14 +158,18 @@ struct ContentView: View {
                 #endif
                 productionRuntime.processor = openCV
                 openCV.updateViewContext(size: geo.size, orientation: currentOrientation())
-                sessionHost.start()
-                Task { await productionRuntime.start() }
+                resumeScan()
             }
             .onChange(of: geo.size) { _, size in
                 openCV.updateViewContext(size: size, orientation: currentOrientation())
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase != .active {
+                if phase == .active {
+                    resumeScan()
+                } else if phase == .background {
+                    sessionHost.pause()
+                    openCV.resetConfirmation()
+
                     #if DEBUG
                     fieldTest.flush()
                     openCV.dumpAllBuckets()
@@ -164,6 +202,10 @@ struct ContentView: View {
         return true
     }
 
+    private var privacyConsentGranted: Bool {
+        PrivacyConsent.isGranted(version: privacyConsentVersion)
+    }
+
     private var scanLoadingFacts: ScanLoadingFacts {
         ScanLoadingFacts(
             localization: openCV.confirmationSnapshot.localization,
@@ -171,10 +213,39 @@ struct ContentView: View {
             matchingStatus: openCV.matchingSnapshot.status,
             cloudAssetsLoaded: productionRuntime.cloudAssetsLoaded,
             wallId: productionRuntime.wallId,
-            lastError: productionRuntime.lastError,
+            lastError: cameraPermissionError ?? sessionHost.cameraError ?? productionRuntime.lastError,
             receipt: scanSession.receipt,
             sceneActive: scenePhase == .active
         )
+    }
+
+    private func resumeScan(retry: Bool = false) {
+        guard privacyConsentGranted else {
+            sessionHost.pause()
+            return
+        }
+        guard !cameraRequestPending else { return }
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            cameraPermissionError = nil
+            sessionHost.start()
+            if retry || !productionRuntime.cloudAssetsLoaded {
+                Task { await productionRuntime.start() }
+            }
+        case .notDetermined:
+            cameraRequestPending = true
+            AVCaptureDevice.requestAccess(for: .video) { _ in
+                DispatchQueue.main.async {
+                    cameraRequestPending = false
+                    if scenePhase == .active { resumeScan(retry: retry) }
+                }
+            }
+        case .denied, .restricted:
+            cameraPermissionError = "camera permission denied"
+            sessionHost.pause()
+        @unknown default:
+            cameraPermissionError = "camera unavailable"
+        }
     }
 
     private func currentOrientation() -> UIInterfaceOrientation {
